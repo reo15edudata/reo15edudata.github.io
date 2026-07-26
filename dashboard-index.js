@@ -1,35 +1,35 @@
 const GAS_WEB_APP_URL = "https://script.google.com/macros/s/AKfycbxIaex-ZhKRkRFze1L8tyQF5UBQR4BQ2Is9L6nJMl9iGd9MTlg4ELJUqdzOZPO3w-OwDA/exec";
 const SHEETS = {
-  population: ["DB_2", "Population"],
-  special: ["DB_2", "Special_Needs"],
-  oosc: ["DB_2", "Out_of_School"],
-  dropout: ["DB_2", "Dropout"],
-  jobs: ["DB_2", "Get_a_Jobs"],
-  studyYear: ["DB_2", "Study_YearAVG"],
-  studyRatio: ["DB_2", "Ratio_StudyLevel"],
-  onet: ["DB_4", "ONET_Score"],
-  nt: ["DB_4", "NT_AVGScore"],
-  rt: ["DB_4", "RT_Score"],
-  students: ["DB_1", "Student_Count"]
+  population: ["DB_2", "Population"], special: ["DB_2", "Special_Needs"],
+  oosc: ["DB_2", "Out_of_School"], dropout: ["DB_2", "Dropout"],
+  jobs: ["DB_2", "Get_a_Jobs"], studyYear: ["DB_2", "Study_YearAVG"],
+  studyRatio: ["DB_2", "Ratio_StudyLevel"], students: ["DB_1", "Student_Count"],
+  onet: ["DB_4", "ONET_Score"], nt: ["DB_4", "NT_AVGScore"], rt: ["DB_4", "RT_Score"]
 };
+const RETURNED_OOSC = new Set(["ศึกษาภายในประเทศ", "ศึกษาต่างประเทศ", "ไม่ตกหล่น-กำลังศึกษา", "อยู่ในการศึกษาทางเลือกตามมาตรา 12"]);
 let data = {};
-let studyYearChart;
-let studyRatioChart;
-
-async function fetchAllPages(dbKey, sheetName) {
-  return EDU15DataClient.fetchAllPages(GAS_WEB_APP_URL, dbKey, sheetName);
-}
+let provinceFilter;
+let charts = {};
+let currentJobRows = [];
+let employmentColorMap = new Map();
 
 window.addEventListener("DOMContentLoaded", initDashboard);
 
 async function initDashboard() {
   try {
-    const entries = await Promise.all(Object.entries(SHEETS).map(async ([key, [db, sheet]]) => [key, await fetchAllPages(db, sheet)]));
+    const entries = await Promise.all(Object.entries(SHEETS).map(async ([key, [db, sheet]]) => [
+      key, await EDU15DataClient.fetchAllPages(GAS_WEB_APP_URL, db, sheet)
+    ]));
     data = Object.fromEntries(entries);
     populateFilters();
-    render(getFilters());
-    document.getElementById("filterForm").addEventListener("submit", event => { event.preventDefault(); render(getFilters()); });
-    document.getElementById("filterForm").addEventListener("reset", () => setTimeout(() => render(getFilters()), 0));
+    render();
+    document.getElementById("filterForm").addEventListener("submit", event => { event.preventDefault(); render(); });
+    document.getElementById("filterForm").addEventListener("reset", () => setTimeout(() => {
+      provinceFilter.clear();
+      document.getElementById("filterYear").selectedIndex = 0;
+      render();
+    }, 0));
+    document.getElementById("employmentLevelFilter").addEventListener("change", renderEmploymentTable);
   } catch (error) {
     console.error(error);
     document.getElementById("dataReadiness").className = "mb-6 rounded-xl border border-rose-200 bg-rose-50 px-5 py-4 text-sm text-rose-700";
@@ -41,32 +41,22 @@ async function initDashboard() {
 
 function populateFilters() {
   const all = Object.values(data).flat();
-  const years = [...new Set(all.map(row => String(row.YEAR ?? row.ACAD_YEAR ?? "").trim()).filter(Boolean))].sort((a, b) => Number(b) - Number(a));
-  const provinces = [...new Set(all.map(row => String(row.PROV_NAME ?? "").trim()).filter(Boolean))].sort();
-  fillSelect("filterYear", years);
-  fillSelect("filterProvince", provinces);
-  if (years.length) document.getElementById("filterYear").value = years[0];
-}
-
-function fillSelect(id, values) {
-  const select = document.getElementById(id);
-  const first = select.options[0];
-  select.innerHTML = "";
-  select.append(first);
-  values.forEach(value => select.add(new Option(value, value)));
+  const years = [...new Set(all.map(row => String(row.YEAR ?? row.ACAD_YEAR ?? "")).filter(Boolean))].sort((a, b) => Number(b) - Number(a));
+  const yearSelect = document.getElementById("filterYear");
+  years.forEach(year => yearSelect.add(new Option(year, year)));
+  const provinces = [...new Set(all.map(row => String(row.PROV_NAME ?? "")).filter(Boolean))].sort();
+  provinceFilter = EDU15MultiSelect.create(document.getElementById("filterProvince"), provinces, "ทุกจังหวัด");
 }
 
 function getFilters() {
-  return { year: document.getElementById("filterYear").value, province: document.getElementById("filterProvince").value };
+  return { year: document.getElementById("filterYear").value, provinces: provinceFilter.getValues() };
 }
 
-function filtered(rows, filters) {
-  return rows.filter(row => {
-    const year = String(row.YEAR ?? row.ACAD_YEAR ?? "");
-    if (filters.year && year !== filters.year) return false;
-    if (filters.province && String(row.PROV_NAME) !== filters.province) return false;
-    return true;
-  });
+function filteredDataset(key, filters = getFilters(), yearField) {
+  const field = yearField || (key === "students" ? "ACAD_YEAR" : "YEAR");
+  let rows = data[key].filter(row => !filters.provinces.length || !row.PROV_NAME || filters.provinces.includes(String(row.PROV_NAME)));
+  const year = Number(filters.year);
+  return rows.filter(row => Number(row[field]) === year);
 }
 
 function n(value) {
@@ -78,17 +68,88 @@ function totalStudents(rows) {
   return rows.reduce((sum, row) => sum + n(row.STUDENT_MALE) + n(row.STUDENT_FEMALE), 0);
 }
 
-function text(row, field) {
-  return String(row[field] || "").toLowerCase();
-}
-
+function levelText(row) { return String(row.EDU_LEVEL || "").toLowerCase(); }
 const LEVEL = {
   early: value => /อนุบาล|ปฐมวัย/.test(value),
   primary: value => /ประถม/.test(value),
   lower: value => /มัธยม.*(ปีที่\s*[1-3]|ตอนต้น)|ม\.?\s*[1-3]/.test(value),
-  upper: value => /มัธยม.*(ปีที่\s*[4-6]|ตอนปลาย)|ม\.?\s*[4-6]|ปวช|ประกาศนียบัตรวิชาชีพ(?!ชั้นสูง)/.test(value),
-  voc: value => /ปวช|ประกาศนียบัตรวิชาชีพ(?!ชั้นสูง)/.test(value),
-  higherVoc: value => /ปวส|ประกาศนียบัตรวิชาชีพชั้นสูง/.test(value)
+  upper: value => /มัธยม.*(ปีที่\s*[4-6]|ตอนปลาย)|ม\.?\s*[4-6]|ปวช/.test(value),
+  voc: value => /ปวช|ประกาศนียบัตรวิชาชีพ(?!(?:ชั้น|ขั้น)สูง)/.test(value),
+  higherVoc: value => /ปวส|ประกาศนียบัตรวิชาชีพ(?:ชั้น|ขั้น)สูง/.test(value)
+};
+
+function normalizeEducationLevel(value) {
+  return String(value || "").trim().replace(/\s+/g, " ");
+}
+
+const ACCESS_LEVELS = Object.fromEntries(Object.entries({
+  early: [
+    "อนุบาล 1(หลักสูตร 3 ปีของ สช.)/อนุบาล 3 ขวบ",
+    "อนุบาล 2(หลักสูตร 3 ปีของ สช.)/อนุบาล 1",
+    "อนุบาล 3(หลักสูตร 3 ปีของ สช.)/อนุบาล 2",
+    "เตรียมอนุบาล"
+  ],
+  primary: [
+    "ประถมศึกษาปีที่ 1/เกรด 1",
+    "ประถมศึกษาปีที่ 2/เกรด 2",
+    "ประถมศึกษาปีที่ 3/เกรด 3",
+    "ประถมศึกษาปีที่ 4/เกรด 4",
+    "ประถมศึกษาปีที่ 5/เกรด 5",
+    "ประถมศึกษาปีที่ 6/เกรด 6",
+    "กศน.ประถมศึกษา",
+    "กศน.ประถมศึกษา (ป.6)"
+  ],
+  lower: [
+    "มัธยมศึกษาปีที่ 1 /เกรด 7/ นาฎศิลป์ชั้นที่ 1",
+    "มัธยมศึกษาปีที่ 2 /เกรด 8/ นาฎศิลป์ชั้นที่ 2",
+    "มัธยมศึกษาปีที่ 3 /เกรด 9/ นาฎศิลป์ชั้นที่ 3",
+    "กศน.มัธยมศึกษาตอนต้น",
+    "กศน.มัธยมศึกษาตอนต้น (ม.3)"
+  ],
+  upper: [
+    "มัธยมศึกษาปีที่ 4/เกรด10",
+    "มัธยมศึกษาปีที่ 5/เกรด11/เตรียมทหารชั้นปีที่ 1",
+    "มัธยมศึกษาปีที่ 6/เกรด12/เตรียมทหารชั้นปีที่ 2",
+    "ประกาศนียบัตรวิชาชีพปีที่ 1",
+    "ประกาศนียบัตรวิชาชีพปีที่ 2",
+    "ประกาศนียบัตรวิชาชีพปีที่ 3",
+    "กศน.มัธยมศึกษาตอนปลาย",
+    "มัธยมศึกษาปีที่ 6/เกรด12/เตรียมทหารชั้นปีที่ 2/กศน.มัธยมศึกษา",
+    "มัธยมศึกษาปีที่ 4/เกรด10/เตรียมทหารชั้นปีที่ 1",
+    "มัธยมศึกษาปีที่ 5/เกรด11/เตรียมทหารชั้นปีที่ 2",
+    "มัธยมศึกษาปีที่ 6/เกรด12/เตรียมทหารชั้นปีที่ 3",
+    "กศน.มัธยมศึกษาตอนปลาย (ม.6)"
+  ],
+  higherVoc: [
+    "ประกาศนียบัตรวิชาชีพชั้นสูงชั้นปีที่ 1",
+    "ประกาศนียบัตรวิชาชีพชั้นสูงชั้นปีที่ 2",
+    "ประกาศนียบัตรวิชาชีพชั้นสูงชั้นปีที่ 1/ ปวท. ชั้นปีที่ 1 - ปกศ. สูง",
+    "ประกาศนียบัตรวิชาชีพชั้นสูงชั้นปีที่ 2/ ปวท. ชั้นปีที่ 1 - ปกศ. สูง"
+  ]
+}).map(([group, values]) => [group, new Set(values.map(normalizeEducationLevel))]));
+
+const VOCATIONAL_DEPARTMENT = "สำนักงานคณะกรรมการการอาชีวศึกษา";
+const EFFICIENCY_LEVELS = {
+  compulsoryStudents: new Set([
+    "ประถมศึกษาปีที่ 1/เกรด 1",
+    "ประถมศึกษาปีที่ 2/เกรด 2",
+    "ประถมศึกษาปีที่ 3/เกรด 3",
+    "ประถมศึกษาปีที่ 4/เกรด 4",
+    "ประถมศึกษาปีที่ 5/เกรด 5",
+    "ประถมศึกษาปีที่ 6/เกรด 6",
+    "มัธยมศึกษาปีที่ 1 /เกรด 7/ นาฎศิลป์ชั้นที่ 1",
+    "มัธยมศึกษาปีที่ 2 /เกรด 8/ นาฎศิลป์ชั้นที่ 2",
+    "มัธยมศึกษาปีที่ 3 /เกรด 9/ นาฎศิลป์ชั้นที่ 3"
+  ].map(normalizeEducationLevel)),
+  compulsoryDropout: new Set(["ประถมศึกษา", "มัธยมศึกษาตอนต้น"].map(normalizeEducationLevel)),
+  vocationalStudents: new Set([
+    "ประกาศนียบัตรวิชาชีพปีที่ 1",
+    "ประกาศนียบัตรวิชาชีพปีที่ 2",
+    "ประกาศนียบัตรวิชาชีพปีที่ 3"
+  ].map(normalizeEducationLevel)),
+  vocationalDropout: new Set(["มัธยมศึกษาตอนปลาย (สามัญ + อาชีวะ)"].map(normalizeEducationLevel)),
+  higherVocStudents: new Set(ACCESS_LEVELS.higherVoc),
+  higherVocDropout: new Set(["ประกาศนียบัตรวิชาชีพชั้นสูง"].map(normalizeEducationLevel))
 };
 
 function ageGroup(value, from, to) {
@@ -96,207 +157,264 @@ function ageGroup(value, from, to) {
   return numbers.includes(from) && numbers.includes(to);
 }
 
-function render(filters) {
-  const rows = Object.fromEntries(Object.entries(data).map(([key, value]) => [key, filtered(value, filters)]));
-  renderReadiness(rows);
-  renderAccess(rows);
+function render() {
+  const filters = getFilters();
+  const rows = Object.fromEntries(Object.keys(data).map(key => [key, filteredDataset(key, filters)]));
+  document.getElementById("dataReadiness").innerHTML = `<i class="fas fa-circle-info mr-2"></i>กำลังแสดงปี ${filters.year} ${filters.provinces.length ? `· ${filters.provinces.length} จังหวัด` : "· ภาพรวมพื้นที่ ศธภ.15"} · ส่วนที่ยังไม่มีข้อมูลจะแสดง “รอข้อมูลอัปเดต”`;
+  renderAccess(rows, filters);
   renderEquity(rows);
+  renderQuality(filters);
   renderEfficiency(rows);
   renderRelevancy(rows);
-  renderStudyCharts(filters);
-  renderQuality(filters);
 }
 
-function renderReadiness(rows) {
-  const available = Object.entries(rows).filter(([, value]) => value.length).map(([key]) => key).length;
-  const total = Object.keys(rows).length;
-  document.getElementById("dataReadiness").innerHTML = `<i class="fas fa-database mr-2"></i>พบข้อมูลพร้อมคำนวณ ${available} จาก ${total} ชุด ตัวชี้วัดที่ตัวหารเป็นศูนย์จะแสดงว่า “ยังไม่มีข้อมูล”`;
+function ratioCard(id, numerator, denominator, labels) {
+  document.getElementById(id).textContent = denominator ? `${(numerator / denominator * 100).toFixed(2)}%` : "รอข้อมูลอัปเดต";
+  const note = document.getElementById(`${id}-note`);
+  if (note) note.textContent = denominator ? `${labels[0]} ${numerator.toLocaleString("th-TH")} / ${labels[1]} ${denominator.toLocaleString("th-TH")}` : "";
 }
 
-function ratioCard(id, numerator, denominator, labels = ["ตัวตั้ง", "ตัวหาร"]) {
-  const value = denominator > 0 ? numerator / denominator * 100 : null;
-  document.getElementById(id).textContent = value === null ? "ยังไม่มีข้อมูล" : `${value.toFixed(2)}%`;
-  document.getElementById(`${id}-note`).textContent = `${labels[0]} ${numerator.toLocaleString("th-TH")} / ${labels[1]} ${denominator.toLocaleString("th-TH")}`;
-}
-
-function renderAccess(rows) {
-  const configs = [
-    ["access-early", LEVEL.early, [3, 5]],
-    ["access-primary", LEVEL.primary, [6, 11]],
-    ["access-lower", LEVEL.lower, [12, 14]],
-    ["access-upper", LEVEL.upper, [15, 17]],
-    ["access-higher-voc", LEVEL.higherVoc, [18, 19]]
-  ];
-  configs.forEach(([id, matchLevel, ages]) => {
-    const students = totalStudents(rows.students.filter(row => matchLevel(text(row, "EDU_LEVEL"))));
-    const population = rows.population.filter(row => ageGroup(row.AGE_GROUP, ages[0], ages[1])).reduce((sum, row) => sum + n(row.POPU_COUNT), 0);
-    ratioCard(id, students, population, ["ผู้เรียน", "ประชากร"]);
+function renderAccess(rows, filters) {
+  [["access-early", ACCESS_LEVELS.early, [3,5]], ["access-primary", ACCESS_LEVELS.primary, [6,11]], ["access-lower", ACCESS_LEVELS.lower, [12,14]], ["access-upper", ACCESS_LEVELS.upper, [15,17]], ["access-higher-voc", ACCESS_LEVELS.higherVoc, [18,19]]].forEach(([id, allowedLevels, ages]) => {
+    const studentRows = rows.students.filter(row => allowedLevels.has(normalizeEducationLevel(row.EDU_LEVEL)));
+    const populationRows = rows.population.filter(row => ageGroup(row.AGE_GROUP, ages[0], ages[1]));
+    const students = totalStudents(studentRows);
+    const population = populationRows.reduce((sum, row) => sum + n(row.POPU_COUNT), 0);
+    ratioCard(id, students, studentRows.length && populationRows.length ? population : 0, ["ผู้เรียน", "ประชากร"]);
   });
+
+  const studyRows = rows.studyYear;
+  const provinceValues = new Map();
+  studyRows.forEach(row => provinceValues.set(String(row.PROV_NAME), n(row.STUDY_YEARAVG)));
+  const values = [...provinceValues.values()];
+  const average = values.length ? values.reduce((sum, value) => sum + value, 0) / values.length : null;
+  document.getElementById("studyYearAverage").textContent = average === null ? "รอข้อมูลอัปเดต" : `${average.toFixed(2)} ปี`;
+  document.getElementById("studyYearAverageNote").textContent = values.length
+    ? `ค่าเฉลี่ย ${values.length} จังหวัด${filters.provinces.length ? "ที่เลือก" : ""}`
+    : "";
+  const provinceCardStyles = [
+    ["bg-blue-50", "text-blue-700"],
+    ["bg-teal-50", "text-teal-700"],
+    ["bg-amber-50", "text-amber-700"],
+    ["bg-violet-50", "text-violet-700"]
+  ];
+  document.getElementById("studyYearProvinceCards").innerHTML = provinceValues.size
+    ? [...provinceValues].sort((a,b) => a[0].localeCompare(b[0], "th")).map(([province, value], index) => {
+        const [background, text] = provinceCardStyles[index % provinceCardStyles.length];
+        return `<div class="rounded-lg ${background} p-2"><span class="block text-[11px] text-slate-500">${escapeHtml(province)}</span><strong class="${text}">${value.toFixed(2)} ปี</strong></div>`;
+      }).join("")
+    : '<p class="col-span-2 py-2 text-xs text-slate-400">รอข้อมูลอัปเดต</p>';
+  renderStudyCharts(filters);
+}
+
+function renderStudyCharts(filters) {
+  let trendRows = data.studyYear.filter(row => !filters.provinces.length || filters.provinces.includes(String(row.PROV_NAME)));
+  const years = [...new Set(trendRows.map(row => String(row.YEAR)))].sort((a,b) => Number(a)-Number(b));
+  const provinces = [...new Set(trendRows.map(row => String(row.PROV_NAME)))].sort();
+  const colors = ["#0d9488","#2563eb","#f59e0b","#e11d48","#7c3aed"];
+  replaceChart("studyYear", "studyYearChart", {
+    type: "line",
+    data: { labels: years, datasets: provinces.map((province,index) => ({ label: province, data: years.map(year => n(trendRows.find(row => String(row.YEAR) === year && String(row.PROV_NAME) === province)?.STUDY_YEARAVG) || null), borderColor: colors[index % colors.length], backgroundColor: colors[index % colors.length], tension: .3, spanGaps: true })) },
+    options: baseChartOptions({ yTitle: "ปี" })
+  });
+  document.getElementById("studyYearSummary").textContent = `${years.length} ปีข้อมูล · ${provinces.length} จังหวัด`;
+  const selectedYear = String(filters.year);
+  const currentProvinceValues = provinces.map((province,index) => ({
+    province,
+    value: trendRows.find(row => String(row.YEAR) === selectedYear && String(row.PROV_NAME) === province)?.STUDY_YEARAVG,
+    color: colors[index % colors.length]
+  })).filter(item => item.value !== undefined && item.value !== null && item.value !== "");
+  document.getElementById("studyYearTrendCards").innerHTML = currentProvinceValues.length
+    ? currentProvinceValues.map(item => `<div class="rounded-lg border bg-slate-50 p-2.5" style="border-color:${item.color}55"><span class="block truncate text-[11px] text-slate-500">${escapeHtml(item.province)}</span><strong class="mt-1 block text-base" style="color:${item.color}">${n(item.value).toFixed(2)} ปี</strong><span class="text-[10px] text-slate-400">ปี ${escapeHtml(selectedYear)}</span></div>`).join("")
+    : '<p class="col-span-full py-2 text-xs text-slate-400">รอข้อมูลอัปเดตสำหรับปีที่เลือก</p>';
+
+  const ratioRows = filteredDataset("studyRatio", filters);
+  const grouped = groupSum(ratioRows, "EDU_LEVEL", "RATIO_STUDY");
+  const ratioColors = ["#2563eb","#14b8a6","#f59e0b","#ec4899","#8b5cf6","#f97316","#06b6d4","#84cc16","#e11d48","#64748b"];
+  replaceChart("studyRatio", "studyRatioChart", {
+    type: "bar", data: { labels: grouped.map(item => item.label), datasets: [{ data: grouped.map(item => item.value / Math.max(1, new Set(ratioRows.map(row => row.PROV_NAME)).size)), backgroundColor: grouped.map((_, index) => ratioColors[index % ratioColors.length]), borderRadius: 6 }] },
+    options: { ...baseChartOptions({ legend: false, yTitle: "ร้อยละ" }), indexAxis: "y" }
+  });
+  document.getElementById("studyRatioSummary").textContent = ratioRows.length ? `${ratioRows.length} รายการตามตัวกรอง` : "รอข้อมูลอัปเดต";
 }
 
 function renderEquity(rows) {
   const students = totalStudents(rows.students);
-  const special = rows.special.reduce((sum, row) => sum + n(row.STUDENT_COUNT), 0);
-  ratioCard("equity-special", special, students, ["ผู้เรียนกลุ่มพิเศษ", "ผู้เรียนทั้งหมด"]);
-  document.getElementById("specialBreakdown").innerHTML = breakdown(rows.special, "SPECIAL_NEEDS", "STUDENT_COUNT");
+  const special = rows.special.reduce((sum,row) => sum + n(row.STUDENT_COUNT), 0);
+  ratioCard("equity-special", special, rows.special.length && rows.students.length ? students : 0, ["ผู้เรียนกลุ่มพิเศษ", "ผู้เรียนทั้งหมด"]);
+  document.getElementById("specialBreakdown").innerHTML = groupSum(rows.special, "SPECIAL_NEEDS", "STUDENT_COUNT").slice(0,4).map(item => `<div class="subject-row"><span>${escapeHtml(item.label)}</span><strong>${item.value.toLocaleString("th-TH")}</strong></div>`).join("");
+  const disabilityTypes = new Map();
+  const disadvantageTypes = new Map();
+  rows.special.forEach(row => {
+    const group = String(row.SPECIAL_NEEDS || "ไม่ระบุ");
+    const type = String(row.TYPE_DIS || "ไม่ระบุ");
+    const target = /พิการ/.test(group) ? disabilityTypes : disadvantageTypes;
+    target.set(type, (target.get(type) || 0) + n(row.STUDENT_COUNT));
+  });
+  const renderSpecialTypes = (id, values) => {
+    document.getElementById(id).innerHTML = values.size
+      ? [...values].sort((a,b) => b[1]-a[1]).map(([type,value]) => `<tr class="border-t"><td class="p-2">${escapeHtml(type)}</td><td class="p-2 text-right">${value.toLocaleString("th-TH")}</td></tr>`).join("")
+      : '<tr><td colspan="2" class="p-6 text-center text-slate-400">รอข้อมูลอัปเดต</td></tr>';
+  };
+  renderSpecialTypes("disabilityTypeTable", disabilityTypes);
+  renderSpecialTypes("disadvantageTypeTable", disadvantageTypes);
+  replaceChart("special", "specialNeedsChart", doughnutConfig(["ผู้เรียนที่มีความต้องการพิเศษ","ผู้เรียนทั่วไป"], [special, Math.max(0, students-special)], ["#ec4899","#e2e8f0"]));
 
-  const ooscTotal = rows.oosc.reduce((sum, row) => sum + n(row.OOSC_COUNT), 0);
-  const returned = rows.oosc.filter(row => /กลับ|เข้า.*ระบบ|ติดตาม.*สำเร็จ/.test(text(row, "OOSC_RESULT"))).reduce((sum, row) => sum + n(row.OOSC_COUNT), 0);
-  ratioCard("equity-returned", returned, ooscTotal, ["กลับเข้าสู่ระบบ", "เด็กนอกระบบทั้งหมด"]);
-  document.getElementById("ooscBreakdown").innerHTML = breakdown(rows.oosc, "OOSC_RESULT", "OOSC_COUNT");
+  const total = rows.oosc.reduce((sum,row) => sum + n(row.OOSC_COUNT), 0);
+  const untracked = rows.oosc.filter(row => String(row.OOSC_RESULT).trim() === "ยังไม่ได้ติดตาม").reduce((sum,row) => sum+n(row.OOSC_COUNT),0);
+  const tracked = Math.max(0, total-untracked);
+  const returned = rows.oosc.filter(row => RETURNED_OOSC.has(String(row.OOSC_RESULT).trim())).reduce((sum,row) => sum+n(row.OOSC_COUNT),0);
+  const notFound = rows.oosc.filter(row => /หาบ้านไม่พบ-ไม่มีข้อมูล-ไม่ยินดีให้ข้อมูล-ไม่พบตัว/.test(String(row.OOSC_RESULT))).reduce((sum,row) => sum+n(row.OOSC_COUNT),0);
+  document.getElementById("equity-returned").textContent = tracked ? `${(returned/tracked*100).toFixed(2)}%` : "รอข้อมูลอัปเดต";
+  document.getElementById("oosc-followup-rate").textContent = total ? `${(tracked/total*100).toFixed(2)}%` : "—";
+  document.getElementById("oosc-found-rate").textContent = tracked ? `${((tracked-notFound)/tracked*100).toFixed(2)}%` : "—";
+  replaceChart("ooscFollowup", "ooscFollowupChart", doughnutConfig(["ติดตามแล้ว","ยังไม่ได้ติดตาม"], [tracked,untracked], ["#3b82f6","#cbd5e1"]));
+  replaceChart("ooscIdentity", "ooscIdentityChart", doughnutConfig(["พบตัวตน","ไม่พบตัวตน"], [Math.max(0,tracked-notFound),notFound], ["#14b8a6","#fb7185"]));
+  const causes = groupSum(rows.oosc.filter(row => String(row.OOSC_RESULT).trim() !== "ยังไม่ได้ติดตาม"), "OOSC_RESULT", "OOSC_COUNT");
+  document.getElementById("ooscCauseTable").innerHTML = causes.map(item => `<tr class="border-t"><td class="p-2">${escapeHtml(item.label)}</td><td class="p-2 text-right">${item.value.toLocaleString("th-TH")}</td><td class="p-2 text-right">${tracked ? (item.value/tracked*100).toFixed(2) : "0.00"}%</td></tr>`).join("");
 }
 
-function renderEfficiency(rows) {
-  const compulsoryStudent = totalStudents(rows.students.filter(row => LEVEL.primary(text(row, "EDU_LEVEL")) || LEVEL.lower(text(row, "EDU_LEVEL"))));
-  const compulsoryDropout = rows.dropout.filter(row => LEVEL.primary(text(row, "EDU_LEVEL")) || LEVEL.lower(text(row, "EDU_LEVEL"))).reduce((sum, row) => sum + n(row.DROPOUT_COUNT), 0);
-  ratioCard("eff-compulsory", compulsoryDropout, compulsoryStudent, ["ออกกลางคัน", "ผู้เรียนภาคบังคับ"]);
-
-  const vocStudent = totalStudents(rows.students.filter(row => LEVEL.voc(text(row, "EDU_LEVEL"))));
-  const vocDropout = rows.dropout.filter(row => LEVEL.voc(text(row, "EDU_LEVEL"))).reduce((sum, row) => sum + n(row.DROPOUT_COUNT), 0);
-  ratioCard("eff-voc", vocDropout, vocStudent, ["ออกกลางคัน ปวช.", "ผู้เรียน ปวช."]);
-
-  const higherStudent = totalStudents(rows.students.filter(row => LEVEL.higherVoc(text(row, "EDU_LEVEL"))));
-  const higherDropout = rows.dropout.filter(row => LEVEL.higherVoc(text(row, "EDU_LEVEL"))).reduce((sum, row) => sum + n(row.DROPOUT_COUNT), 0);
-  ratioCard("eff-higher-voc", higherDropout, higherStudent, ["ออกกลางคัน ปวส.", "ผู้เรียน ปวส."]);
+function scoreScope(filters) {
+  return filters.provinces.length === 1 ? filters.provinces[0] : "ระดับ ศธภ.15";
 }
 
-function renderRelevancy(rows) {
-  const vocational = totalStudents(rows.students.filter(row => LEVEL.voc(text(row, "EDU_LEVEL")) || LEVEL.higherVoc(text(row, "EDU_LEVEL"))));
-  const general = totalStudents(rows.students.filter(row => /มัธยม/.test(text(row, "EDU_LEVEL"))));
-  ratioCard("rel-vocational", vocational, general, ["อาชีวศึกษา", "สามัญศึกษา"]);
-
-  const jobRows = rows.jobs.filter(row => LEVEL.voc(text(row, "EDU_LEVEL")) || LEVEL.higherVoc(text(row, "EDU_LEVEL")));
-  const jobTotal = jobRows.reduce((sum, row) => sum + n(row.STUDENT_COUNT), 0);
-  const employed = jobRows.filter(row => /ได้งาน|มีงาน|ประกอบอาชีพ|ทำงาน/.test(text(row, "EMPLOY_STATUS"))).reduce((sum, row) => sum + n(row.STUDENT_COUNT), 0);
-  ratioCard("rel-employed", employed, jobTotal, ["ได้งาน/ประกอบอาชีพ", "ผู้สำเร็จที่ติดตาม"]);
-}
-
-function breakdown(rows, field, metric) {
-  const totals = new Map();
-  rows.forEach(row => {
-    const key = String(row[field] || "ไม่ระบุ");
-    totals.set(key, (totals.get(key) || 0) + n(row[metric]));
-  });
-  return [...totals].sort((a, b) => b[1] - a[1]).slice(0, 5).map(([label, value]) => `<div class="flex justify-between gap-3 border-t border-slate-100 py-1.5"><span>${escapeHtml(label)}</span><strong>${value.toLocaleString("th-TH")}</strong></div>`).join("");
-}
-
-function renderStudyCharts(filters) {
-  const studyYearRows = data.studyYear.filter(row =>
-    !filters.province || String(row.PROV_NAME) === filters.province
-  );
-  const years = [...new Set(studyYearRows.map(row => String(row.YEAR)))].sort((a, b) => Number(a) - Number(b));
-  const provinces = [...new Set(studyYearRows.map(row => String(row.PROV_NAME)))].sort();
-  const colors = ["#0d9488", "#2563eb", "#f59e0b", "#e11d48", "#7c3aed"];
-
-  studyYearChart?.destroy();
-  studyYearChart = new Chart(document.getElementById("studyYearChart"), {
-    type: "line",
-    data: {
-      labels: years,
-      datasets: provinces.map((province, index) => ({
-        label: province,
-        data: years.map(year => {
-          const row = studyYearRows.find(item =>
-            String(item.YEAR) === year && String(item.PROV_NAME) === province
-          );
-          return row ? n(row.STUDY_YEARAVG) : null;
-        }),
-        borderColor: colors[index % colors.length],
-        backgroundColor: colors[index % colors.length],
-        tension: .3,
-        spanGaps: true
-      }))
-    },
-    options: {
-      maintainAspectRatio: false,
-      plugins: { legend: { position: "bottom" } },
-      scales: { y: { beginAtZero: false, title: { display: true, text: "ปี" } } }
-    }
-  });
-  document.getElementById("studyYearSummary").textContent =
-    `แนวโน้ม ${years.length.toLocaleString("th-TH")} ปีข้อมูล · ${provinces.length.toLocaleString("th-TH")} จังหวัด`;
-
-  let ratioRows = data.studyRatio.filter(row => {
-    if (filters.year && String(row.YEAR) !== filters.year) return false;
-    if (filters.province && String(row.PROV_NAME) !== filters.province) return false;
-    return true;
-  });
-  const ratioTotals = new Map();
-  ratioRows.forEach(row => {
-    const level = String(row.EDU_LEVEL || "ไม่ระบุ");
-    const values = ratioTotals.get(level) || [];
-    values.push(n(row.RATIO_STUDY));
-    ratioTotals.set(level, values);
-  });
-  const ratioEntries = [...ratioTotals].map(([level, values]) => [
-    level,
-    values.reduce((sum, value) => sum + value, 0) / values.length
-  ]).sort((a, b) => b[1] - a[1]);
-
-  studyRatioChart?.destroy();
-  studyRatioChart = new Chart(document.getElementById("studyRatioChart"), {
-    type: "bar",
-    data: {
-      labels: ratioEntries.map(([level]) => level),
-      datasets: [{
-        label: "ร้อยละ",
-        data: ratioEntries.map(([, value]) => value),
-        backgroundColor: "#38bdf8",
-        borderRadius: 6
-      }]
-    },
-    options: {
-      indexAxis: "y",
-      maintainAspectRatio: false,
-      plugins: { legend: { display: false } },
-      scales: { x: { beginAtZero: true, title: { display: true, text: "ร้อยละ" } } }
-    }
-  });
-  document.getElementById("studyRatioSummary").textContent =
-    `ค่าเฉลี่ยของ ${ratioRows.length.toLocaleString("th-TH")} รายการตามตัวกรอง`;
+function scoreRows(key, filters, scope) {
+  let rows = data[key].filter(row => String(row.TEST_LEVEL).trim() === scope);
+  const year = Number(filters.year);
+  return rows.filter(row => Number(row.YEAR) === year);
 }
 
 function renderQuality(filters) {
-  const scopeRows = rows => rows.filter(row => {
-    if (filters.year && String(row.YEAR) !== filters.year) return false;
-    const level = String(row.TEST_LEVEL || "");
-    if (filters.province) return level === filters.province;
-    return /ศธภ\.?\s*15/.test(level);
+  const scope = scoreScope(filters);
+  const rtArea = scoreRows("rt", filters, scope), ntArea = scoreRows("nt", filters, scope), onetArea = scoreRows("onet", filters, scope);
+  const rtNation = scoreRows("rt", filters, "ระดับประเทศ"), ntNation = scoreRows("nt", filters, "ระดับประเทศ"), onetNation = scoreRows("onet", filters, "ระดับประเทศ");
+  renderAverageTestCard("quality-rt", rtArea, "รวม 2 ด้าน");
+  renderAverageTestCard("quality-nt", ntArea, "รวม 2 ด้าน");
+  renderOnetCard("quality-onet-m3", onetArea.filter(row => /มัธยมศึกษาปีที่\s*3|ม\.?\s*3/.test(String(row.EDU_LEVEL))));
+  renderOnetCard("quality-onet-m6", onetArea.filter(row => /มัธยมศึกษาปีที่\s*6|ม\.?\s*6/.test(String(row.EDU_LEVEL))));
+
+  const comparison = [];
+  addComparison(comparison, "RT", rtArea, rtNation);
+  addComparison(comparison, "NT", ntArea, ntNation);
+  const areaM3 = onetArea.filter(row => /มัธยมศึกษาปีที่\s*3|ม\.?\s*3/.test(String(row.EDU_LEVEL)));
+  const nationM3 = onetNation.filter(row => /มัธยมศึกษาปีที่\s*3|ม\.?\s*3/.test(String(row.EDU_LEVEL)));
+  addComparison(comparison, "O-NET ม.3", areaM3, nationM3);
+  replaceChart("quality", "qualityComparisonChart", {
+    type: "bar", data: { labels: comparison.map(item => item.label), datasets: [{ label: scope, data: comparison.map(item => item.area), backgroundColor:comparison.map(item=>item.color), borderRadius:5 },{ label:"ระดับประเทศ", data:comparison.map(item=>item.nation), backgroundColor:comparison.map(item=>`${item.color}55`), borderColor:comparison.map(item=>item.color), borderWidth:1, borderRadius:5 }] },
+    options: comparisonChartOptions("คะแนนเฉลี่ย", scope)
   });
-
-  const rtRows = scopeRows(data.rt);
-  const ntRows = scopeRows(data.nt).filter(row => !/รวม/.test(String(row.TEST_SUBJECT || "")));
-  setAverageScore("quality-rt", rtRows);
-  setAverageScore("quality-nt", ntRows);
-
-  const onetRows = scopeRows(data.onet);
-  setPassRate(
-    "quality-onet-m3",
-    onetRows.filter(row => /มัธยมศึกษาปีที่\s*3|ม\.?\s*3/.test(String(row.EDU_LEVEL || "")))
-  );
-  setPassRate(
-    "quality-onet-m6",
-    onetRows.filter(row => /มัธยมศึกษาปีที่\s*6|ม\.?\s*6/.test(String(row.EDU_LEVEL || "")))
-  );
 }
 
-function setAverageScore(id, rows) {
-  const tested = rows.reduce((sum, row) => sum + n(row.STUDENT_TEST_COUNT), 0);
-  const weighted = rows.reduce((sum, row) => sum + n(row.AVG_SCORE) * n(row.STUDENT_TEST_COUNT), 0);
-  const average = tested ? weighted / tested : null;
-  document.getElementById(id).textContent = average === null ? "ยังไม่มีข้อมูล" : average.toFixed(2);
-  document.getElementById(`${id}-note`).textContent =
-    `${rows.length.toLocaleString("th-TH")} รายการ · ผู้เข้าสอบ ${tested.toLocaleString("th-TH")} คน`;
+function renderAverageTestCard(id, rows, combinedLabel) {
+  const combined = rows.find(row => String(row.TEST_SUBJECT).includes(combinedLabel));
+  document.getElementById(id).textContent = combined ? n(combined.AVG_SCORE).toFixed(2) : "รอข้อมูลอัปเดต";
+  const subjects = rows.filter(row => !String(row.TEST_SUBJECT).includes(combinedLabel));
+  document.getElementById(`${id}-subjects`).innerHTML = subjects.length ? subjects.map(row => `<div class="subject-row"><span>${escapeHtml(row.TEST_SUBJECT)}</span><strong>${n(row.AVG_SCORE).toFixed(2)}</strong></div>`).join("") : '<p class="text-slate-400">รอข้อมูลอัปเดต</p>';
 }
 
-function setPassRate(id, rows) {
-  const tested = rows.reduce((sum, row) => sum + n(row.STUDENT_TEST_COUNT), 0);
-  const passed = rows.reduce((sum, row) => sum + n(row.STUDENT_MOREHALFTEST_COUNT), 0);
-  document.getElementById(id).textContent = tested ? `${(passed / tested * 100).toFixed(2)}%` : "ยังไม่มีข้อมูล";
-  document.getElementById(`${id}-note`).textContent =
-    `ผ่านเกณฑ์ ${passed.toLocaleString("th-TH")} / เข้าสอบ ${tested.toLocaleString("th-TH")} คน`;
+function renderOnetCard(id, rows) {
+  document.getElementById(`${id}-subjects`).innerHTML = rows.length ? rows.map(row => `<div class="subject-row"><span>${escapeHtml(row.TEST_SUBJECT)}</span><strong>${n(row.STUDENT_TEST_COUNT) ? (n(row.STUDENT_MOREHALFTEST_COUNT)/n(row.STUDENT_TEST_COUNT)*100).toFixed(2) : "0.00"}%</strong></div>`).join("") : '<p class="text-slate-400">รอข้อมูลอัปเดต</p>';
 }
 
-function escapeHtml(value) {
-  return String(value).replace(/[&<>'"]/g, character => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", "'": "&#039;", '"': "&quot;" })[character]);
+function addComparison(target, prefix, areaRows, nationRows) {
+  areaRows.filter(row => !String(row.TEST_SUBJECT).includes("รวม")).forEach(row => {
+    const nation = nationRows.find(item => String(item.TEST_SUBJECT) === String(row.TEST_SUBJECT));
+    if (nation) target.push({ label:`${prefix} ${row.TEST_SUBJECT}`, area:n(row.AVG_SCORE), nation:n(nation.AVG_SCORE), color:comparisonColor(prefix, row.TEST_SUBJECT) });
+  });
 }
+
+function comparisonColor(prefix, subject) {
+  if (prefix === "RT") return /อ่านรู้เรื่อง/.test(subject) ? "#fb7185" : "#f43f5e";
+  if (prefix === "NT") return /คณิต/.test(subject) ? "#8b5cf6" : "#6366f1";
+  if (/คณิต/.test(subject)) return "#0ea5e9";
+  if (/วิทย/.test(subject)) return "#14b8a6";
+  if (/อังกฤษ/.test(subject)) return "#f59e0b";
+  if (/ไทย/.test(subject)) return "#ec4899";
+  return "#64748b";
+}
+
+function renderEfficiency(rows) {
+  const renderRate = (id, studentLevels, dropoutLevels, department = "") => {
+    const studentRows = rows.students.filter(row => studentLevels.has(normalizeEducationLevel(row.EDU_LEVEL)));
+    const dropoutRows = rows.dropout.filter(row =>
+      dropoutLevels.has(normalizeEducationLevel(row.EDU_LEVEL)) &&
+      (!department || normalizeEducationLevel(row.DEPARTMENT_NAME) === department)
+    );
+    const dropout = dropoutRows.reduce((sum,row) => sum+n(row.DROPOUT_COUNT),0);
+    const students = totalStudents(studentRows);
+    const ready = dropoutRows.length && studentRows.length && students;
+    document.getElementById(id).textContent = ready ? `${(dropout/students*100).toFixed(2)}%` : "รอข้อมูลอัปเดต";
+    document.getElementById(`${id}-note`).textContent = ready ? `ออกกลางคัน ${dropout.toLocaleString("th-TH")} / ผู้เรียน ${students.toLocaleString("th-TH")} คน` : "";
+  };
+  renderRate("eff-compulsory", EFFICIENCY_LEVELS.compulsoryStudents, EFFICIENCY_LEVELS.compulsoryDropout);
+  renderRate("eff-voc", EFFICIENCY_LEVELS.vocationalStudents, EFFICIENCY_LEVELS.vocationalDropout, VOCATIONAL_DEPARTMENT);
+  renderRate("eff-higher-voc", EFFICIENCY_LEVELS.higherVocStudents, EFFICIENCY_LEVELS.higherVocDropout, VOCATIONAL_DEPARTMENT);
+}
+
+function renderRelevancy(rows) {
+  const isVocAgency = row => /อาชีว/.test(String(row.DEPARTMENT_NAME || ""));
+  const vocational = totalStudents(rows.students.filter(row => isVocAgency(row) || LEVEL.voc(levelText(row)) || LEVEL.higherVoc(levelText(row))));
+  const general = totalStudents(rows.students.filter(row => !isVocAgency(row) && LEVEL.upper(levelText(row)) && !LEVEL.voc(levelText(row))));
+  const combined = vocational + general;
+  const vocationalPercent = combined ? vocational / combined * 100 : 0;
+  const generalPercent = combined ? general / combined * 100 : 0;
+  document.getElementById("rel-vocational").textContent = combined ? `${vocationalPercent.toFixed(2)} : ${generalPercent.toFixed(2)}` : "รอข้อมูลอัปเดต";
+  document.getElementById("rel-vocational-note").textContent = combined ? `สายอาชีพ ${vocational.toLocaleString("th-TH")} คน ต่อ สายสามัญ ${general.toLocaleString("th-TH")} คน` : "";
+  document.getElementById("rel-vocational-legend").innerHTML = combined
+    ? `<div class="rounded-xl border border-amber-200 bg-amber-50 px-3 py-2"><span class="block text-xs font-medium text-amber-700"><i class="fas fa-circle mr-1"></i>สายอาชีพ</span><strong class="mt-1 block text-xl text-amber-700">${vocationalPercent.toFixed(2)}%</strong></div><div class="rounded-xl border border-blue-200 bg-blue-50 px-3 py-2"><span class="block text-xs font-medium text-blue-700"><i class="fas fa-circle mr-1"></i>สายสามัญ</span><strong class="mt-1 block text-xl text-blue-700">${generalPercent.toFixed(2)}%</strong></div>`
+    : "";
+  const vocationalIcons = combined ? Math.round(vocationalPercent / 5) : 0;
+  document.getElementById("rel-vocational-people").innerHTML = combined
+    ? Array.from({length:20}, (_, index) => `<i class="fas fa-person ${index < vocationalIcons ? "text-amber-500" : "text-blue-500"}" aria-hidden="true"></i>`).join("")
+    : '<span class="col-span-10 py-4 text-sm text-slate-400">รอข้อมูลอัปเดต</span>';
+
+  const jobRows = rows.jobs.filter(row => LEVEL.voc(levelText(row)) || LEVEL.higherVoc(levelText(row)) || /มัธยมศึกษาตอนปลาย/.test(levelText(row)));
+  currentJobRows = jobRows;
+  const status = groupSum(jobRows, "EMPLOY_STATUS", "STUDENT_COUNT");
+  const employmentColors = ["#14b8a6","#3b82f6","#f59e0b","#fb7185","#8b5cf6","#94a3b8"];
+  employmentColorMap = new Map(status.map((item,index) => [item.label, employmentColors[index % employmentColors.length]]));
+  replaceChart("employment", "employmentChart", doughnutConfig(status.map(item=>item.label), status.map(item=>item.value), status.map(item=>employmentColorMap.get(item.label))));
+  const levelSelect = document.getElementById("employmentLevelFilter");
+  const previous = levelSelect.value;
+  const levels = [...new Set(jobRows.map(row => String(row.EDU_LEVEL || "")).filter(Boolean))].sort();
+  levelSelect.innerHTML = "";
+  levels.forEach(level => levelSelect.add(new Option(level,level)));
+  if (levels.includes(previous)) levelSelect.value = previous;
+  renderEmploymentTable();
+}
+
+function renderEmploymentTable() {
+  const level = document.getElementById("employmentLevelFilter").value;
+  const details = groupSum(currentJobRows.filter(row => String(row.EDU_LEVEL) === level), "EMPLOY_STATUS", "STUDENT_COUNT");
+  document.getElementById("employmentTable").innerHTML = details.length
+    ? details.map(item => {
+        const color = employmentColorMap.get(item.label) || "#94a3b8";
+        return `<tr class="border-t" style="border-left:4px solid ${color};background:${color}0d"><td class="p-2"><span class="mr-2 inline-block h-2.5 w-2.5 rounded-full" style="background:${color}"></span>${escapeHtml(item.label)}</td><td class="p-2 text-right font-semibold" style="color:${color}">${item.value.toLocaleString("th-TH")}</td></tr>`;
+      }).join("")
+    : '<tr><td colspan="2" class="p-6 text-center text-slate-400">รอข้อมูลอัปเดต</td></tr>';
+}
+
+function groupSum(rows, field, metric) {
+  const totals = new Map();
+  rows.forEach(row => {
+    const label = String(row[field] || "ไม่ระบุ");
+    totals.set(label, (totals.get(label)||0)+n(row[metric]));
+  });
+  return [...totals].map(([label,value])=>({label,value})).sort((a,b)=>b.value-a.value);
+}
+
+function setNumber(id, value) { document.getElementById(id).textContent = value.toLocaleString("th-TH"); }
+function replaceChart(key, canvasId, config) { charts[key]?.destroy(); charts[key] = new Chart(document.getElementById(canvasId), config); }
+function doughnutConfig(labels, values, colors) { return { type:"doughnut", data:{ labels, datasets:[{ data:values, backgroundColor:colors }] }, options:{ maintainAspectRatio:false, plugins:{ legend:{ position:"bottom" } } } }; }
+function baseChartOptions({legend=true,yTitle=""}={}) { return { maintainAspectRatio:false, plugins:{legend:{display:legend,position:"bottom"}}, scales:{y:{beginAtZero:true,title:{display:Boolean(yTitle),text:yTitle}}} }; }
+function comparisonChartOptions(yTitle, primaryLabel) {
+  const options = baseChartOptions({ yTitle });
+  options.plugins.legend.labels = {
+    generateLabels: chart => [
+      { text:`${primaryLabel} — สีทึบ`, fillStyle:"rgba(71,85,105,1)", strokeStyle:"#475569", lineWidth:1, hidden:!chart.isDatasetVisible(0), datasetIndex:0 },
+      { text:"ระดับประเทศ — สีโปร่งใส", fillStyle:"rgba(71,85,105,.25)", strokeStyle:"#475569", lineWidth:1, hidden:!chart.isDatasetVisible(1), datasetIndex:1 }
+    ]
+  };
+  return options;
+}
+function escapeHtml(value) { return String(value).replace(/[&<>'"]/g, char => ({"&":"&amp;","<":"&lt;",">":"&gt;","'":"&#039;",'"':"&quot;"})[char]); }

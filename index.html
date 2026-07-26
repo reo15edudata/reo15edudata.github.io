@@ -2,14 +2,54 @@
 <html lang="th">
 <head>
   <meta charset="UTF-8">
-  <meta http-equiv="refresh" content="0; url=dashboard.html">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>ระบบฐานข้อมูลสารสนเทศทางการศึกษา ศธภ.15</title>
+  <title>หน้าแรก - ระบบฐานข้อมูลสารสนเทศทางการศึกษา ศธภ.15</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
 </head>
-<body>
-  <p>
-    กำลังเข้าสู่ Dashboard…
-    <a href="dashboard.html">หากหน้าไม่เปลี่ยน กรุณาคลิกที่นี่</a>
-  </p>
+<body class="bg-slate-50 font-sans text-slate-800 h-screen flex overflow-hidden">
+  <aside class="w-64 bg-[#1e293b] text-slate-300 flex flex-col h-full shrink-0">
+    <div class="h-16 flex items-center px-4 border-b border-slate-700/50"><div class="bg-teal-500 text-white w-8 h-8 rounded flex items-center justify-center mr-3"><i class="fa-solid fa-graduation-cap"></i></div><span class="text-white font-semibold text-lg">ศธภ.15</span></div>
+    <div class="flex-1 overflow-y-auto py-4 px-3">
+      <div class="text-xs font-semibold text-slate-500 mb-2 px-3 tracking-wider">DASHBOARDS</div>
+      <ul class="space-y-1 mb-6">
+        <li><a href="index.html" class="flex items-center px-3 py-2 text-teal-400 bg-slate-800 rounded-md border-l-2 border-teal-500"><i class="fas fa-house w-7"></i>หน้าแรก</a></li>
+        <li><a href="dashboard.html" class="flex items-center px-3 py-2 rounded-md hover:bg-slate-800 hover:text-white"><i class="fas fa-chart-pie w-7"></i>สารสนเทศการศึกษา</a></li>
+        <li><a href="dashboard-index.html" class="flex items-center px-3 py-2 rounded-md hover:bg-slate-800 hover:text-white"><i class="fas fa-chart-line w-7"></i>ดัชนีการศึกษา</a></li>
+        <li><a href="dashboard-workforce.html" class="flex items-center px-3 py-2 rounded-md hover:bg-slate-800 hover:text-white"><i class="fas fa-users-gear w-7"></i>ความต้องการกำลังคน</a></li>
+        <li><a href="dashboard-score.html" class="flex items-center px-3 py-2 rounded-md hover:bg-slate-800 hover:text-white"><i class="fas fa-square-poll-vertical w-7"></i>ผลการทดสอบทางการศึกษา</a></li>
+      </ul>
+      <div class="text-xs font-semibold text-slate-500 mb-2 px-3 tracking-wider">MANAGEMENT</div>
+      <ul><li><a href="admin.html" class="flex items-center px-3 py-2 rounded-md hover:bg-slate-800 hover:text-white"><i class="fas fa-user-gear w-7"></i>Admin Console</a></li></ul>
+    </div>
+  </aside>
+  <div class="flex-1 flex flex-col h-full overflow-hidden">
+    <header class="h-16 bg-white border-b border-slate-200 flex items-center justify-between px-4 md:px-6 shrink-0">
+      <div class="flex items-center"><button type="button" class="mr-4 text-slate-500"><i class="fas fa-bars"></i></button><div><h1 class="font-semibold">ระบบฐานข้อมูลสารสนเทศทางการศึกษา</h1><p class="text-xs text-slate-400 hidden sm:block">สำนักงานศึกษาธิการภาค 15</p></div></div>
+      <div class="flex items-center space-x-4"><a href="login.html" class="flex items-center text-teal-700 border border-teal-200 bg-teal-50 px-4 py-1.5 rounded-full text-sm font-medium"><i class="fas fa-right-to-bracket mr-2"></i>สำหรับเจ้าหน้าที่</a></div>
+    </header>
+    <main class="flex-1 overflow-y-auto">
+      <section class="relative overflow-hidden bg-gradient-to-br from-slate-900 via-slate-800 to-teal-900 px-6 py-16 md:px-12 md:py-20 text-white">
+        <div class="absolute -right-24 -top-24 h-72 w-72 rounded-full bg-teal-400/10"></div>
+        <div class="relative max-w-4xl">
+          <span class="inline-flex items-center rounded-full border border-teal-300/30 bg-teal-300/10 px-3 py-1 text-xs text-teal-100"><i class="fas fa-database mr-2"></i>EDU15 Educational Information</span>
+          <h2 class="mt-6 text-3xl font-bold leading-tight md:text-5xl">ยินดีต้อนรับเข้าสู่ระบบฐานข้อมูลสารสนเทศทางการศึกษา</h2>
+          <p class="mt-5 max-w-3xl text-base leading-7 text-slate-300 md:text-lg">ศูนย์รวมข้อมูลสถานศึกษา ดัชนีทางการศึกษา ความต้องการกำลังคน และผลการทดสอบทางการศึกษาในพื้นที่รับผิดชอบของสำนักงานศึกษาธิการภาค 15</p>
+        </div>
+      </section>
+      <section class="p-6 md:p-10">
+        <div class="mb-6"><h2 class="text-xl font-semibold">เลือกฐานข้อมูลที่ต้องการดู</h2></div>
+        <div class="grid grid-cols-1 gap-5 md:grid-cols-2 xl:grid-cols-4">
+          <a href="dashboard.html" class="group rounded-xl border border-slate-200 bg-white p-6 shadow-sm transition hover:-translate-y-1 hover:border-blue-300 hover:shadow-md"><div class="mb-5 flex h-12 w-12 items-center justify-center rounded-xl bg-blue-50 text-blue-600"><i class="fas fa-school text-xl"></i></div><h3 class="font-semibold">สารสนเทศการศึกษา</h3><p class="mt-2 text-sm leading-6 text-slate-500">ข้อมูลโรงเรียน นักเรียน ครู พิกัด และความเท่าเทียมทางเพศ</p><span class="mt-5 inline-block text-sm font-medium text-blue-600">เปิด Dashboard <i class="fas fa-arrow-right ml-1 transition group-hover:translate-x-1"></i></span></a>
+          <a href="dashboard-index.html" class="group rounded-xl border border-slate-200 bg-white p-6 shadow-sm transition hover:-translate-y-1 hover:border-violet-300 hover:shadow-md"><div class="mb-5 flex h-12 w-12 items-center justify-center rounded-xl bg-violet-50 text-violet-600"><i class="fas fa-chart-line text-xl"></i></div><h3 class="font-semibold">ดัชนีทางการศึกษา</h3><p class="mt-2 text-sm leading-6 text-slate-500">การเข้าถึง ความเท่าเทียม คุณภาพ ประสิทธิภาพ และความสอดคล้อง</p><span class="mt-5 inline-block text-sm font-medium text-violet-600">เปิด Dashboard <i class="fas fa-arrow-right ml-1"></i></span></a>
+          <a href="dashboard-workforce.html" class="group rounded-xl border border-slate-200 bg-white p-6 shadow-sm transition hover:-translate-y-1 hover:border-amber-300 hover:shadow-md"><div class="mb-5 flex h-12 w-12 items-center justify-center rounded-xl bg-amber-50 text-amber-600"><i class="fas fa-users-gear text-xl"></i></div><h3 class="font-semibold">ความต้องการกำลังคน</h3><p class="mt-2 text-sm leading-6 text-slate-500">แนวโน้มตำแหน่งงานว่างและความร่วมมือกับสถานประกอบการ</p><span class="mt-5 inline-block text-sm font-medium text-amber-600">เปิด Dashboard <i class="fas fa-arrow-right ml-1"></i></span></a>
+          <a href="dashboard-score.html" class="group rounded-xl border border-slate-200 bg-white p-6 shadow-sm transition hover:-translate-y-1 hover:border-teal-300 hover:shadow-md"><div class="mb-5 flex h-12 w-12 items-center justify-center rounded-xl bg-teal-50 text-teal-600"><i class="fas fa-square-poll-vertical text-xl"></i></div><h3 class="font-semibold">ผลการทดสอบ</h3><p class="mt-2 text-sm leading-6 text-slate-500">O-NET, NT, RT, V-NET, B-NET และ N-NET แยกตามประเภทการสอบ</p><span class="mt-5 inline-block text-sm font-medium text-teal-600">เปิด Dashboard <i class="fas fa-arrow-right ml-1"></i></span></a>
+        </div>
+      </section>
+    </main>
+  </div>
+  <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-auth.js"></script>
+  <script src="site.js"></script>
 </body>
 </html>

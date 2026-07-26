@@ -8,6 +8,7 @@ let currentPage = 1;
 let genderChart;
 let schoolMap;
 let mapLayer;
+let multiFilters = {};
 
 async function fetchAllPages(dbKey, sheetName) {
   return EDU15DataClient.fetchAllPages(GAS_WEB_APP_URL, dbKey, sheetName);
@@ -32,6 +33,7 @@ async function initDashboard() {
     });
     document.getElementById("filterForm").addEventListener("reset", () => {
       setTimeout(() => {
+        Object.values(multiFilters).forEach(control => control.clear());
         currentPage = 1;
         renderDashboard(getFilters());
       }, 0);
@@ -42,51 +44,64 @@ async function initDashboard() {
     document.getElementById("nextPage").addEventListener("click", () => {
       if (currentPage * PAGE_SIZE < currentSchools.length) { currentPage++; renderSchoolTable(); }
     });
+    const jumpToPage = () => {
+      const pages = Math.max(1, Math.ceil(currentSchools.length / PAGE_SIZE));
+      const requested = Number.parseInt(document.getElementById("pageJump").value, 10);
+      if (!Number.isFinite(requested)) return;
+      currentPage = Math.min(pages, Math.max(1, requested));
+      renderSchoolTable();
+    };
+    document.getElementById("goToPage").addEventListener("click", jumpToPage);
+    document.getElementById("pageJump").addEventListener("keydown", event => {
+      if (event.key === "Enter") {
+        event.preventDefault();
+        jumpToPage();
+      }
+    });
+    document.getElementById("schoolSort").addEventListener("change", () => {
+      currentPage = 1;
+      renderSchoolTable();
+    });
   } catch (error) {
     console.error(error);
-    document.getElementById("dataTableBody").innerHTML = `<tr><td colspan="4" class="px-5 py-10 text-center text-rose-600">โหลดข้อมูลไม่สำเร็จ: ${escapeHtml(error.message)}</td></tr>`;
+    document.getElementById("dataTableBody").innerHTML = `<tr><td colspan="5" class="px-5 py-10 text-center text-rose-600">โหลดข้อมูลไม่สำเร็จ: ${escapeHtml(error.message)}</td></tr>`;
   } finally {
     window.hidePageLoader?.();
   }
 }
 
 function populateFilters() {
-  const fill = (id, values) => {
-    const select = document.getElementById(id);
-    const first = select.options[0];
-    select.innerHTML = "";
-    select.append(first);
-    values.forEach(value => select.add(new Option(value, value)));
-  };
   const unique = (field) => [...new Set(studentRows.map(row => String(row[field] ?? "").trim()).filter(Boolean))];
   const uniqueLocations = (field) => [...new Set(locationRows.map(row => String(row[field] ?? "").trim()).filter(Boolean))];
   const years = unique("ACAD_YEAR").sort((a, b) => Number(b) - Number(a));
-  fill("filterYear", years);
-  fill("filterProvince", unique("PROV_NAME").sort());
-  fill("filterAgency", unique("DEPARTMENT_NAME").sort());
-  // Student_Count และ Teacher_Count ไม่มี EDU_AREA_NAME แล้ว
-  // จึงใช้เขตพื้นที่จาก School_Location และเชื่อมด้วย SCHOOL_CODE
-  fill("filterEduArea", uniqueLocations("EDU_AREA_NAME").sort());
-  fill("filterEduLevel", unique("EDU_LEVEL").sort());
+  const yearSelect = document.getElementById("filterYear");
+  yearSelect.innerHTML = "";
+  years.forEach(value => yearSelect.add(new Option(value, value)));
+  multiFilters = {
+    province: EDU15MultiSelect.create(document.getElementById("filterProvince"), unique("PROV_NAME").sort(), "ทุกจังหวัด"),
+    agency: EDU15MultiSelect.create(document.getElementById("filterAgency"), unique("DEPARTMENT_NAME").sort(), "ทุกสังกัด"),
+    area: EDU15MultiSelect.create(document.getElementById("filterEduArea"), uniqueLocations("EDU_AREA_NAME").sort(), "ทุกเขตพื้นที่"),
+    level: EDU15MultiSelect.create(document.getElementById("filterEduLevel"), unique("EDU_LEVEL").sort(), "ทุกระดับการศึกษา")
+  };
   if (years.length) document.getElementById("filterYear").value = years[0];
 }
 
 function getFilters() {
   return {
     year: document.getElementById("filterYear").value,
-    province: document.getElementById("filterProvince").value,
-    agency: document.getElementById("filterAgency").value,
-    area: document.getElementById("filterEduArea").value,
-    level: document.getElementById("filterEduLevel").value,
+    provinces: multiFilters.province.getValues(),
+    agencies: multiFilters.agency.getValues(),
+    areas: multiFilters.area.getValues(),
+    levels: multiFilters.level.getValues(),
     school: document.getElementById("filterSchoolName").value.trim().toLowerCase()
   };
 }
 
 function matchesCommon(row, filters, allowedAreaCodes) {
   if (filters.year && String(row.ACAD_YEAR) !== filters.year) return false;
-  if (filters.province && String(row.PROV_NAME) !== filters.province) return false;
-  if (filters.agency && String(row.DEPARTMENT_NAME) !== filters.agency) return false;
-  if (filters.area && !allowedAreaCodes?.has(String(row.SCHOOL_CODE))) return false;
+  if (filters.provinces.length && !filters.provinces.includes(String(row.PROV_NAME))) return false;
+  if (filters.agencies.length && !filters.agencies.includes(String(row.DEPARTMENT_NAME))) return false;
+  if (filters.areas.length && !allowedAreaCodes?.has(String(row.SCHOOL_CODE))) return false;
   if (filters.school && !String(row.SCHOOL_NAME || "").toLowerCase().includes(filters.school)) return false;
   return true;
 }
@@ -97,22 +112,22 @@ function numberValue(value) {
 }
 
 function renderDashboard(filters) {
-  const allowedAreaCodes = filters.area
+  const allowedAreaCodes = filters.areas.length
     ? new Set(
         locationRows
-          .filter(row => String(row.EDU_AREA_NAME) === filters.area)
+          .filter(row => filters.areas.includes(String(row.EDU_AREA_NAME)))
           .map(row => String(row.SCHOOL_CODE))
       )
     : null;
-  const students = studentRows.filter(row => matchesCommon(row, filters, allowedAreaCodes) && (!filters.level || String(row.EDU_LEVEL) === filters.level));
+  const students = studentRows.filter(row => matchesCommon(row, filters, allowedAreaCodes) && (!filters.levels.length || filters.levels.includes(String(row.EDU_LEVEL))));
   const studentSchoolCodes = new Set(students.map(row => String(row.SCHOOL_CODE)));
-  const teachers = teacherRows.filter(row => matchesCommon(row, filters, allowedAreaCodes) && (!filters.level || studentSchoolCodes.has(String(row.SCHOOL_CODE))));
+  const teachers = teacherRows.filter(row => matchesCommon(row, filters, allowedAreaCodes) && (!filters.levels.length || studentSchoolCodes.has(String(row.SCHOOL_CODE))));
   const locations = locationRows.filter(row => {
-    if (filters.province && String(row.PROV_NAME) !== filters.province) return false;
-    if (filters.agency && String(row.DEPARTMENT_NAME) !== filters.agency) return false;
-    if (filters.area && String(row.EDU_AREA_NAME) !== filters.area) return false;
+    if (filters.provinces.length && !filters.provinces.includes(String(row.PROV_NAME))) return false;
+    if (filters.agencies.length && !filters.agencies.includes(String(row.DEPARTMENT_NAME))) return false;
+    if (filters.areas.length && !filters.areas.includes(String(row.EDU_AREA_NAME))) return false;
     if (filters.school && !String(row.SCHOOL_NAME || "").toLowerCase().includes(filters.school)) return false;
-    return !filters.level || studentSchoolCodes.has(String(row.SCHOOL_CODE));
+    return !filters.levels.length || studentSchoolCodes.has(String(row.SCHOOL_CODE));
   });
 
   renderStats(students, teachers);
@@ -151,13 +166,23 @@ function aggregateSchools(students, teachers) {
 
 function renderSchoolTable() {
   const tbody = document.getElementById("dataTableBody");
+  const [field, direction] = document.getElementById("schoolSort").value.split("-");
+  const sortedSchools = [...currentSchools].sort((a, b) => {
+    const comparison = field === "name"
+      ? a.name.localeCompare(b.name, "th")
+      : numberValue(a[field]) - numberValue(b[field]);
+    return direction === "desc" ? -comparison : comparison;
+  });
   const pages = Math.max(1, Math.ceil(currentSchools.length / PAGE_SIZE));
   currentPage = Math.min(currentPage, pages);
   const start = (currentPage - 1) * PAGE_SIZE;
-  const rows = currentSchools.slice(start, start + PAGE_SIZE);
-  tbody.innerHTML = rows.length ? rows.map(row => `<tr class="border-t border-slate-100 hover:bg-slate-50"><td class="px-5 py-3 font-medium text-slate-700">${escapeHtml(row.name)}</td><td class="px-5 py-3 text-slate-500">${escapeHtml(row.agency)}</td><td class="px-5 py-3 text-right">${row.students.toLocaleString("th-TH")}</td><td class="px-5 py-3 text-right">${row.teachers.toLocaleString("th-TH")}</td></tr>`).join("") : '<tr><td colspan="4" class="px-5 py-10 text-center text-slate-400">ไม่พบข้อมูลตามเงื่อนไข</td></tr>';
+  const rows = sortedSchools.slice(start, start + PAGE_SIZE);
+  tbody.innerHTML = rows.length ? rows.map((row, index) => `<tr class="border-t border-slate-100 hover:bg-slate-50"><td class="px-5 py-3 text-center text-slate-400">${(start + index + 1).toLocaleString("th-TH")}</td><td class="px-5 py-3 font-medium text-slate-700">${escapeHtml(row.name)}</td><td class="px-5 py-3 text-slate-500">${escapeHtml(row.agency)}</td><td class="px-5 py-3 text-right">${row.students.toLocaleString("th-TH")}</td><td class="px-5 py-3 text-right">${row.teachers.toLocaleString("th-TH")}</td></tr>`).join("") : '<tr><td colspan="5" class="px-5 py-10 text-center text-slate-400">ไม่พบข้อมูลตามเงื่อนไข</td></tr>';
   document.getElementById("schoolTableSummary").textContent = `พบ ${currentSchools.length.toLocaleString("th-TH")} โรงเรียน`;
   document.getElementById("pageInfo").textContent = `หน้า ${currentPage} จาก ${pages}`;
+  const pageJump = document.getElementById("pageJump");
+  pageJump.max = String(pages);
+  pageJump.value = String(currentPage);
   document.getElementById("prevPage").disabled = currentPage <= 1;
   document.getElementById("nextPage").disabled = currentPage >= pages;
 }
@@ -165,9 +190,9 @@ function renderSchoolTable() {
 function renderGenderChart(students) {
   const male = students.reduce((sum, row) => sum + numberValue(row.STUDENT_MALE), 0);
   const female = students.reduce((sum, row) => sum + numberValue(row.STUDENT_FEMALE), 0);
-  const max = Math.max(male, female);
-  const parity = max ? (Math.min(male, female) / max) * 100 : 0;
-  document.getElementById("genderEqualityText").textContent = `ดัชนีความใกล้เคียงระหว่างเพศ ${parity.toFixed(1)}%`;
+  const parityIndex = male > 0 ? female / male : null;
+  document.getElementById("genderEqualityValue").textContent =
+    parityIndex === null ? "—" : parityIndex.toFixed(2);
   genderChart?.destroy();
   genderChart = new Chart(document.getElementById("genderChart"), {
     type: "bar",

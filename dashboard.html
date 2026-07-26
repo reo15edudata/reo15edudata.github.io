@@ -8,6 +8,7 @@
     <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
     <link href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" rel="stylesheet">
     <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.7/dist/chart.umd.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chartjs-plugin-datalabels@2.2.0"></script>
     <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
 </head>
 <body data-dashboard="true" class="bg-slate-50 font-sans text-slate-800 h-screen flex overflow-hidden">
@@ -46,11 +47,11 @@
             <section class="bg-white p-5 rounded-xl border border-slate-200 shadow-sm mb-6">
                 <div class="flex items-center mb-4 pb-3 border-b border-slate-100"><i class="fas fa-filter text-teal-500 mr-2"></i><h2 class="font-semibold text-slate-700">ตัวกรองข้อมูล</h2></div>
                 <form id="filterForm" class="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-4 items-end">
-                    <div><label class="block text-xs font-semibold text-slate-500 mb-1">ปีการศึกษา</label><select id="filterYear" class="w-full rounded-lg border border-slate-300 bg-slate-50 p-2.5"><option value="">ทุกปี</option></select></div>
-                    <div><label class="block text-xs font-semibold text-slate-500 mb-1">จังหวัด</label><select id="filterProvince" class="w-full rounded-lg border border-slate-300 bg-slate-50 p-2.5"><option value="">ทุกจังหวัด</option></select></div>
-                    <div><label class="block text-xs font-semibold text-slate-500 mb-1">สังกัด</label><select id="filterAgency" class="w-full rounded-lg border border-slate-300 bg-slate-50 p-2.5"><option value="">ทุกสังกัด</option></select></div>
-                    <div><label class="block text-xs font-semibold text-slate-500 mb-1">เขตพื้นที่การศึกษา</label><select id="filterEduArea" class="w-full rounded-lg border border-slate-300 bg-slate-50 p-2.5"><option value="">ทุกพื้นที่</option></select></div>
-                    <div><label class="block text-xs font-semibold text-slate-500 mb-1">ระดับการศึกษา</label><select id="filterEduLevel" class="w-full rounded-lg border border-slate-300 bg-slate-50 p-2.5"><option value="">ทุกระดับ</option></select></div>
+                    <div><label class="block text-xs font-semibold text-slate-500 mb-1">ปีการศึกษา</label><select id="filterYear" class="w-full rounded-lg border border-slate-300 bg-slate-50 p-2.5"></select></div>
+                    <div><label class="block text-xs font-semibold text-slate-500 mb-1">จังหวัด (เลือกได้หลายรายการ)</label><div id="filterProvince"></div></div>
+                    <div><label class="block text-xs font-semibold text-slate-500 mb-1">สังกัด (เลือกได้หลายรายการ)</label><div id="filterAgency"></div></div>
+                    <div><label class="block text-xs font-semibold text-slate-500 mb-1">เขตพื้นที่ (เลือกได้หลายรายการ)</label><div id="filterEduArea"></div></div>
+                    <div><label class="block text-xs font-semibold text-slate-500 mb-1">ระดับการศึกษา (เลือกได้หลายรายการ)</label><div id="filterEduLevel"></div></div>
                     <div class="sm:col-span-2"><label class="block text-xs font-semibold text-slate-500 mb-1">ค้นหาชื่อโรงเรียน</label><div class="relative"><i class="fas fa-search absolute left-3 top-3 text-slate-400"></i><input id="filterSchoolName" type="search" class="w-full rounded-lg border border-slate-300 bg-slate-50 py-2.5 pl-9 pr-3" placeholder="พิมพ์ชื่อโรงเรียน"></div></div>
                     <div class="flex gap-2"><button type="reset" class="flex-1 rounded-lg bg-slate-200 px-4 py-2.5 text-sm">ล้างค่า</button><button type="submit" class="flex-1 rounded-lg bg-teal-600 text-white px-4 py-2.5 text-sm">แสดงผล</button></div>
                 </form>
@@ -62,7 +63,7 @@
                     <div class="grid grid-cols-2 gap-3 mt-4 text-sm"><div class="bg-blue-50 rounded-lg p-2"><span class="text-slate-500">ชาย</span><strong id="stat-male-students" class="block text-blue-700">0</strong></div><div class="bg-pink-50 rounded-lg p-2"><span class="text-slate-500">หญิง</span><strong id="stat-female-students" class="block text-pink-700">0</strong></div></div>
                 </article>
                 <article class="bg-white rounded-xl border border-slate-200 shadow-sm p-5 border-b-4 border-b-teal-500">
-                    <div class="flex justify-between items-start"><div><p class="text-xs font-semibold text-slate-500">สถานศึกษาทั้งหมด</p><p class="text-3xl font-bold mt-1" id="stat-total-schools">0</p><p class="text-xs text-slate-400 mt-4">นับจากรหัสสถานศึกษาที่ไม่ซ้ำ</p></div><div class="w-10 h-10 bg-teal-50 text-teal-600 rounded-lg flex items-center justify-center"><i class="fas fa-school"></i></div></div>
+                    <div class="flex justify-between items-start"><div><p class="text-xs font-semibold text-slate-500">สถานศึกษาทั้งหมด</p><p class="text-3xl font-bold mt-1" id="stat-total-schools">0</p></div><div class="w-10 h-10 bg-teal-50 text-teal-600 rounded-lg flex items-center justify-center"><i class="fas fa-school"></i></div></div>
                 </article>
                 <article class="bg-white rounded-xl border border-slate-200 shadow-sm p-5 border-b-4 border-b-orange-500">
                     <div class="flex justify-between items-start"><div><p class="text-xs font-semibold text-slate-500">ครูและบุคลากร</p><p class="text-3xl font-bold mt-1" id="stat-total-teachers">0</p></div><div class="w-10 h-10 bg-orange-50 text-orange-600 rounded-lg flex items-center justify-center"><i class="fas fa-person-chalkboard"></i></div></div>
@@ -72,7 +73,12 @@
 
             <section class="grid grid-cols-1 xl:grid-cols-5 gap-6 mb-6">
                 <article class="xl:col-span-2 bg-white rounded-xl border border-slate-200 shadow-sm p-5">
-                    <div class="mb-4"><h2 class="font-semibold text-slate-700">ความเท่าเทียมทางเพศในการศึกษา</h2><p id="genderEqualityText" class="text-xs text-slate-400 mt-1">เปรียบเทียบจำนวนนักเรียนชายและหญิง</p></div>
+                    <div class="mb-4"><h2 class="font-semibold text-slate-700">ความเท่าเทียมทางเพศในการศึกษา</h2><p class="text-xs text-slate-400 mt-1">เปรียบเทียบจำนวนนักเรียนชายและหญิง</p></div>
+                    <div class="mb-4 rounded-xl border border-violet-100 bg-violet-50 px-4 py-3">
+                        <span class="block text-xs font-semibold text-violet-600">ดัชนีความเท่าเทียมระหว่างเพศ</span>
+                        <strong id="genderEqualityValue" class="mt-1 block text-3xl font-bold text-violet-800">—</strong>
+                        <span class="mt-1 block text-xs text-violet-500">นักเรียนหญิง ÷ นักเรียนชาย</span>
+                    </div>
                     <div class="h-72"><canvas id="genderChart"></canvas></div>
                 </article>
                 <article class="xl:col-span-3 bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden">
@@ -82,14 +88,23 @@
             </section>
 
             <section class="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden">
-                <div class="px-5 py-4 border-b border-slate-100 flex justify-between items-center"><div><h2 class="font-semibold text-slate-700">ข้อมูลรายโรงเรียน</h2><p id="schoolTableSummary" class="text-xs text-slate-400 mt-1">กำลังประมวลผล</p></div><i class="fas fa-table text-teal-500"></i></div>
+                <div class="px-5 py-4 border-b border-slate-100 flex flex-col gap-3 sm:flex-row sm:justify-between sm:items-center"><div><h2 class="font-semibold text-slate-700">ข้อมูลรายโรงเรียน</h2><p id="schoolTableSummary" class="text-xs text-slate-400 mt-1">กำลังประมวลผล</p></div><div class="flex items-center gap-2"><label for="schoolSort" class="text-xs text-slate-500">จัดเรียง</label><select id="schoolSort" class="rounded-lg border border-slate-300 bg-slate-50 px-3 py-2 text-sm"><option value="name-asc">ชื่อโรงเรียน ก–ฮ</option><option value="students-desc">นักเรียน มาก→น้อย</option><option value="students-asc">นักเรียน น้อย→มาก</option><option value="teachers-desc">ครู มาก→น้อย</option><option value="teachers-asc">ครู น้อย→มาก</option></select></div></div>
                 <div class="overflow-x-auto">
                     <table class="w-full text-sm">
-                        <thead class="bg-slate-50 text-slate-500 text-xs uppercase"><tr><th class="px-5 py-3 text-left">ชื่อโรงเรียน</th><th class="px-5 py-3 text-left">สังกัด</th><th class="px-5 py-3 text-right">นักเรียนรวม</th><th class="px-5 py-3 text-right">ครูรวม</th></tr></thead>
+                        <thead class="bg-slate-50 text-slate-500 text-xs uppercase"><tr><th class="px-5 py-3 text-center">ลำดับ</th><th class="px-5 py-3 text-left">ชื่อโรงเรียน</th><th class="px-5 py-3 text-left">สังกัด</th><th class="px-5 py-3 text-right">นักเรียนรวม</th><th class="px-5 py-3 text-right">ครูรวม</th></tr></thead>
                         <tbody id="dataTableBody"></tbody>
                     </table>
                 </div>
-                <div class="px-5 py-3 border-t border-slate-100 flex items-center justify-between text-sm"><span id="pageInfo" class="text-slate-500"></span><div class="flex gap-2"><button id="prevPage" type="button" class="border rounded-md px-3 py-1.5 disabled:opacity-40">ก่อนหน้า</button><button id="nextPage" type="button" class="border rounded-md px-3 py-1.5 disabled:opacity-40">ถัดไป</button></div></div>
+                <div class="px-5 py-3 border-t border-slate-100 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between text-sm">
+                    <span id="pageInfo" class="text-slate-500"></span>
+                    <div class="flex flex-wrap items-center gap-2">
+                        <button id="prevPage" type="button" class="border rounded-md px-3 py-1.5 disabled:opacity-40">ก่อนหน้า</button>
+                        <label for="pageJump" class="text-xs text-slate-500">ไปหน้า</label>
+                        <input id="pageJump" type="number" min="1" inputmode="numeric" class="w-20 rounded-md border border-slate-300 px-2 py-1.5 text-center" aria-label="หมายเลขหน้าที่ต้องการ">
+                        <button id="goToPage" type="button" class="rounded-md bg-slate-700 px-3 py-1.5 text-white hover:bg-slate-800">ไป</button>
+                        <button id="nextPage" type="button" class="border rounded-md px-3 py-1.5 disabled:opacity-40">ถัดไป</button>
+                    </div>
+                </div>
             </section>
         </main>
     </div>

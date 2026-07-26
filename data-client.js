@@ -42,10 +42,11 @@ const EDU15DataClient = (() => {
 
   async function fetchAllPages(baseUrl, dbKey, sheetName) {
     const key = `${CACHE_VERSION}|${dbKey}|${sheetName}`;
+    window.reportPageProgress?.(key, 0, 1);
     try {
       const cachedRows = await readCache(key);
       if (cachedRows) {
-        window.showPageLoader?.(`ใช้ข้อมูล ${sheetName} จาก cache…`);
+        window.reportPageProgress?.(key, 1, 1);
         return cachedRows;
       }
     } catch (error) {
@@ -62,12 +63,13 @@ const EDU15DataClient = (() => {
       const result = await response.json();
       if (!result.success) throw new Error(`${sheetName}: ${result.message || "โหลดข้อมูลไม่สำเร็จ"}`);
       rows.push(...(result.data || []));
-      window.showPageLoader?.(`กำลังดึง ${sheetName}… ${rows.length.toLocaleString("th-TH")} แถว`);
+      window.reportPageProgress?.(key, rows.length, result.totalRows || rows.length);
       if (!result.hasMore || !result.data?.length) break;
       offset += result.data.length;
     }
 
     writeCache(key, rows).catch(error => console.warn("Dashboard cache write skipped", error));
+    window.reportPageProgress?.(key, 1, 1);
     return rows;
   }
 

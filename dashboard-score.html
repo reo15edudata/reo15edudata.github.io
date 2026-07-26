@@ -1,73 +1,33 @@
 <!DOCTYPE html>
 <html lang="th">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>ผลการทดสอบทางการศึกษา - ศธภ.15</title>
-    <script src="https://cdn.tailwindcss.com"></script>
-    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
-    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.7/dist/chart.umd.min.js"></script>
+  <meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1.0">
+  <title>ผลการทดสอบทางการศึกษา - ศธภ.15</title>
+  <script src="https://cdn.tailwindcss.com"></script><link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet"><script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.7/dist/chart.umd.min.js"></script><script src="https://cdn.jsdelivr.net/npm/chartjs-plugin-datalabels@2.2.0"></script>
 </head>
 <body data-dashboard="true" class="bg-slate-50 font-sans text-slate-800 h-screen flex overflow-hidden">
-    <aside class="w-64 bg-[#1e293b] text-slate-300 flex flex-col h-full shrink-0">
-        <div class="h-16 flex items-center px-4 border-b border-slate-700/50">
-            <div class="bg-teal-500 text-white w-8 h-8 rounded flex items-center justify-center mr-3"><i class="fa-solid fa-graduation-cap"></i></div>
-            <span class="text-white font-semibold text-lg">ศธภ.15</span>
-        </div>
-        <div class="flex-1 overflow-y-auto py-4 px-3">
-            <div class="text-xs font-semibold text-slate-500 mb-2 px-3 tracking-wider">DASHBOARDS</div>
-            <ul class="space-y-1 mb-6">
-                <li><a href="dashboard.html" class="flex items-center px-3 py-2 rounded-md hover:bg-slate-800 hover:text-white"><i class="fas fa-chart-pie w-7"></i>สารสนเทศการศึกษา</a></li>
-                <li><a href="dashboard-index.html" class="flex items-center px-3 py-2 rounded-md hover:bg-slate-800 hover:text-white"><i class="fas fa-chart-line w-7"></i>ดัชนีการศึกษา</a></li>
-                <li><a href="dashboard-workforce.html" class="flex items-center px-3 py-2 rounded-md hover:bg-slate-800 hover:text-white"><i class="fas fa-users-gear w-7"></i>ความต้องการกำลังคน</a></li>
-            </ul>
-            <div class="text-xs font-semibold text-slate-500 mb-2 px-3 tracking-wider">MANAGEMENT</div>
-            <ul><li><a href="admin.html" class="flex items-center px-3 py-2 rounded-md hover:bg-slate-800 hover:text-white"><i class="fas fa-user-gear w-7"></i>Admin Console</a></li></ul>
-        </div>
-    </aside>
+  <aside class="w-64 bg-[#1e293b] text-slate-300 flex flex-col h-full shrink-0"><div class="h-16 flex items-center px-4 border-b border-slate-700/50"><div class="bg-teal-500 text-white w-8 h-8 rounded flex items-center justify-center mr-3"><i class="fa-solid fa-graduation-cap"></i></div><span class="text-white font-semibold text-lg">ศธภ.15</span></div><div class="flex-1 overflow-y-auto py-4 px-3"><div class="text-xs font-semibold text-slate-500 mb-2 px-3 tracking-wider">DASHBOARDS</div><ul class="space-y-1 mb-6"><li><a href="dashboard.html" class="flex items-center px-3 py-2 rounded-md hover:bg-slate-800 hover:text-white"><i class="fas fa-chart-pie w-7"></i>สารสนเทศการศึกษา</a></li><li><a href="dashboard-index.html" class="flex items-center px-3 py-2 rounded-md hover:bg-slate-800 hover:text-white"><i class="fas fa-chart-line w-7"></i>ดัชนีการศึกษา</a></li><li><a href="dashboard-workforce.html" class="flex items-center px-3 py-2 rounded-md hover:bg-slate-800 hover:text-white"><i class="fas fa-users-gear w-7"></i>ความต้องการกำลังคน</a></li></ul><div class="text-xs font-semibold text-slate-500 mb-2 px-3 tracking-wider">MANAGEMENT</div><ul><li><a href="admin.html" class="flex items-center px-3 py-2 rounded-md hover:bg-slate-800 hover:text-white"><i class="fas fa-user-gear w-7"></i>Admin Console</a></li></ul></div></aside>
+  <div class="flex-1 flex flex-col h-full overflow-hidden">
+    <header class="h-16 bg-white border-b border-slate-200 flex items-center justify-between px-4 md:px-6 shrink-0"><div class="flex items-center"><button type="button" class="mr-4 text-slate-500"><i class="fas fa-bars"></i></button><div><h1 class="font-semibold">ผลการทดสอบทางการศึกษา</h1><p class="text-xs text-slate-400 hidden sm:block">O-NET · NT · RT · V-NET · B-NET · N-NET</p></div></div><div class="flex items-center space-x-4"><a href="login.html" class="flex items-center text-teal-700 border border-teal-200 bg-teal-50 px-4 py-1.5 rounded-full text-sm font-medium"><i class="fas fa-right-to-bracket mr-2"></i>สำหรับเจ้าหน้าที่</a></div></header>
+    <main class="flex-1 overflow-y-auto p-4 md:p-6">
+      <section class="filter-card"><form id="scoreFilterForm" class="grid grid-cols-1 sm:grid-cols-3 gap-4 items-end"><div><label class="filter-label">ปีข้อมูล</label><select id="scoreYear" class="filter-control"></select></div><div><label class="filter-label">ระดับพื้นที่</label><select id="scoreScope" class="filter-control"></select></div><div class="flex gap-2"><button type="reset" class="flex-1 rounded-lg bg-slate-200 py-2.5 text-slate-700">ล้างตัวกรอง</button><button type="submit" class="flex-1 rounded-lg bg-teal-600 py-2.5 text-white">แสดงผล</button></div></form></section>
 
-    <div class="flex-1 flex flex-col h-full overflow-hidden">
-        <header class="h-16 bg-white border-b border-slate-200 flex items-center justify-between px-4 md:px-6 shrink-0">
-            <div class="flex items-center">
-                <button type="button" class="mr-4 text-slate-500 hover:text-slate-800"><i class="fas fa-bars"></i></button>
-                <div><h1 class="font-semibold">ผลการทดสอบทางการศึกษา</h1><p class="text-xs text-slate-400 hidden sm:block">O-NET · NT · RT · V-NET · B-NET · N-NET</p></div>
-            </div>
-            <div class="flex items-center space-x-4"><a href="login.html" class="flex items-center text-teal-700 border border-teal-200 bg-teal-50 px-4 py-1.5 rounded-full text-sm font-medium"><i class="fas fa-right-to-bracket mr-2"></i>สำหรับเจ้าหน้าที่</a></div>
-        </header>
+      <section class="score-section"><div class="score-heading"><span class="score-icon bg-blue-50 text-blue-600">O</span><div><h2>O-NET</h2><p>ผลการทดสอบทางการศึกษาระดับชาติขั้นพื้นฐาน</p></div><div class="ml-auto"><label class="filter-label">ระดับชั้น</label><select id="onetGrade" class="filter-control min-w-48"></select></div></div><div id="onetCards" class="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-4 mb-6"></div><div class="grid grid-cols-1 xl:grid-cols-3 gap-6"><article class="chart-card xl:col-span-2"><h3>คะแนนเฉลี่ยรายวิชา</h3><div class="h-80 mt-4"><canvas id="onetChart"></canvas></div></article><article class="chart-card"><h3>รายละเอียดผู้เข้าสอบและผู้ผ่าน 50%</h3><div class="overflow-auto max-h-80 mt-3"><table class="score-table"><thead><tr><th>วิชา</th><th>ผู้เข้าสอบ</th><th>ผ่าน 50%</th></tr></thead><tbody id="onetTable"></tbody></table></div></article></div></section>
 
-        <main class="flex-1 overflow-y-auto p-4 md:p-6">
-            <section class="bg-white p-5 rounded-xl border border-slate-200 shadow-sm mb-6">
-                <form id="filterForm" class="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-4 items-end">
-                    <div><label class="block text-xs font-semibold text-slate-500 mb-1">ชุดการทดสอบ</label><select id="filterDataset" class="w-full rounded-lg border border-slate-300 bg-slate-50 p-2.5"></select></div>
-                    <div><label class="block text-xs font-semibold text-slate-500 mb-1">ปี</label><select id="filterYear" class="w-full rounded-lg border border-slate-300 bg-slate-50 p-2.5"><option value="">ทุกปี</option></select></div>
-                    <div><label class="block text-xs font-semibold text-slate-500 mb-1">ระดับผลการทดสอบ/พื้นที่</label><select id="filterTestLevel" class="w-full rounded-lg border border-slate-300 bg-slate-50 p-2.5"><option value="">ทุกระดับ</option></select></div>
-                    <div class="flex gap-2"><button type="reset" class="flex-1 bg-slate-200 rounded-lg py-2.5">ล้างค่า</button><button type="submit" class="flex-1 bg-teal-600 text-white rounded-lg py-2.5">แสดงผล</button></div>
-                </form>
-            </section>
+      <section class="score-section"><div class="score-heading"><span class="score-icon bg-violet-50 text-violet-600">NT</span><div><h2>NT</h2><p>คะแนนเฉลี่ยและระดับคุณภาพ ชั้นประถมศึกษาปีที่ 3</p></div></div><div class="grid grid-cols-1 xl:grid-cols-2 gap-6"><article class="chart-card"><h3>คะแนนเฉลี่ยรวม 2 ด้าน</h3><strong id="ntCombined" class="score-metric">—</strong><div class="h-72 mt-3"><canvas id="ntAverageChart"></canvas></div></article><article class="chart-card"><div class="flex items-end justify-between gap-3"><h3>ร้อยละผู้เรียนตามระดับคุณภาพ</h3><select id="ntSubject" class="filter-control max-w-52"></select></div><div class="h-64 mt-3"><canvas id="ntLevelChart"></canvas></div><div class="overflow-auto max-h-52 mt-3"><table class="score-table"><thead><tr><th>ระดับคุณภาพ</th><th>นักเรียน</th><th>ร้อยละ</th></tr></thead><tbody id="ntLevelTable"></tbody></table></div></article></div></section>
 
-            <section class="grid grid-cols-1 md:grid-cols-3 gap-5 mb-6">
-                <article class="bg-white rounded-xl border border-slate-200 shadow-sm p-5 border-b-4 border-b-blue-500"><p class="text-xs text-slate-500">คะแนนเฉลี่ย</p><p id="statAverage" class="text-3xl font-bold mt-2">0.00</p></article>
-                <article class="bg-white rounded-xl border border-slate-200 shadow-sm p-5 border-b-4 border-b-teal-500"><p class="text-xs text-slate-500">จำนวนผู้เข้าสอบ</p><p id="statTested" class="text-3xl font-bold mt-2">0</p></article>
-                <article class="bg-white rounded-xl border border-slate-200 shadow-sm p-5 border-b-4 border-b-violet-500"><p class="text-xs text-slate-500">ผ่านเกณฑ์ 50% (เมื่อมีข้อมูล)</p><p id="statPassed" class="text-3xl font-bold mt-2">—</p></article>
-            </section>
+      <section class="score-section"><div class="score-heading"><span class="score-icon bg-rose-50 text-rose-600">RT</span><div><h2>RT</h2><p>ความสามารถด้านการอ่าน ชั้นประถมศึกษาปีที่ 1</p></div></div><div class="grid grid-cols-1 xl:grid-cols-3 gap-6"><article class="chart-card"><h3>คะแนนเฉลี่ยรวม 2 ด้าน</h3><strong id="rtCombined" class="score-metric">—</strong></article><article class="chart-card"><h3>คะแนนเฉลี่ยรายด้าน</h3><div class="h-64 mt-3"><canvas id="rtAverageChart"></canvas></div></article><article class="chart-card"><h3>ร้อยละผู้เข้าสอบที่ผ่าน 50%</h3><div class="h-64 mt-3"><canvas id="rtPassChart"></canvas></div></article></div></section>
 
-            <section class="grid grid-cols-1 xl:grid-cols-5 gap-6">
-                <article class="xl:col-span-3 bg-white rounded-xl border border-slate-200 shadow-sm p-5">
-                    <div class="mb-4"><h2 class="font-semibold text-slate-700">คะแนนเฉลี่ยจำแนกตามวิชา/สมรรถนะ</h2><p id="chartSummary" class="text-xs text-slate-400 mt-1"></p></div>
-                    <div class="h-96"><canvas id="scoreChart"></canvas></div>
-                </article>
-                <article class="xl:col-span-2 bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden">
-                    <div class="p-5 border-b"><h2 class="font-semibold text-slate-700">รายละเอียดข้อมูล</h2><p id="tableSummary" class="text-xs text-slate-400 mt-1"></p></div>
-                    <div class="overflow-auto max-h-[28rem]"><table class="w-full text-sm"><thead class="bg-slate-50 sticky top-0"><tr><th class="p-3 text-left">รายการ</th><th class="p-3 text-left">ระดับ</th><th class="p-3 text-right">คะแนนเฉลี่ย</th><th class="p-3 text-right">ผู้เข้าสอบ</th></tr></thead><tbody id="scoreTableBody"></tbody></table></div>
-                </article>
-            </section>
-        </main>
-    </div>
+      <section class="score-section"><div class="score-heading"><span class="score-icon bg-amber-50 text-amber-600">V</span><div><h2>V-NET</h2><p>ผลการทดสอบทางการศึกษาระดับชาติด้านอาชีวศึกษา</p></div></div><div id="vnetCards" class="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6"></div><article class="chart-card"><h3>เปรียบเทียบคะแนนเฉลี่ยทั้ง 3 สมรรถนะกับระดับประเทศ</h3><div class="h-72 mt-3"><canvas id="vnetChart"></canvas></div></article></section>
 
-    <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
-    <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-auth.js"></script>
-    <script src="site.js"></script>
-    <script src="data-client.js"></script>
-    <script src="dashboard-score.js"></script>
+      <section class="score-section"><div class="score-heading"><span class="score-icon bg-orange-50 text-orange-600">B</span><div><h2>B-NET</h2><p>ผลการทดสอบทางการศึกษาระดับชาติด้านพระพุทธศาสนา</p></div></div><div class="section-filter"><div><label class="filter-label">ระดับการสอบ</label><select id="bnetLevel" class="filter-control"></select></div></div><div id="bnetDisclaimer" class="mb-4 hidden rounded-lg border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-800"><i class="fas fa-circle-info mr-2"></i>ผลการทดสอบ B-NET ที่แสดงเป็นข้อมูลระดับภาคเหนือทั้งหมด เนื่องจากฐานข้อมูลไม่มีแถวสรุประดับ ศธภ.15</div><div id="bnetCards" class="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-4 mb-6"></div><div id="bnetSections" class="grid grid-cols-1 xl:grid-cols-2 gap-6"></div></section>
+
+      <section class="score-section"><div class="score-heading"><span class="score-icon bg-teal-50 text-teal-600">N</span><div><h2>N-NET</h2><p>ผลการทดสอบทางการศึกษาระดับชาติ ด้านการศึกษานอกระบบโรงเรียน</p></div></div><div class="section-filter"><div><label class="filter-label">ภาคเรียน</label><select id="nnetPeriod" class="filter-control"></select></div><div><label class="filter-label">ระดับการสอบ</label><select id="nnetLevel" class="filter-control"></select></div></div><div id="nnetCards" class="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-5 gap-4 mb-6"></div><article class="chart-card"><h3>เปรียบเทียบคะแนนเฉลี่ยรายสาระกับระดับประเทศ</h3><div class="h-80 mt-3"><canvas id="nnetChart"></canvas></div></article></section>
+    </main>
+  </div>
+  <style>
+    .filter-card{background:#fff;padding:1.25rem;border:1px solid #e2e8f0;border-radius:.75rem;box-shadow:0 1px 2px rgb(15 23 42/.05);margin-bottom:1.5rem}.filter-label{display:block;font-size:.75rem;font-weight:600;color:#64748b;margin-bottom:.25rem}.filter-control{width:100%;border:1px solid #cbd5e1;background:#f8fafc;border-radius:.5rem;padding:.625rem}.section-filter{display:grid;grid-template-columns:repeat(1,minmax(0,1fr));gap:.75rem;background:#fff;border:1px solid #e2e8f0;border-radius:.75rem;padding:1rem;margin-bottom:1rem}@media(min-width:640px){.section-filter{grid-template-columns:repeat(3,minmax(0,1fr))}}.score-section{margin-bottom:2.25rem}.score-heading{display:flex;align-items:center;gap:.75rem;margin-bottom:1rem}.score-heading h2{font-size:1.125rem;font-weight:700}.score-heading p{font-size:.75rem;color:#94a3b8}.score-icon{width:2.5rem;height:2.5rem;border-radius:.65rem;display:flex;align-items:center;justify-content:center;font-weight:800}.chart-card,.subject-card{background:#fff;border:1px solid #e2e8f0;border-radius:.75rem;padding:1.1rem;box-shadow:0 1px 2px rgb(15 23 42/.05)}.chart-card h3,.subject-card h3{font-size:.875rem;font-weight:600;color:#475569}.score-metric{display:block;font-size:2rem;margin-top:.5rem}.score-table{width:100%;font-size:.75rem}.score-table thead{background:#f8fafc;position:sticky;top:0}.score-table th,.score-table td{padding:.55rem;text-align:right;border-top:1px solid #f1f5f9}.score-table th:first-child,.score-table td:first-child{text-align:left}
+  </style>
+  <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script><script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-auth.js"></script><script src="site.js"></script><script src="data-client.js"></script><script src="dashboard-score.js"></script>
 </body>
 </html>
