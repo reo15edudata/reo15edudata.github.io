@@ -1,0 +1,139 @@
+<!DOCTYPE html>
+<html lang="th">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>เข้าสู่ระบบ - ศธภ.15</title>
+
+    <!-- นำเข้า Firebase SDK จาก CDN -->
+    <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-auth.js"></script>
+
+    <style>
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background-color: #F8FAFC;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+            margin: 0;
+        }
+
+        .login-container {
+            background: white;
+            padding: 40px;
+            border-radius: 8px;
+            box-shadow: 0 4px 10px rgba(0, 0, 0, 0.1);
+            width: 100%;
+            max-width: 400px;
+            text-align: center;
+        }
+
+        input {
+            width: 100%;
+            padding: 10px;
+            margin: 10px 0 20px 0;
+            border: 1px solid #ccc;
+            border-radius: 4px;
+            box-sizing: border-box;
+        }
+
+        button {
+            width: 100%;
+            padding: 12px;
+            background-color: #1E3A8A;
+            color: white;
+            border: none;
+            border-radius: 4px;
+            font-size: 16px;
+            cursor: pointer;
+        }
+
+        button:hover {
+            background-color: #172554;
+        }
+
+        #errorMessage {
+            color: red;
+            margin-top: 15px;
+            font-size: 14px;
+            display: none;
+        }
+    </style>
+</head>
+
+<body>
+
+    <div class="login-container">
+        <h2 style="color: #1E3A8A; margin-bottom: 5px;">ศธภ.15</h2>
+        <p style="color: #64748B; margin-top: 0;">ระบบจัดการข้อมูลสารสนเทศ</p>
+
+        <form id="loginForm">
+            <div style="text-align: left;">
+                <label for="email">อีเมล (Email):</label>
+                <input type="email" id="email" required placeholder="admin@example.com">
+
+                <label for="password">รหัสผ่าน (Password):</label>
+                <input type="password" id="password" required placeholder="********">
+            </div>
+            <button type="submit">เข้าสู่ระบบ</button>
+        </form>
+
+        <div id="errorMessage"></div>
+    </div>
+
+    <script>
+        // ⚠️ [เช็คตัวแปร]: นำค่า Config ของคุณจาก Firebase มาวางแทนที่ตรงนี้
+        const firebaseConfig = {
+            apiKey: "AIzaSyA7nJ6pBdnECqseBnCi49YRbUbLtcE5dx4",
+            authDomain: "edudata-reo15.firebaseapp.com",
+            projectId: "edudata-reo15",
+            storageBucket: "edudata-reo15.firebasestorage.app",
+            messagingSenderId: "297919410636",
+            appId: "1:297919410636:web:e1bccc1885ee7e68766d69"
+        };
+
+        // บังคับ Initialize Firebase ทันที
+        if (!firebase.apps.length) {
+            firebase.initializeApp(firebaseConfig);
+        }
+
+        // จัดการเมื่อกดปุ่มเข้าสู่ระบบ
+        document.getElementById('loginForm').addEventListener('submit', function (e) {
+            e.preventDefault();
+
+            const email = document.getElementById('email').value;
+            const password = document.getElementById('password').value;
+            const errorDiv = document.getElementById('errorMessage');
+
+            errorDiv.style.display = "none";
+
+            // ใช้ firebase.auth() โดยตรง
+            firebase.auth().signInWithEmailAndPassword(email, password)
+                .then(async (userCredential) => {
+                    const user = userCredential.user;
+
+                    if (!user.emailVerified) {
+                        await user.sendEmailVerification();
+                        await firebase.auth().signOut();
+
+                        errorDiv.style.display = "block";
+                        errorDiv.innerText =
+                            "เราได้ส่งอีเมลยืนยันไปยังบัญชีของคุณแล้ว กรุณายืนยันอีเมลก่อนเข้าสู่ระบบอีกครั้ง";
+                        return;
+                    }
+
+                    window.location.href = "admin.html";
+                })
+                .catch((error) => {
+                    errorDiv.style.display = "block";
+                    errorDiv.innerText = "อีเมลหรือรหัสผ่านไม่ถูกต้อง กรุณาลองใหม่";
+                    console.error("Login Error:", error);
+                });
+        });
+    </script>
+</body>
+
+</html>

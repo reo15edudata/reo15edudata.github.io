@@ -1,0 +1,104 @@
+<!DOCTYPE html>
+<html lang="th">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ระบบอัปโหลดข้อมูล - ศธภ.15</title>
+    <!-- ========================================== -->
+    <!-- ส่วนที่ 1: นำเข้า Firebase และเช็คสิทธิ์ (ยามเฝ้าประตู) -->
+    <!-- ========================================== -->
+    <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-auth.js"></script>
+
+    <script>
+        const firebaseConfig = {
+            apiKey: "AIzaSyA7nJ6pBdnECqseBnCi49YRbUbLtcE5dx4",
+            authDomain: "edudata-reo15.firebaseapp.com",
+            projectId: "edudata-reo15",
+            storageBucket: "edudata-reo15.firebasestorage.app",
+            messagingSenderId: "297919410636",
+            appId: "1:297919410636:web:e1bccc1885ee7e68766d69"
+        };
+
+        if (!firebase.apps.length) {
+            firebase.initializeApp(firebaseConfig);
+        }
+        firebase.auth().onAuthStateChanged((user) => {
+            if (!user) {
+                window.location.replace("login.html");
+            }
+        });
+
+    </script>
+
+    <link rel="stylesheet" href="style.css">
+
+    <!-- ดึง SheetJS ผ่าน cdnjs (เสถียรและโหลดไว) -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+</head>
+
+<body>
+    <!-- ========================================== -->
+    <!-- ส่วนที่ 2: แถบเมนูด้านบน และ ปุ่มออกจากระบบ -->
+    <!-- ========================================== -->
+    <div
+        style="background-color: #1E3A8A; padding: 10px 20px; display: flex; justify-content: space-between; align-items: center; color: white;">
+        <div style="font-weight: bold;">ส่วนของเจ้าหน้าที่ (Admin)</div>
+        <button onclick="firebase.auth().signOut()"
+            style="background-color: #EF4444; color: white; border: none; padding: 8px 16px; border-radius: 4px; cursor: pointer; font-weight: bold;">
+            🚪 ออกจากระบบ
+        </button>
+    </div>
+
+    <!-- ========================================== -->
+    <!-- ส่วนที่ 3: โค้ดหน้าอัปโหลดเดิมของคุณ (วางต่อตรงนี้ได้เลย) -->
+    <!-- ========================================== -->
+    <div style="padding: 20px;">
+
+        <div class="upload-container">
+            <h2>อัปโหลดข้อมูลสารสนเทศ ศธภ.15</h2>
+
+            <label for="dataType">เลือกประเภทข้อมูลที่ต้องการอัปโหลด:</label>
+            <select id="dataType">
+                <option value="">-- กรุณาเลือกประเภทข้อมูล --</option>
+
+                <optgroup label="1. สารสนเทศการศึกษา (DB_1)">
+                    <option value="DB_1|School_Location">พิกัดสถานศึกษา</option>
+                    <option value="DB_1|Student_Count">จำนวนนักเรียน</option>
+                    <option value="DB_1|Teacher_Count">จำนวนครู</option>
+                </optgroup>
+
+                <optgroup label="2. ดัชนีการศึกษา (DB_2)">
+                    <option value="DB_2|Population">จำนวนประชากร</option>
+                    <option value="DB_2|Special_Needs">ผู้เรียนที่มีความต้องการพิเศษ</option>
+                    <option value="DB_2|Out_of_School">เด็กนอกระบบการศึกษา</option>
+                    <option value="DB_2|Dropout">ผู้เรียนออกกลางคัน</option>
+                    <option value="DB_2|Get_a_Jobs">ผู้เรียนมีงานทำ</option>
+                </optgroup>
+
+                <optgroup label="3. ความต้องการกำลังคน (DB_3)">
+                    <option value="DB_3|Job_Vacancy_Career">ตำแหน่งงานว่างตามอาชีพ</option>
+                    <option value="DB_3|Job_Vacancy_Industry">ตำแหน่งงานว่างตามอุตสาหกรรม</option>
+                    <option value="DB_3|Job_Vacancy_EduLevel">ตำแหน่งงานว่างตามระดับการศึกษา</option>
+                    <option value="DB_3|Vocational_Busi_MOU">ความร่วมมือสถานศึกษา–สถานประกอบการ</option>
+                </optgroup>
+            </select>
+
+            <div class="file-upload-box">
+                <input type="file" id="excelFile" accept=".xlsx, .xls">
+            </div>
+
+            <button id="uploadBtn">ตรวจสอบและอัปโหลด</button>
+
+            <div id="statusMsg" class="status-msg"></div>
+
+        </div>
+    </div>
+
+
+    <!-- เรียกใช้ app.js ไว้บรรทัดสุดท้ายก่อนปิด body เพื่อให้โหลด SheetJS เสร็จก่อนเสมอ -->
+    <script src="app.js"></script>
+</body>
+
+</html>
