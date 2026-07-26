@@ -1,6 +1,20 @@
 const GAS_WEB_APP_URL = "https://script.google.com/macros/s/AKfycbxIaex-ZhKRkRFze1L8tyQF5UBQR4BQ2Is9L6nJMl9iGd9MTlg4ELJUqdzOZPO3w-OwDA/exec";
-const SHEETS = { population: ["DB_2", "Population"], special: ["DB_2", "Special_Needs"], oosc: ["DB_2", "Out_of_School"], dropout: ["DB_2", "Dropout"], jobs: ["DB_2", "Get_a_Jobs"], students: ["DB_1", "Student_Count"] };
+const SHEETS = {
+  population: ["DB_2", "Population"],
+  special: ["DB_2", "Special_Needs"],
+  oosc: ["DB_2", "Out_of_School"],
+  dropout: ["DB_2", "Dropout"],
+  jobs: ["DB_2", "Get_a_Jobs"],
+  studyYear: ["DB_2", "Study_YearAVG"],
+  studyRatio: ["DB_2", "Ratio_StudyLevel"],
+  onet: ["DB_4", "ONET_Score"],
+  nt: ["DB_4", "NT_AVGScore"],
+  rt: ["DB_4", "RT_Score"],
+  students: ["DB_1", "Student_Count"]
+};
 let data = {};
+let studyYearChart;
+let studyRatioChart;
 
 async function fetchAllPages(dbKey, sheetName) {
   return EDU15DataClient.fetchAllPages(GAS_WEB_APP_URL, dbKey, sheetName);
@@ -89,6 +103,8 @@ function render(filters) {
   renderEquity(rows);
   renderEfficiency(rows);
   renderRelevancy(rows);
+  renderStudyCharts(filters);
+  renderQuality(filters);
 }
 
 function renderReadiness(rows) {
@@ -162,6 +178,123 @@ function breakdown(rows, field, metric) {
     totals.set(key, (totals.get(key) || 0) + n(row[metric]));
   });
   return [...totals].sort((a, b) => b[1] - a[1]).slice(0, 5).map(([label, value]) => `<div class="flex justify-between gap-3 border-t border-slate-100 py-1.5"><span>${escapeHtml(label)}</span><strong>${value.toLocaleString("th-TH")}</strong></div>`).join("");
+}
+
+function renderStudyCharts(filters) {
+  const studyYearRows = data.studyYear.filter(row =>
+    !filters.province || String(row.PROV_NAME) === filters.province
+  );
+  const years = [...new Set(studyYearRows.map(row => String(row.YEAR)))].sort((a, b) => Number(a) - Number(b));
+  const provinces = [...new Set(studyYearRows.map(row => String(row.PROV_NAME)))].sort();
+  const colors = ["#0d9488", "#2563eb", "#f59e0b", "#e11d48", "#7c3aed"];
+
+  studyYearChart?.destroy();
+  studyYearChart = new Chart(document.getElementById("studyYearChart"), {
+    type: "line",
+    data: {
+      labels: years,
+      datasets: provinces.map((province, index) => ({
+        label: province,
+        data: years.map(year => {
+          const row = studyYearRows.find(item =>
+            String(item.YEAR) === year && String(item.PROV_NAME) === province
+          );
+          return row ? n(row.STUDY_YEARAVG) : null;
+        }),
+        borderColor: colors[index % colors.length],
+        backgroundColor: colors[index % colors.length],
+        tension: .3,
+        spanGaps: true
+      }))
+    },
+    options: {
+      maintainAspectRatio: false,
+      plugins: { legend: { position: "bottom" } },
+      scales: { y: { beginAtZero: false, title: { display: true, text: "ปี" } } }
+    }
+  });
+  document.getElementById("studyYearSummary").textContent =
+    `แนวโน้ม ${years.length.toLocaleString("th-TH")} ปีข้อมูล · ${provinces.length.toLocaleString("th-TH")} จังหวัด`;
+
+  let ratioRows = data.studyRatio.filter(row => {
+    if (filters.year && String(row.YEAR) !== filters.year) return false;
+    if (filters.province && String(row.PROV_NAME) !== filters.province) return false;
+    return true;
+  });
+  const ratioTotals = new Map();
+  ratioRows.forEach(row => {
+    const level = String(row.EDU_LEVEL || "ไม่ระบุ");
+    const values = ratioTotals.get(level) || [];
+    values.push(n(row.RATIO_STUDY));
+    ratioTotals.set(level, values);
+  });
+  const ratioEntries = [...ratioTotals].map(([level, values]) => [
+    level,
+    values.reduce((sum, value) => sum + value, 0) / values.length
+  ]).sort((a, b) => b[1] - a[1]);
+
+  studyRatioChart?.destroy();
+  studyRatioChart = new Chart(document.getElementById("studyRatioChart"), {
+    type: "bar",
+    data: {
+      labels: ratioEntries.map(([level]) => level),
+      datasets: [{
+        label: "ร้อยละ",
+        data: ratioEntries.map(([, value]) => value),
+        backgroundColor: "#38bdf8",
+        borderRadius: 6
+      }]
+    },
+    options: {
+      indexAxis: "y",
+      maintainAspectRatio: false,
+      plugins: { legend: { display: false } },
+      scales: { x: { beginAtZero: true, title: { display: true, text: "ร้อยละ" } } }
+    }
+  });
+  document.getElementById("studyRatioSummary").textContent =
+    `ค่าเฉลี่ยของ ${ratioRows.length.toLocaleString("th-TH")} รายการตามตัวกรอง`;
+}
+
+function renderQuality(filters) {
+  const scopeRows = rows => rows.filter(row => {
+    if (filters.year && String(row.YEAR) !== filters.year) return false;
+    const level = String(row.TEST_LEVEL || "");
+    if (filters.province) return level === filters.province;
+    return /ศธภ\.?\s*15/.test(level);
+  });
+
+  const rtRows = scopeRows(data.rt);
+  const ntRows = scopeRows(data.nt).filter(row => !/รวม/.test(String(row.TEST_SUBJECT || "")));
+  setAverageScore("quality-rt", rtRows);
+  setAverageScore("quality-nt", ntRows);
+
+  const onetRows = scopeRows(data.onet);
+  setPassRate(
+    "quality-onet-m3",
+    onetRows.filter(row => /มัธยมศึกษาปีที่\s*3|ม\.?\s*3/.test(String(row.EDU_LEVEL || "")))
+  );
+  setPassRate(
+    "quality-onet-m6",
+    onetRows.filter(row => /มัธยมศึกษาปีที่\s*6|ม\.?\s*6/.test(String(row.EDU_LEVEL || "")))
+  );
+}
+
+function setAverageScore(id, rows) {
+  const tested = rows.reduce((sum, row) => sum + n(row.STUDENT_TEST_COUNT), 0);
+  const weighted = rows.reduce((sum, row) => sum + n(row.AVG_SCORE) * n(row.STUDENT_TEST_COUNT), 0);
+  const average = tested ? weighted / tested : null;
+  document.getElementById(id).textContent = average === null ? "ยังไม่มีข้อมูล" : average.toFixed(2);
+  document.getElementById(`${id}-note`).textContent =
+    `${rows.length.toLocaleString("th-TH")} รายการ · ผู้เข้าสอบ ${tested.toLocaleString("th-TH")} คน`;
+}
+
+function setPassRate(id, rows) {
+  const tested = rows.reduce((sum, row) => sum + n(row.STUDENT_TEST_COUNT), 0);
+  const passed = rows.reduce((sum, row) => sum + n(row.STUDENT_MOREHALFTEST_COUNT), 0);
+  document.getElementById(id).textContent = tested ? `${(passed / tested * 100).toFixed(2)}%` : "ยังไม่มีข้อมูล";
+  document.getElementById(`${id}-note`).textContent =
+    `ผ่านเกณฑ์ ${passed.toLocaleString("th-TH")} / เข้าสอบ ${tested.toLocaleString("th-TH")} คน`;
 }
 
 function escapeHtml(value) {

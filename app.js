@@ -10,17 +10,17 @@ const SCHEMA_DICT = {
     // DB_1: สารสนเทศการศึกษา (โรงเรียน/นักเรียน/ครู) — ใช้งานจริงในหน้าอัปโหลดนี้แล้ว
     "DB_1": {
         "School_Location": [
-            "REGIONAL", "PROV_NAME", "DEPARTMENT_NAME", "EDU_AREA_NAME", "SCHOOL_CODE",
+            "PROV_NAME", "DEPARTMENT_NAME", "EDU_AREA_NAME", "SCHOOL_CODE",
             "SCHOOL_NAME", "SUB_DISTRICT", "DISTRICT", "COORDI"
         ],
         "Student_Count": [
-            "ACAD_YEAR", "PROV_NAME", "DEPARTMENT_NAME", "EDU_AREA_NAME",
-            "SCHOOL_CODE", "SCHOOL_NAME", "EDU_LEVEL", "SUB_DISTRICT", "DISTRICT",
+            "ACAD_YEAR", "DEPARTMENT_NAME", "SCHOOL_CODE", "SCHOOL_NAME",
+            "EDU_LEVEL", "PROV_NAME", "DISTRICT", "SUB_DISTRICT",
             "STUDENT_MALE", "STUDENT_FEMALE"
         ],
         "Teacher_Count": [
-            "ACAD_YEAR", "PROV_NAME", "DEPARTMENT_NAME", "EDU_AREA_NAME",
-            "SCHOOL_CODE", "SCHOOL_NAME", "SUB_DISTRICT", "DISTRICT",
+            "ACAD_YEAR", "DEPARTMENT_NAME", "SCHOOL_CODE", "SCHOOL_NAME",
+            "PROV_NAME", "DISTRICT", "SUB_DISTRICT",
             "TEACHER_MALE", "TEACHER_FEMALE"
         ]
     },
@@ -41,7 +41,13 @@ const SCHEMA_DICT = {
             "YEAR", "REGIONAL", "PROV_CLUSTER_NAME", "PROV_NAME", "DEPARTMENT_NAME", "EDU_LEVEL", "DROPOUT_CAUSE", "DROPOUT_COUNT"
         ],
         "Get_a_Jobs": [
-            "YEAR", "REGIONAL", "PROV_CLUSTER_NAME", "PROV_NAME", "DEPARTMENT_NAME", "EDU_LEVEL", "EMPLOY_STATUS", "STUDENT_COUNT"
+            "YEAR", "REGIONAL", "PROV_CLUSTER_NAME", "DEPARTMENT_NAME", "PROV_NAME", "EDU_LEVEL", "EMPLOY_STATUS", "STUDENT_COUNT"
+        ],
+        "Study_YearAVG": [
+            "YEAR", "PROV_NAME", "STUDY_YEARAVG"
+        ],
+        "Ratio_StudyLevel": [
+            "YEAR", "PROV_NAME", "EDU_LEVEL", "RATIO_STUDY"
         ]
     },
 
@@ -58,6 +64,39 @@ const SCHEMA_DICT = {
         ],
         "Vocational_Busi_MOU": [
             "YEAR", "PROV_NAME", "BUSINESS_TYPE", "BUSINESS_NAME", "COORDI"
+        ]
+    },
+
+    "DB_4": {
+        "ONET_Score": [
+            "YEAR", "EDU_LEVEL", "TEST_LEVEL", "TEST_SUBJECT",
+            "STUDENT_TEST_COUNT", "AVG_SCORE", "STUDENT_MOREHALFTEST_COUNT"
+        ],
+        "NT_AVGScore": [
+            "YEAR", "TEST_LEVEL", "TEST_SUBJECT", "STUDENT_TEST_COUNT", "AVG_SCORE"
+        ],
+        "NT_LevelScore": [
+            "YEAR", "TEST_LEVEL", "TEST_SUBJECT", "QUALITY_LEVEL",
+            "STUDENT_TEST_COUNT", "AVG_SCORE"
+        ],
+        "RT_Score": [
+            "YEAR", "TEST_LEVEL", "TEST_SUBJECT",
+            "STUDENT_TEST_COUNT", "AVG_SCORE", "STUDENT_MOREHALFTEST_COUNT"
+        ],
+        "VNET_Score": [
+            "YEAR", "TEST_LEVEL", "REGIONAL", "PROV_NAME", "TEST_SUBJECT",
+            "PART_NAME", "STUDENT_COUNT", "FUll_SCORE", "AVG_SCORE", "SD_SCORE",
+            "MED_SCORE", "MOD_SCORE", "MIN_SCORE", "MAX_SCORE"
+        ],
+        "BNET_Score": [
+            "YEAR", "TEST_LEVEL", "REGIONAL", "PROV_NAME", "TEST_SUBJECT",
+            "STANDARD_NAME", "STUDENT_CNT", "FULL_SCORE", "AVG_SCORE", "SD_SCORE",
+            "MED_SCORE", "MOD_SCORE", "MIN_SCORE", "MAX_SCORE"
+        ],
+        "NNET_Score": [
+            "YEAR", "PERIOD_NO", "TEST_LEVEL", "TEST_SUBJECT", "REGIONAL",
+            "PROV_NAME", "STUDENT_CNT", "FULL_SCORE", "AVG_SCORE", "SD_SCORE",
+            "MED_SCORE", "MOD_SCORE", "MIN_SCORE", "MAX_SCORE"
         ]
     }
 };

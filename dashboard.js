@@ -59,11 +59,14 @@ function populateFilters() {
     values.forEach(value => select.add(new Option(value, value)));
   };
   const unique = (field) => [...new Set(studentRows.map(row => String(row[field] ?? "").trim()).filter(Boolean))];
+  const uniqueLocations = (field) => [...new Set(locationRows.map(row => String(row[field] ?? "").trim()).filter(Boolean))];
   const years = unique("ACAD_YEAR").sort((a, b) => Number(b) - Number(a));
   fill("filterYear", years);
   fill("filterProvince", unique("PROV_NAME").sort());
   fill("filterAgency", unique("DEPARTMENT_NAME").sort());
-  fill("filterEduArea", unique("EDU_AREA_NAME").sort());
+  // Student_Count และ Teacher_Count ไม่มี EDU_AREA_NAME แล้ว
+  // จึงใช้เขตพื้นที่จาก School_Location และเชื่อมด้วย SCHOOL_CODE
+  fill("filterEduArea", uniqueLocations("EDU_AREA_NAME").sort());
   fill("filterEduLevel", unique("EDU_LEVEL").sort());
   if (years.length) document.getElementById("filterYear").value = years[0];
 }
@@ -79,11 +82,11 @@ function getFilters() {
   };
 }
 
-function matchesCommon(row, filters) {
+function matchesCommon(row, filters, allowedAreaCodes) {
   if (filters.year && String(row.ACAD_YEAR) !== filters.year) return false;
   if (filters.province && String(row.PROV_NAME) !== filters.province) return false;
   if (filters.agency && String(row.DEPARTMENT_NAME) !== filters.agency) return false;
-  if (filters.area && String(row.EDU_AREA_NAME) !== filters.area) return false;
+  if (filters.area && !allowedAreaCodes?.has(String(row.SCHOOL_CODE))) return false;
   if (filters.school && !String(row.SCHOOL_NAME || "").toLowerCase().includes(filters.school)) return false;
   return true;
 }
@@ -94,9 +97,16 @@ function numberValue(value) {
 }
 
 function renderDashboard(filters) {
-  const students = studentRows.filter(row => matchesCommon(row, filters) && (!filters.level || String(row.EDU_LEVEL) === filters.level));
+  const allowedAreaCodes = filters.area
+    ? new Set(
+        locationRows
+          .filter(row => String(row.EDU_AREA_NAME) === filters.area)
+          .map(row => String(row.SCHOOL_CODE))
+      )
+    : null;
+  const students = studentRows.filter(row => matchesCommon(row, filters, allowedAreaCodes) && (!filters.level || String(row.EDU_LEVEL) === filters.level));
   const studentSchoolCodes = new Set(students.map(row => String(row.SCHOOL_CODE)));
-  const teachers = teacherRows.filter(row => matchesCommon(row, filters) && (!filters.level || studentSchoolCodes.has(String(row.SCHOOL_CODE))));
+  const teachers = teacherRows.filter(row => matchesCommon(row, filters, allowedAreaCodes) && (!filters.level || studentSchoolCodes.has(String(row.SCHOOL_CODE))));
   const locations = locationRows.filter(row => {
     if (filters.province && String(row.PROV_NAME) !== filters.province) return false;
     if (filters.agency && String(row.DEPARTMENT_NAME) !== filters.agency) return false;

@@ -28,6 +28,14 @@ function setupSidebar() {
   if (!sidebar) return;
   sidebar.dataset.sidebar = "true";
 
+  const workforceLink = sidebar.querySelector('a[href="dashboard-workforce.html"]');
+  if (workforceLink && !sidebar.querySelector('a[href="dashboard-score.html"]')) {
+    const item = document.createElement("li");
+    const isActive = location.pathname.endsWith("/dashboard-score.html");
+    item.innerHTML = `<a href="dashboard-score.html" class="flex items-center px-3 py-2 rounded-md ${isActive ? "text-teal-400 bg-slate-800 border-l-2 border-teal-500" : "hover:bg-slate-800 hover:text-white"}"><i class="fas fa-square-poll-vertical w-7"></i>ผลการทดสอบทางการศึกษา</a>`;
+    workforceLink.closest("li")?.after(item);
+  }
+
   sidebar.querySelectorAll("a").forEach(link => {
     const icon = link.querySelector("i");
     if (!icon) return;

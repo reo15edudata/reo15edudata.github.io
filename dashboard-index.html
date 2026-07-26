@@ -6,6 +6,7 @@
     <title>ดัชนีการศึกษา - ศธภ.15</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.7/dist/chart.umd.min.js"></script>
 </head>
 <body data-dashboard="true" class="bg-slate-50 font-sans text-slate-800 h-screen flex overflow-hidden">
     <aside class="w-64 bg-[#1e293b] text-slate-300 flex flex-col h-full shrink-0">
@@ -39,6 +40,23 @@
 
             <div id="dataReadiness" class="mb-6 rounded-xl border border-blue-200 bg-blue-50 px-5 py-4 text-sm text-blue-800"></div>
 
+            <section class="grid grid-cols-1 xl:grid-cols-2 gap-6 mb-7">
+                <article class="bg-white rounded-xl border border-slate-200 shadow-sm p-5">
+                    <div class="mb-4">
+                        <h2 class="font-semibold text-slate-700">ปีการศึกษาเฉลี่ยของประชากรวัยแรงงาน</h2>
+                        <p id="studyYearSummary" class="text-xs text-slate-400 mt-1">ข้อมูลจาก Study_YearAVG</p>
+                    </div>
+                    <div class="h-72"><canvas id="studyYearChart"></canvas></div>
+                </article>
+                <article class="bg-white rounded-xl border border-slate-200 shadow-sm p-5">
+                    <div class="mb-4">
+                        <h2 class="font-semibold text-slate-700">สัดส่วนระดับการศึกษาของประชากร</h2>
+                        <p id="studyRatioSummary" class="text-xs text-slate-400 mt-1">ข้อมูลจาก Ratio_StudyLevel</p>
+                    </div>
+                    <div class="h-72"><canvas id="studyRatioChart"></canvas></div>
+                </article>
+            </section>
+
             <section class="indicator-section mb-7">
                 <div class="flex items-center gap-3 mb-4"><span class="w-9 h-9 rounded-lg bg-blue-100 text-blue-700 flex items-center justify-center font-bold">1</span><div><h2 class="font-semibold text-lg">การเข้าถึงโอกาสทางการศึกษา</h2><p class="text-xs text-slate-400">Access</p></div></div>
                 <div class="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
@@ -63,10 +81,10 @@
                 <div class="flex items-center gap-3 mb-4"><span class="w-9 h-9 rounded-lg bg-violet-100 text-violet-700 flex items-center justify-center font-bold">3</span><div><h2 class="font-semibold text-lg">คุณภาพการศึกษา</h2><p class="text-xs text-slate-400">Quality</p></div></div>
                 <div class="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
                     <article class="indicator-card pending"><h3>พัฒนาการสมวัยของเด็กปฐมวัย 0–5 ปี</h3><strong>รอข้อมูล</strong><p>เตรียมพื้นที่สำหรับชุดข้อมูลพัฒนาการเด็ก</p></article>
-                    <article class="indicator-card pending"><h3>คะแนนเฉลี่ย RT ชั้น ป.1</h3><strong>รอข้อมูล</strong><p>เตรียมพื้นที่สำหรับผล Reading Test</p></article>
-                    <article class="indicator-card pending"><h3>คะแนนเฉลี่ย NT ชั้น ป.3</h3><strong>รอข้อมูล</strong><p>คณิตศาสตร์และภาษาไทย</p></article>
-                    <article class="indicator-card pending"><h3>ผู้เรียน ม.3 ที่ O-NET ผ่าน 50%</h3><strong>รอข้อมูล</strong><p>เตรียมพื้นที่แยกรายวิชา</p></article>
-                    <article class="indicator-card pending"><h3>ผู้เรียน ม.6 ที่ O-NET ผ่าน 50%</h3><strong>รอข้อมูล</strong><p>เตรียมพื้นที่แยกรายวิชา</p></article>
+                    <article class="indicator-card"><h3>คะแนนเฉลี่ย RT ชั้น ป.1</h3><strong id="quality-rt">—</strong><p id="quality-rt-note"></p></article>
+                    <article class="indicator-card"><h3>คะแนนเฉลี่ย NT ชั้น ป.3</h3><strong id="quality-nt">—</strong><p id="quality-nt-note"></p></article>
+                    <article class="indicator-card"><h3>ผู้เรียน ม.3 ที่ O-NET ผ่าน 50%</h3><strong id="quality-onet-m3">—</strong><p id="quality-onet-m3-note"></p></article>
+                    <article class="indicator-card"><h3>ผู้เรียน ม.6 ที่ O-NET ผ่าน 50%</h3><strong id="quality-onet-m6">—</strong><p id="quality-onet-m6-note"></p></article>
                 </div>
             </section>
 

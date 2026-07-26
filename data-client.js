@@ -2,6 +2,7 @@ const EDU15DataClient = (() => {
   const DB_NAME = "edu15-dashboard-cache";
   const STORE_NAME = "datasets";
   const CACHE_TTL = 5 * 60 * 1000;
+  const CACHE_VERSION = "schema-2026-07-26";
 
   function openDatabase() {
     return new Promise((resolve, reject) => {
@@ -40,7 +41,7 @@ const EDU15DataClient = (() => {
   }
 
   async function fetchAllPages(baseUrl, dbKey, sheetName) {
-    const key = `${dbKey}|${sheetName}`;
+    const key = `${CACHE_VERSION}|${dbKey}|${sheetName}`;
     try {
       const cachedRows = await readCache(key);
       if (cachedRows) {
