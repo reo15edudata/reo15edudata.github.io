@@ -1,104 +1,171 @@
 <!DOCTYPE html>
 <html lang="th">
-
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>ระบบอัปโหลดข้อมูล - ศธภ.15</title>
-    <!-- ========================================== -->
-    <!-- ส่วนที่ 1: นำเข้า Firebase และเช็คสิทธิ์ (ยามเฝ้าประตู) -->
-    <!-- ========================================== -->
+    <title>Admin Console - ระบบสารสนเทศทางการศึกษา ศธภ.15</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
     <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
     <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-auth.js"></script>
-
-    <script>
-        const firebaseConfig = {
-            apiKey: "AIzaSyA7nJ6pBdnECqseBnCi49YRbUbLtcE5dx4",
-            authDomain: "edudata-reo15.firebaseapp.com",
-            projectId: "edudata-reo15",
-            storageBucket: "edudata-reo15.firebasestorage.app",
-            messagingSenderId: "297919410636",
-            appId: "1:297919410636:web:e1bccc1885ee7e68766d69"
-        };
-
-        if (!firebase.apps.length) {
-            firebase.initializeApp(firebaseConfig);
-        }
-        firebase.auth().onAuthStateChanged((user) => {
-            if (!user) {
-                window.location.replace("login.html");
-            }
-        });
-
-    </script>
-
-    <link rel="stylesheet" href="style.css">
-
-    <!-- ดึง SheetJS ผ่าน cdnjs (เสถียรและโหลดไว) -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
 </head>
+<body class="bg-slate-50 font-sans text-slate-800 h-screen flex overflow-hidden">
+    <aside class="w-64 bg-[#1e293b] text-slate-300 flex flex-col h-full shrink-0">
+        <div class="h-16 flex items-center px-4 border-b border-slate-700/50">
+            <div class="bg-teal-500 text-white w-8 h-8 rounded flex items-center justify-center mr-3">
+                <i class="fa-solid fa-graduation-cap"></i>
+            </div>
+            <span class="text-white font-semibold text-lg">ศธภ.15</span>
+        </div>
 
-<body>
-    <!-- ========================================== -->
-    <!-- ส่วนที่ 2: แถบเมนูด้านบน และ ปุ่มออกจากระบบ -->
-    <!-- ========================================== -->
-    <div
-        style="background-color: #1E3A8A; padding: 10px 20px; display: flex; justify-content: space-between; align-items: center; color: white;">
-        <div style="font-weight: bold;">ส่วนของเจ้าหน้าที่ (Admin)</div>
-        <button onclick="firebase.auth().signOut()"
-            style="background-color: #EF4444; color: white; border: none; padding: 8px 16px; border-radius: 4px; cursor: pointer; font-weight: bold;">
-            🚪 ออกจากระบบ
-        </button>
-    </div>
+        <div class="flex-1 overflow-y-auto py-4 px-3">
+            <div class="text-xs font-semibold text-slate-500 mb-2 px-3 tracking-wider">DASHBOARDS</div>
+            <ul class="space-y-1 mb-6">
+                <li><a href="dashboard.html" class="flex items-center px-3 py-2 rounded-md hover:bg-slate-800 hover:text-white"><i class="fas fa-chart-pie w-7"></i>สารสนเทศการศึกษา</a></li>
+                <li><a href="dashboard-index.html" class="flex items-center px-3 py-2 rounded-md hover:bg-slate-800 hover:text-white"><i class="fas fa-chart-line w-7"></i>ดัชนีการศึกษา</a></li>
+                <li><a href="dashboard-workforce.html" class="flex items-center px-3 py-2 rounded-md hover:bg-slate-800 hover:text-white"><i class="fas fa-users-gear w-7"></i>ความต้องการกำลังคน</a></li>
+            </ul>
 
-    <!-- ========================================== -->
-    <!-- ส่วนที่ 3: โค้ดหน้าอัปโหลดเดิมของคุณ (วางต่อตรงนี้ได้เลย) -->
-    <!-- ========================================== -->
-    <div style="padding: 20px;">
+            <div class="text-xs font-semibold text-slate-500 mb-2 px-3 tracking-wider">ADMIN CONSOLE</div>
+            <ul class="space-y-1">
+                <li><button type="button" data-admin-view="overview" class="admin-nav w-full flex items-center px-3 py-2 rounded-md bg-slate-800 text-teal-400 border-l-2 border-teal-500"><i class="fas fa-gauge-high w-7"></i>ภาพรวมระบบ</button></li>
+                <li><button type="button" data-admin-view="upload" class="admin-nav w-full flex items-center px-3 py-2 rounded-md hover:bg-slate-800 hover:text-white"><i class="fas fa-cloud-arrow-up w-7"></i>อัปโหลดข้อมูล</button></li>
+                <li><button type="button" data-admin-view="account" class="admin-nav w-full flex items-center px-3 py-2 rounded-md hover:bg-slate-800 hover:text-white"><i class="fas fa-user-shield w-7"></i>จัดการบัญชี</button></li>
+            </ul>
+        </div>
+    </aside>
 
-        <div class="upload-container">
-            <h2>อัปโหลดข้อมูลสารสนเทศ ศธภ.15</h2>
+    <div class="flex-1 flex flex-col h-full overflow-hidden">
+        <header class="h-16 bg-white border-b border-slate-200 flex items-center justify-between px-6 shrink-0">
+            <div class="flex items-center">
+                <button type="button" class="mr-4 text-slate-500 hover:text-slate-800" aria-label="ย่อหรือขยายเมนู"><i class="fas fa-bars"></i></button>
+                <div>
+                    <h1 class="font-semibold text-slate-800">Admin Console</h1>
+                    <p class="text-xs text-slate-400">ระบบจัดการข้อมูลสารสนเทศทางการศึกษา ศธภ.15</p>
+                </div>
+            </div>
+            <div class="flex items-center space-x-4"></div>
+        </header>
 
-            <label for="dataType">เลือกประเภทข้อมูลที่ต้องการอัปโหลด:</label>
-            <select id="dataType">
-                <option value="">-- กรุณาเลือกประเภทข้อมูล --</option>
-
-                <optgroup label="1. สารสนเทศการศึกษา (DB_1)">
-                    <option value="DB_1|School_Location">พิกัดสถานศึกษา</option>
-                    <option value="DB_1|Student_Count">จำนวนนักเรียน</option>
-                    <option value="DB_1|Teacher_Count">จำนวนครู</option>
-                </optgroup>
-
-                <optgroup label="2. ดัชนีการศึกษา (DB_2)">
-                    <option value="DB_2|Population">จำนวนประชากร</option>
-                    <option value="DB_2|Special_Needs">ผู้เรียนที่มีความต้องการพิเศษ</option>
-                    <option value="DB_2|Out_of_School">เด็กนอกระบบการศึกษา</option>
-                    <option value="DB_2|Dropout">ผู้เรียนออกกลางคัน</option>
-                    <option value="DB_2|Get_a_Jobs">ผู้เรียนมีงานทำ</option>
-                </optgroup>
-
-                <optgroup label="3. ความต้องการกำลังคน (DB_3)">
-                    <option value="DB_3|Job_Vacancy_Career">ตำแหน่งงานว่างตามอาชีพ</option>
-                    <option value="DB_3|Job_Vacancy_Industry">ตำแหน่งงานว่างตามอุตสาหกรรม</option>
-                    <option value="DB_3|Job_Vacancy_EduLevel">ตำแหน่งงานว่างตามระดับการศึกษา</option>
-                    <option value="DB_3|Vocational_Busi_MOU">ความร่วมมือสถานศึกษา–สถานประกอบการ</option>
-                </optgroup>
-            </select>
-
-            <div class="file-upload-box">
-                <input type="file" id="excelFile" accept=".xlsx, .xls">
+        <main class="flex-1 overflow-y-auto p-4 md:p-6">
+            <div id="adminLoading" class="mb-5 rounded-lg border border-blue-200 bg-blue-50 px-4 py-3 text-sm text-blue-700">
+                <i class="fas fa-spinner fa-spin mr-2"></i>กำลังตรวจสอบสิทธิ์บัญชี…
             </div>
 
-            <button id="uploadBtn">ตรวจสอบและอัปโหลด</button>
+            <section data-admin-panel="overview">
+                <div class="mb-6">
+                    <h2 class="text-xl font-semibold text-slate-800">ภาพรวมระบบ</h2>
+                    <p class="text-sm text-slate-500 mt-1">เครื่องมือสำหรับเจ้าหน้าที่ผู้รับผิดชอบข้อมูล</p>
+                </div>
+                <div class="grid grid-cols-1 md:grid-cols-3 gap-5">
+                    <button type="button" data-open-view="upload" class="text-left bg-white rounded-xl border border-slate-200 shadow-sm p-5 hover:border-teal-400 hover:shadow-md transition">
+                        <div class="w-11 h-11 rounded-lg bg-teal-50 text-teal-600 flex items-center justify-center mb-4"><i class="fas fa-file-arrow-up text-xl"></i></div>
+                        <h3 class="font-semibold text-slate-800">อัปโหลดข้อมูล</h3>
+                        <p class="text-sm text-slate-500 mt-1">ตรวจ schema และอัปเดต Google Sheet สูงสุด 50,000 แถว</p>
+                    </button>
+                    <button type="button" data-open-view="account" class="text-left bg-white rounded-xl border border-slate-200 shadow-sm p-5 hover:border-blue-400 hover:shadow-md transition">
+                        <div class="w-11 h-11 rounded-lg bg-blue-50 text-blue-600 flex items-center justify-center mb-4"><i class="fas fa-user-shield text-xl"></i></div>
+                        <h3 class="font-semibold text-slate-800">บัญชีผู้ใช้งาน</h3>
+                        <p class="text-sm text-slate-500 mt-1">ตรวจสถานะบัญชี เปลี่ยนรหัสผ่าน และออกจากระบบ</p>
+                    </button>
+                    <a href="dashboard.html" class="bg-white rounded-xl border border-slate-200 shadow-sm p-5 hover:border-violet-400 hover:shadow-md transition">
+                        <div class="w-11 h-11 rounded-lg bg-violet-50 text-violet-600 flex items-center justify-center mb-4"><i class="fas fa-chart-column text-xl"></i></div>
+                        <h3 class="font-semibold text-slate-800">ดู Dashboard</h3>
+                        <p class="text-sm text-slate-500 mt-1">กลับไปตรวจผลข้อมูลที่เผยแพร่สำหรับผู้ใช้งานทั่วไป</p>
+                    </a>
+                </div>
+            </section>
 
-            <div id="statusMsg" class="status-msg"></div>
+            <section data-admin-panel="upload" hidden>
+                <div class="mb-6">
+                    <h2 class="text-xl font-semibold text-slate-800">อัปโหลดข้อมูล</h2>
+                    <p class="text-sm text-slate-500 mt-1">เลือกประเภทข้อมูลและไฟล์ Excel ที่มีหัวตารางตรงกับ template</p>
+                </div>
+                <div class="max-w-3xl bg-white rounded-xl border border-slate-200 shadow-sm">
+                    <div class="px-6 py-4 border-b border-slate-100 flex items-center justify-between">
+                        <h3 class="font-semibold text-slate-700"><i class="fas fa-file-excel text-emerald-600 mr-2"></i>นำเข้าข้อมูลจาก Excel</h3>
+                        <span class="text-xs bg-amber-50 text-amber-700 px-2.5 py-1 rounded-full">สูงสุด 50,000 แถว</span>
+                    </div>
+                    <div class="p-6 space-y-5">
+                        <div>
+                            <label for="dataType" class="block text-sm font-medium text-slate-700 mb-2">ประเภทข้อมูล</label>
+                            <select id="dataType" class="w-full rounded-lg border border-slate-300 bg-slate-50 px-3 py-2.5 focus:border-teal-500 focus:ring-teal-500">
+                                <option value="">-- กรุณาเลือกประเภทข้อมูล --</option>
+                                <optgroup label="1. สารสนเทศการศึกษา (DB_1)">
+                                    <option value="DB_1|School_Location">พิกัดสถานศึกษา</option>
+                                    <option value="DB_1|Student_Count">จำนวนนักเรียน</option>
+                                    <option value="DB_1|Teacher_Count">จำนวนครู</option>
+                                </optgroup>
+                                <optgroup label="2. ดัชนีการศึกษา (DB_2)">
+                                    <option value="DB_2|Population">จำนวนประชากร</option>
+                                    <option value="DB_2|Special_Needs">ผู้เรียนที่มีความต้องการพิเศษ</option>
+                                    <option value="DB_2|Out_of_School">เด็กนอกระบบการศึกษา</option>
+                                    <option value="DB_2|Dropout">ผู้เรียนออกกลางคัน</option>
+                                    <option value="DB_2|Get_a_Jobs">ผู้เรียนมีงานทำ</option>
+                                </optgroup>
+                                <optgroup label="3. ความต้องการกำลังคน (DB_3)">
+                                    <option value="DB_3|Job_Vacancy_Career">ตำแหน่งงานว่างตามอาชีพ</option>
+                                    <option value="DB_3|Job_Vacancy_Industry">ตำแหน่งงานว่างตามอุตสาหกรรม</option>
+                                    <option value="DB_3|Job_Vacancy_EduLevel">ตำแหน่งงานว่างตามระดับการศึกษา</option>
+                                    <option value="DB_3|Vocational_Busi_MOU">ความร่วมมือสถานศึกษา–สถานประกอบการ</option>
+                                </optgroup>
+                            </select>
+                            <div class="mt-3 flex flex-col sm:flex-row gap-2 sm:items-center sm:justify-between">
+                                <p class="text-xs text-slate-500"><i class="fas fa-circle-info mr-1 text-blue-500"></i>ดาวน์โหลด template แล้วกรอกข้อมูลโดยห้ามเปลี่ยนชื่อหรือลำดับคอลัมน์</p>
+                                <button id="downloadTemplateBtn" type="button" class="shrink-0 rounded-lg border border-emerald-200 bg-emerald-50 px-3 py-2 text-sm font-medium text-emerald-700 hover:bg-emerald-100">
+                                    <i class="fas fa-file-arrow-down mr-2"></i>ดาวน์โหลด Excel Template
+                                </button>
+                            </div>
+                        </div>
+                        <div>
+                            <label for="excelFile" class="block text-sm font-medium text-slate-700 mb-2">ไฟล์ Excel</label>
+                            <label class="flex flex-col items-center justify-center min-h-36 rounded-xl border-2 border-dashed border-slate-300 bg-slate-50 hover:border-teal-400 cursor-pointer transition">
+                                <i class="fas fa-cloud-arrow-up text-3xl text-slate-400 mb-2"></i>
+                                <span class="text-sm font-medium text-slate-600">เลือกไฟล์ .xlsx หรือ .xls</span>
+                                <span id="selectedFileName" class="text-xs text-slate-400 mt-1">ยังไม่ได้เลือกไฟล์</span>
+                                <input type="file" id="excelFile" accept=".xlsx,.xls" class="sr-only">
+                            </label>
+                        </div>
+                        <button id="uploadBtn" type="button" class="w-full rounded-lg bg-teal-600 hover:bg-teal-700 text-white font-medium py-3 transition disabled:opacity-50">
+                            <i class="fas fa-shield-check mr-2"></i>ตรวจสอบและอัปโหลด
+                        </button>
+                        <div id="statusMsg" class="status-msg rounded-lg text-sm" aria-live="polite"></div>
+                    </div>
+                </div>
+            </section>
 
-        </div>
+            <section data-admin-panel="account" hidden>
+                <div class="mb-6">
+                    <h2 class="text-xl font-semibold text-slate-800">จัดการบัญชี</h2>
+                    <p class="text-sm text-slate-500 mt-1">จัดการบัญชีที่กำลังเข้าสู่ระบบ</p>
+                </div>
+                <div class="max-w-3xl bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden">
+                    <div class="p-6 flex items-center gap-4 border-b border-slate-100">
+                        <div class="w-14 h-14 rounded-full bg-teal-100 text-teal-700 flex items-center justify-center text-xl"><i class="fas fa-user"></i></div>
+                        <div>
+                            <p id="accountEmail" class="font-semibold text-slate-800">กำลังโหลด…</p>
+                            <p id="accountVerification" class="text-sm text-slate-500"></p>
+                        </div>
+                    </div>
+                    <div class="p-6 grid grid-cols-1 sm:grid-cols-2 gap-4">
+                        <button id="resetPasswordBtn" type="button" class="rounded-lg border border-slate-300 px-4 py-3 text-left hover:bg-slate-50">
+                            <i class="fas fa-key text-blue-500 mr-2"></i><span class="font-medium">ส่งอีเมลเปลี่ยนรหัสผ่าน</span>
+                        </button>
+                        <button id="accountSignOutBtn" type="button" class="rounded-lg border border-rose-200 bg-rose-50 text-rose-700 px-4 py-3 text-left hover:bg-rose-100">
+                            <i class="fas fa-right-from-bracket mr-2"></i><span class="font-medium">ออกจากระบบ</span>
+                        </button>
+                    </div>
+                    <div id="accountMessage" class="mx-6 mb-6 text-sm" aria-live="polite"></div>
+                </div>
+                <p class="max-w-3xl mt-4 text-xs text-slate-500">การเพิ่ม ลบ หรือระงับบัญชีเจ้าหน้าที่ ให้ดำเนินการผ่าน Firebase Console และอัปเดต ALLOWED_EDITOR_EMAILS ใน Apps Script</p>
+            </section>
+        </main>
     </div>
 
-
-    <!-- เรียกใช้ app.js ไว้บรรทัดสุดท้ายก่อนปิด body เพื่อให้โหลด SheetJS เสร็จก่อนเสมอ -->
+    <script src="site.js"></script>
+    <script src="data-client.js"></script>
+    <script src="admin.js"></script>
     <script src="app.js"></script>
 </body>
-
 </html>

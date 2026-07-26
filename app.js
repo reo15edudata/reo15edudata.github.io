@@ -62,6 +62,9 @@ const SCHEMA_DICT = {
     }
 };
 
+// เปิดให้ Admin Console ใช้ schema เดียวกันสำหรับสร้างไฟล์ Excel template
+window.EDU15_SCHEMAS = SCHEMA_DICT;
+
 // 3. ฟังก์ชันหลักเมื่อกดปุ่ม
 document.getElementById('uploadBtn').addEventListener('click', async () => {
     const dataType = document.getElementById('dataType').value;
@@ -156,6 +159,7 @@ document.getElementById('uploadBtn').addEventListener('click', async () => {
             const result = await response.json();
 
             if (result.success) {
+                window.EDU15DataClient?.clear();
                 showStatus(`✅ สำเร็จ! ${result.message}`, "success");
                 fileInput.value = "";
             } else {

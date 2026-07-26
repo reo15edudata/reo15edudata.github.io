@@ -1,192 +1,78 @@
 <!DOCTYPE html>
 <html lang="th">
-
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Dashboard ข้อมูลความต้องการกำลังคน - ศธภ.15</title>
-
-    <!-- ========================================== -->
-    <!-- ส่วนที่ยืนยันตัวตน (Firebase Auth Guard) -->
-    <!-- เหมือนกับ index.html: ถ้ายังไม่ login จะเด้งไปหน้า login.html ทันที -->
-    <!-- ========================================== -->
-
-    <!-- นำเข้า Tailwind CSS และ FontAwesome -->
+    <title>ความต้องการกำลังคน - ศธภ.15</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
-
-    <style>
-        .sidebar-scroll::-webkit-scrollbar {
-            width: 4px;
-        }
-
-        .sidebar-scroll::-webkit-scrollbar-track {
-            background: transparent;
-        }
-
-        .sidebar-scroll::-webkit-scrollbar-thumb {
-            background: #475569;
-            border-radius: 4px;
-        }
-    </style>
+    <link href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" rel="stylesheet">
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.7/dist/chart.umd.min.js"></script>
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
 </head>
-
-<body class="bg-slate-50 font-sans text-slate-800 h-screen flex overflow-hidden">
-
-    <!-- ========================================== -->
-    <!-- แถบเมนูด้านซ้าย (Sidebar) -->
-    <!-- ========================================== -->
-    <aside class="w-64 bg-[#1e293b] text-slate-300 flex flex-col h-full transition-all shrink-0">
-        <div class="h-16 flex items-center px-4 bg-[#1e293b] border-b border-slate-700/50">
-            <div class="bg-teal-500 text-white w-8 h-8 rounded flex items-center justify-center font-bold mr-3">
-                <i class="fa-solid fa-graduation-cap"></i>
-            </div>
-            <span class="text-white font-semibold text-lg tracking-wide">ศธภ.15</span>
-        </div>
-
-        <div class="flex-1 overflow-y-auto sidebar-scroll py-4 px-3">
+<body data-dashboard="true" class="bg-slate-50 font-sans text-slate-800 h-screen flex overflow-hidden">
+    <aside class="w-64 bg-[#1e293b] text-slate-300 flex flex-col h-full shrink-0">
+        <div class="h-16 flex items-center px-4 border-b border-slate-700/50"><div class="bg-teal-500 text-white w-8 h-8 rounded flex items-center justify-center mr-3"><i class="fa-solid fa-graduation-cap"></i></div><span class="text-white font-semibold text-lg">ศธภ.15</span></div>
+        <div class="flex-1 overflow-y-auto py-4 px-3">
             <div class="text-xs font-semibold text-slate-500 mb-2 px-3 tracking-wider">DASHBOARDS</div>
             <ul class="space-y-1 mb-6">
-                <li>
-                    <a href="dashboard.html"
-                        class="flex items-center justify-between px-3 py-2 text-slate-400 hover:text-white rounded-md transition-colors">
-                        <div class="flex items-center"><i class="fas fa-chart-pie w-6"></i> สารสนเทศการศึกษา</div>
-                    </a>
-                </li>
-                <li>
-                    <a href="dashboard-index.html"
-                        class="flex items-center justify-between px-3 py-2 text-slate-400 hover:text-white rounded-md transition-colors">
-                        <div class="flex items-center"><i class="fas fa-chart-line w-6"></i> ข้อมูลดัชนีการศึกษา</div>
-                    </a>
-                </li>
-                <li>
-                    <a href="dashboard-workforce.html"
-                        class="flex items-center justify-between px-3 py-2 text-teal-400 bg-slate-800 rounded-md border-l-2 border-teal-500">
-                        <div class="flex items-center"><i class="fas fa-users-gear w-6"></i> ความต้องการกำลังคน</div>
-                    </a>
-                </li>
+                <li><a href="dashboard.html" class="flex items-center px-3 py-2 rounded-md hover:bg-slate-800 hover:text-white"><i class="fas fa-chart-pie w-7"></i>สารสนเทศการศึกษา</a></li>
+                <li><a href="dashboard-index.html" class="flex items-center px-3 py-2 rounded-md hover:bg-slate-800 hover:text-white"><i class="fas fa-chart-line w-7"></i>ดัชนีการศึกษา</a></li>
+                <li><a href="dashboard-workforce.html" class="flex items-center px-3 py-2 text-teal-400 bg-slate-800 rounded-md border-l-2 border-teal-500"><i class="fas fa-users-gear w-7"></i>ความต้องการกำลังคน</a></li>
             </ul>
-
-            <div class="text-xs font-semibold text-slate-500 mb-2 px-3 tracking-wider mt-4">MANAGEMENT</div>
-            <ul class="space-y-1">
-                <li>
-                    <a href="admin.html"
-                        class="flex items-center justify-between px-3 py-2 text-slate-400 hover:text-white rounded-md transition-colors">
-                        <div class="flex items-center"><i class="fas fa-cloud-arrow-up w-6"></i> อัปโหลดข้อมูล</div>
-                    </a>
-                </li>
-            </ul>
+            <div class="text-xs font-semibold text-slate-500 mb-2 px-3 tracking-wider">MANAGEMENT</div>
+            <ul><li><a href="admin.html" class="flex items-center px-3 py-2 rounded-md hover:bg-slate-800 hover:text-white"><i class="fas fa-user-gear w-7"></i>Admin Console</a></li></ul>
         </div>
     </aside>
 
-    <!-- ========================================== -->
-    <!-- พื้นที่เนื้อหาหลัก (Main Content) -->
-    <!-- ========================================== -->
     <div class="flex-1 flex flex-col h-full overflow-hidden">
-
-        <!-- แถบเมนูด้านบน (Top Navbar) -->
-        <header class="h-16 bg-white border-b border-slate-200 flex items-center justify-between px-6 shrink-0">
-            <div class="flex items-center text-slate-500">
-                <button class="mr-4 hover:text-slate-800"><i class="fas fa-bars"></i></button>
-                <h2 class="font-semibold text-slate-700 text-lg">ข้อมูลความต้องการกำลังคน</h2>
-            </div>
-
-            <div class="flex items-center space-x-4">
-                <a href="login.html"
-                    class="flex items-center text-teal-700 border border-teal-200 bg-teal-50 px-4 py-1.5 rounded-full text-sm font-medium hover:bg-teal-100 transition">
-                    <i class="fas fa-right-to-bracket mr-2"></i> สำหรับเจ้าหน้าที่
-                </a>
-            </div>
+        <header class="h-16 bg-white border-b border-slate-200 flex items-center justify-between px-4 md:px-6 shrink-0">
+            <div class="flex items-center"><button type="button" class="mr-4 text-slate-500" aria-label="ย่อหรือขยายเมนู"><i class="fas fa-bars"></i></button><div><h1 class="font-semibold">ความต้องการกำลังคน</h1><p class="text-xs text-slate-400 hidden sm:block">ตำแหน่งงานว่างและความร่วมมือกับสถานประกอบการ</p></div></div>
+            <div class="flex items-center space-x-4"><a href="login.html" class="flex items-center text-teal-700 border border-teal-200 bg-teal-50 px-4 py-1.5 rounded-full text-sm font-medium"><i class="fas fa-right-to-bracket mr-2"></i>สำหรับเจ้าหน้าที่</a></div>
         </header>
 
-        <!-- พื้นที่แสดงข้อมูล Dashboard -->
-        <main class="flex-1 overflow-y-auto p-6">
-            <div class="bg-white p-5 rounded-lg border border-slate-200 shadow-sm mb-6">
-                <div class="flex items-center mb-4 border-b border-slate-100 pb-3">
-                    <i class="fas fa-filter text-teal-500 mr-2"></i>
-                    <h3 class="font-semibold text-slate-700">ตัวกรองข้อมูล</h3>
-                </div>
-
-                <form id="filterForm" class="grid grid-cols-1 md:grid-cols-4 gap-4">
-                    <div>
-                        <label for="filterYear" class="block text-sm font-medium mb-1">ปีข้อมูล</label>
-                        <select id="filterYear" class="w-full bg-slate-50 border border-slate-300 rounded-md p-2">
-                            <option value="">ทุกปี</option>
-                        </select>
-                    </div>
-
-                    <div>
-                        <label for="filterMonth" class="block text-sm font-medium mb-1">เดือน</label>
-                        <select id="filterMonth" class="w-full bg-slate-50 border border-slate-300 rounded-md p-2">
-                            <option value="">ทุกเดือน</option>
-                        </select>
-                    </div>
-
-                    <div>
-                        <label for="filterProvince" class="block text-sm font-medium mb-1">จังหวัด</label>
-                        <select id="filterProvince" class="w-full bg-slate-50 border border-slate-300 rounded-md p-2">
-                            <option value="">ทุกจังหวัด</option>
-                        </select>
-                    </div>
-
-                    <div class="flex items-end gap-2">
-                        <button type="submit" class="bg-teal-600 hover:bg-teal-700 text-white px-4 py-2 rounded-md">
-                            แสดงผล
-                        </button>
-                        <button type="reset"
-                            class="bg-slate-200 hover:bg-slate-300 text-slate-700 px-4 py-2 rounded-md">
-                            ล้างตัวกรอง
-                        </button>
-                    </div>
+        <main class="flex-1 overflow-y-auto p-4 md:p-6">
+            <section class="bg-white p-5 rounded-xl border border-slate-200 shadow-sm mb-6">
+                <form id="filterForm" class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 items-end">
+                    <div><label class="block text-xs font-semibold text-slate-500 mb-1">ปีข้อมูล</label><select id="filterYear" class="w-full rounded-lg border border-slate-300 bg-slate-50 p-2.5"><option value="">ทุกปี</option></select></div>
+                    <div><label class="block text-xs font-semibold text-slate-500 mb-1">เดือน</label><select id="filterMonth" class="w-full rounded-lg border border-slate-300 bg-slate-50 p-2.5"><option value="">ทุกเดือน</option></select></div>
+                    <div><label class="block text-xs font-semibold text-slate-500 mb-1">จังหวัด</label><select id="filterProvince" class="w-full rounded-lg border border-slate-300 bg-slate-50 p-2.5"><option value="">ทุกจังหวัด</option></select></div>
+                    <div class="flex gap-2"><button type="reset" class="flex-1 bg-slate-200 rounded-lg py-2.5">ล้างค่า</button><button type="submit" class="flex-1 bg-teal-600 text-white rounded-lg py-2.5">แสดงผล</button></div>
                 </form>
-            </div>
+            </section>
 
-            <div class="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-4 mb-6">
-                <div class="bg-white p-5 rounded-lg border border-slate-200 shadow-sm">
-                    <p class="text-sm text-slate-500">ตำแหน่งงานว่างตามอาชีพ</p>
-                    <p id="stat-career" class="text-2xl font-bold text-slate-800">0</p>
-                </div>
+            <section class="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-5 mb-6">
+                <article class="bg-white p-5 rounded-xl border border-slate-200 shadow-sm border-b-4 border-b-blue-500"><p class="text-xs text-slate-500">งานว่างตามอาชีพ</p><p id="stat-career" class="text-3xl font-bold mt-2">0</p></article>
+                <article class="bg-white p-5 rounded-xl border border-slate-200 shadow-sm border-b-4 border-b-violet-500"><p class="text-xs text-slate-500">งานว่างตามอุตสาหกรรม</p><p id="stat-industry" class="text-3xl font-bold mt-2">0</p></article>
+                <article class="bg-white p-5 rounded-xl border border-slate-200 shadow-sm border-b-4 border-b-orange-500"><p class="text-xs text-slate-500">งานว่างตามระดับการศึกษา</p><p id="stat-edu-level" class="text-3xl font-bold mt-2">0</p></article>
+                <article class="bg-white p-5 rounded-xl border border-slate-200 shadow-sm border-b-4 border-b-teal-500"><p class="text-xs text-slate-500">สถานประกอบการที่ทำ MOU</p><p id="stat-mou" class="text-3xl font-bold mt-2">0</p></article>
+            </section>
 
-                <div class="bg-white p-5 rounded-lg border border-slate-200 shadow-sm">
-                    <p class="text-sm text-slate-500">ตำแหน่งงานว่างตามอุตสาหกรรม</p>
-                    <p id="stat-industry" class="text-2xl font-bold text-slate-800">0</p>
-                </div>
+            <section class="bg-white rounded-xl border border-slate-200 shadow-sm p-5 mb-6">
+                <div class="mb-4"><h2 class="font-semibold text-slate-700">แนวโน้มความต้องการกำลังคนรายเดือน</h2><p class="text-xs text-slate-400">ใช้จำนวนตำแหน่งงานว่างตามอาชีพ เพื่อหลีกเลี่ยงการนับซ้ำข้ามมุมมอง</p></div>
+                <div class="h-80"><canvas id="workforceTrendChart"></canvas></div>
+            </section>
 
-                <div class="bg-white p-5 rounded-lg border border-slate-200 shadow-sm">
-                    <p class="text-sm text-slate-500">ตำแหน่งงานว่างตามระดับการศึกษา</p>
-                    <p id="stat-edu-level" class="text-2xl font-bold text-slate-800">0</p>
-                </div>
+            <section class="grid grid-cols-1 xl:grid-cols-3 gap-6 mb-6">
+                <article class="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden"><div class="p-4 border-b"><h2 class="font-semibold">จำแนกตามอาชีพ</h2></div><div class="overflow-auto max-h-96"><table class="w-full text-sm"><thead class="bg-slate-50 sticky top-0"><tr><th class="p-3 text-left">ประเภทอาชีพ</th><th class="p-3 text-right">ตำแหน่ง</th></tr></thead><tbody id="careerTableBody"></tbody></table></div></article>
+                <article class="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden"><div class="p-4 border-b"><h2 class="font-semibold">จำแนกตามอุตสาหกรรม</h2></div><div class="overflow-auto max-h-96"><table class="w-full text-sm"><thead class="bg-slate-50 sticky top-0"><tr><th class="p-3 text-left">ประเภทอุตสาหกรรม</th><th class="p-3 text-right">ตำแหน่ง</th></tr></thead><tbody id="industryTableBody"></tbody></table></div></article>
+                <article class="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden"><div class="p-4 border-b"><h2 class="font-semibold">จำแนกตามระดับการศึกษา</h2></div><div class="overflow-auto max-h-96"><table class="w-full text-sm"><thead class="bg-slate-50 sticky top-0"><tr><th class="p-3 text-left">ระดับการศึกษา</th><th class="p-3 text-right">ตำแหน่ง</th></tr></thead><tbody id="eduLevelTableBody"></tbody></table></div></article>
+            </section>
 
-                <div class="bg-white p-5 rounded-lg border border-slate-200 shadow-sm">
-                    <p class="text-sm text-slate-500">จำนวนความร่วมมือสถานประกอบการ</p>
-                    <p id="stat-mou" class="text-2xl font-bold text-slate-800">0</p>
-                </div>
-            </div>
-
-            <div class="bg-white rounded-lg border border-slate-200 shadow-sm overflow-hidden">
-                <div class="p-5 border-b border-slate-100">
-                    <h3 class="font-semibold text-slate-700">สรุปข้อมูลรายจังหวัด</h3>
-                </div>
-
-                <div class="overflow-x-auto">
-                    <table class="min-w-full text-sm">
-                        <thead class="bg-slate-50 text-slate-600">
-                            <tr>
-                                <th class="px-4 py-3 text-left">จังหวัด</th>
-                                <th class="px-4 py-3 text-right">งานว่างตามอาชีพ</th>
-                                <th class="px-4 py-3 text-right">งานว่างตามอุตสาหกรรม</th>
-                                <th class="px-4 py-3 text-right">งานว่างตามระดับการศึกษา</th>
-                                <th class="px-4 py-3 text-right">MOU สถานประกอบการ</th>
-                            </tr>
-                        </thead>
-                        <tbody id="workforceTableBody"></tbody>
-                    </table>
-                </div>
-            </div>
+            <section class="grid grid-cols-1 xl:grid-cols-2 gap-6">
+                <article class="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden">
+                    <div class="p-5 border-b"><h2 class="font-semibold">สถานประกอบการที่ร่วมจัดการศึกษา</h2><p id="mouTableSummary" class="text-xs text-slate-400 mt-1"></p></div>
+                    <div class="overflow-auto max-h-[28rem]"><table class="w-full text-sm"><thead class="bg-slate-50 sticky top-0"><tr><th class="p-3 text-left">สถานประกอบการ</th><th class="p-3 text-left">ประเภท</th><th class="p-3 text-left">จังหวัด</th></tr></thead><tbody id="mouTableBody"></tbody></table></div>
+                </article>
+                <article class="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden"><div class="p-5 border-b"><h2 class="font-semibold">แผนที่สถานประกอบการ</h2><p id="businessMapSummary" class="text-xs text-slate-400 mt-1">พิกัดจาก Vocational_Busi_MOU.COORDI</p></div><div id="businessMap" class="h-[28rem]"></div></article>
+            </section>
         </main>
     </div>
 
+    <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-auth.js"></script>
+    <script src="site.js"></script>
+    <script src="data-client.js"></script>
     <script src="dashboard-workforce.js"></script>
 </body>
-
 </html>

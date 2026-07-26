@@ -1,160 +1,66 @@
-const GAS_WEB_APP_URL =
-  "https://script.google.com/macros/s/AKfycbxIaex-ZhKRkRFze1L8tyQF5UBQR4BQ2Is9L6nJMl9iGd9MTlg4ELJUqdzOZPO3w-OwDA/exec";
+const GAS_WEB_APP_URL = "https://script.google.com/macros/s/AKfycbxIaex-ZhKRkRFze1L8tyQF5UBQR4BQ2Is9L6nJMl9iGd9MTlg4ELJUqdzOZPO3w-OwDA/exec";
+const SHEETS = { career: "Job_Vacancy_Career", industry: "Job_Vacancy_Industry", eduLevel: "Job_Vacancy_EduLevel", mou: "Vocational_Busi_MOU" };
+const MONTH_NAMES = ["", "ม.ค.", "ก.พ.", "มี.ค.", "เม.ย.", "พ.ค.", "มิ.ย.", "ก.ค.", "ส.ค.", "ก.ย.", "ต.ค.", "พ.ย.", "ธ.ค."];
+let data = { career: [], industry: [], eduLevel: [], mou: [] };
+let trendChart;
+let businessMap;
+let businessLayer;
 
 async function fetchAllPages(dbKey, sheetName) {
-  const allRows = [];
-  let offset = 0;
-  const limit = 5000;
-
-  while (true) {
-    const url =
-      `${GAS_WEB_APP_URL}?dbKey=${encodeURIComponent(dbKey)}` +
-      `&sheetName=${encodeURIComponent(sheetName)}` +
-      `&limit=${limit}&offset=${offset}`;
-
-    const response = await fetch(url);
-    const result = await response.json();
-
-    if (!result.success) {
-      throw new Error(
-        `${sheetName}: ${result.message || "โหลดข้อมูลไม่สำเร็จ"}`
-      );
-    }
-
-    allRows.push(...(result.data || []));
-
-    if (!result.hasMore || result.data.length === 0) {
-      return allRows;
-    }
-
-    offset += result.data.length;
-  }
+  return EDU15DataClient.fetchAllPages(GAS_WEB_APP_URL, dbKey, sheetName);
 }
-
-const SHEETS = {
-  career: "Job_Vacancy_Career",
-  industry: "Job_Vacancy_Industry",
-  eduLevel: "Job_Vacancy_EduLevel",
-  mou: "Vocational_Busi_MOU"
-};
-
-let data = {
-  career: [],
-  industry: [],
-  eduLevel: [],
-  mou: []
-};
 
 window.addEventListener("DOMContentLoaded", initDashboard);
 
 async function initDashboard() {
   try {
-    const results = await Promise.all(
-      Object.entries(SHEETS).map(async ([key, sheetName]) => {
-        const rows = await fetchAllPages("DB_3", sheetName);
-        return [key, rows];
-      })
-    );
-
+    const results = await Promise.all(Object.entries(SHEETS).map(async ([key, sheet]) => [key, await fetchAllPages("DB_3", sheet)]));
     data = Object.fromEntries(results);
-
     populateFilters();
+    initMap();
     renderDashboard(getFilters());
-
-    document.getElementById("filterForm").addEventListener("submit", event => {
-      event.preventDefault();
-      renderDashboard(getFilters());
-    });
-
-    document.getElementById("filterForm").addEventListener("reset", () => {
-      setTimeout(() => renderDashboard(getFilters()), 0);
-    });
+    document.getElementById("filterForm").addEventListener("submit", event => { event.preventDefault(); renderDashboard(getFilters()); });
+    document.getElementById("filterForm").addEventListener("reset", () => setTimeout(() => renderDashboard(getFilters()), 0));
   } catch (error) {
     console.error(error);
-
-    document.getElementById("workforceTableBody").innerHTML = `
-      <tr>
-        <td colspan="5" class="px-4 py-8 text-center text-red-500">
-          โหลดข้อมูลไม่สำเร็จ: ${escapeHtml(error.message)}
-        </td>
-      </tr>`;
+    document.getElementById("careerTableBody").innerHTML = `<tr><td colspan="2" class="p-8 text-center text-rose-600">${escapeHtml(error.message)}</td></tr>`;
+  } finally {
+    window.hidePageLoader?.();
   }
 }
 
 function populateFilters() {
-  const allRows = Object.values(data).flat();
-
-  const years = uniqueValues(allRows, "YEAR")
-    .sort((a, b) => Number(b) - Number(a));
-
-  const months = uniqueValues(
-    [...data.career, ...data.industry, ...data.eduLevel],
-    "MONTH"
-  ).sort((a, b) => Number(a) - Number(b));
-
-  const provinces = uniqueValues(allRows, "PROV_NAME").sort();
-
-  fillSelect("filterYear", years);
-  fillSelect("filterMonth", months);
-  fillSelect("filterProvince", provinces);
-
-  if (years.length > 0) {
-    document.getElementById("filterYear").value = years[0];
-  }
+  const all = Object.values(data).flat();
+  const unique = field => [...new Set(all.map(row => String(row[field] ?? "").trim()).filter(Boolean))];
+  fillSelect("filterYear", unique("YEAR").sort((a, b) => Number(b) - Number(a)));
+  fillSelect("filterMonth", unique("MONTH").sort((a, b) => Number(a) - Number(b)), value => MONTH_NAMES[Number(value)] || value);
+  fillSelect("filterProvince", unique("PROV_NAME").sort());
 }
 
-function fillSelect(id, values) {
+function fillSelect(id, values, label = value => value) {
   const select = document.getElementById(id);
-  const firstOption = select.options[0];
-
+  const first = select.options[0];
   select.innerHTML = "";
-  select.appendChild(firstOption);
-
-  values.forEach(value => {
-    const option = document.createElement("option");
-    option.value = value;
-    option.textContent = value;
-    select.appendChild(option);
-  });
-}
-
-function uniqueValues(rows, field) {
-  return [...new Set(
-    rows
-      .map(row => String(row[field] ?? "").trim())
-      .filter(Boolean)
-  )];
+  select.append(first);
+  values.forEach(value => select.add(new Option(label(value), value)));
 }
 
 function getFilters() {
-  return {
-    year: document.getElementById("filterYear").value,
-    month: document.getElementById("filterMonth").value,
-    province: document.getElementById("filterProvince").value
-  };
+  return { year: document.getElementById("filterYear").value, month: document.getElementById("filterMonth").value, province: document.getElementById("filterProvince").value };
 }
 
-function filterRows(rows, filters) {
+function filterRows(rows, filters, applyMonth = true) {
   return rows.filter(row => {
-    if (filters.year && String(row.YEAR) !== String(filters.year)) return false;
-
-    // ข้อมูล MOU ไม่มี MONTH จึงยังแสดงตามปีและจังหวัด
-    if (filters.month && row.MONTH !== undefined &&
-      String(row.MONTH) !== String(filters.month)) {
-      return false;
-    }
-
+    if (filters.year && String(row.YEAR) !== filters.year) return false;
+    if (applyMonth && filters.month && String(row.MONTH) !== filters.month) return false;
     if (filters.province && String(row.PROV_NAME) !== filters.province) return false;
-
     return true;
   });
 }
 
-function sum(rows, field) {
-  return rows.reduce((total, row) => {
-    const value = Number(String(row[field] ?? 0).replace(/,/g, ""));
-    return total + (Number.isFinite(value) ? value : 0);
-  }, 0);
+function numberValue(value) {
+  const number = Number(String(value ?? 0).replace(/,/g, ""));
+  return Number.isFinite(number) ? number : 0;
 }
 
 function renderDashboard(filters) {
@@ -162,94 +68,94 @@ function renderDashboard(filters) {
     career: filterRows(data.career, filters),
     industry: filterRows(data.industry, filters),
     eduLevel: filterRows(data.eduLevel, filters),
-    mou: filterRows(data.mou, filters)
+    mou: filterRows(data.mou, filters, false)
   };
-
-  document.getElementById("stat-career").textContent =
-    formatNumber(sum(filtered.career, "VACANCY_COUNT"));
-
-  document.getElementById("stat-industry").textContent =
-    formatNumber(sum(filtered.industry, "VACANCY_COUNT"));
-
-  document.getElementById("stat-edu-level").textContent =
-    formatNumber(sum(filtered.eduLevel, "VACANCY_COUNT"));
-
-  document.getElementById("stat-mou").textContent =
-    formatNumber(filtered.mou.length);
-
-  renderProvinceTable(filtered);
+  setNumber("stat-career", sum(filtered.career, "VACANCY_COUNT"));
+  setNumber("stat-industry", sum(filtered.industry, "VACANCY_COUNT"));
+  setNumber("stat-edu-level", sum(filtered.eduLevel, "VACANCY_COUNT"));
+  setNumber("stat-mou", new Set(filtered.mou.map(row => `${row.PROV_NAME}|${row.BUSINESS_NAME}`)).size);
+  renderSummaryTable("careerTableBody", filtered.career, "CAREER_TYPE");
+  renderSummaryTable("industryTableBody", filtered.industry, "INDUSTRY_TYPE");
+  renderSummaryTable("eduLevelTableBody", filtered.eduLevel, "EDU_LEVEL");
+  renderTrend(filterRows(data.career, { ...filters, month: "" }));
+  renderMou(filtered.mou);
+  renderMap(filtered.mou);
 }
 
-function renderProvinceTable(filtered) {
-  const summary = {};
+function sum(rows, field) {
+  return rows.reduce((total, row) => total + numberValue(row[field]), 0);
+}
 
-  function ensureProvince(province) {
-    if (!summary[province]) {
-      summary[province] = {
-        career: 0,
-        industry: 0,
-        eduLevel: 0,
-        mou: 0
-      };
-    }
-  }
+function setNumber(id, value) {
+  document.getElementById(id).textContent = value.toLocaleString("th-TH");
+}
 
-  function addVacancies(rows, metric) {
-    rows.forEach(row => {
-      const province = String(row.PROV_NAME || "ไม่ระบุจังหวัด").trim();
-      const count = Number(String(row.VACANCY_COUNT ?? 0).replace(/,/g, "")) || 0;
-
-      ensureProvince(province);
-      summary[province][metric] += count;
-    });
-  }
-
-  addVacancies(filtered.career, "career");
-  addVacancies(filtered.industry, "industry");
-  addVacancies(filtered.eduLevel, "eduLevel");
-
-  filtered.mou.forEach(row => {
-    const province = String(row.PROV_NAME || "ไม่ระบุจังหวัด").trim();
-    ensureProvince(province);
-    summary[province].mou += 1;
+function renderSummaryTable(id, rows, field) {
+  const totals = new Map();
+  rows.forEach(row => {
+    const key = String(row[field] || "ไม่ระบุ");
+    totals.set(key, (totals.get(key) || 0) + numberValue(row.VACANCY_COUNT));
   });
-
-  const provinces = Object.keys(summary).sort();
-  const tbody = document.getElementById("workforceTableBody");
-
-  if (provinces.length === 0) {
-    tbody.innerHTML = `
-      <tr>
-        <td colspan="5" class="px-4 py-8 text-center text-slate-400">
-          ยังไม่มีข้อมูลตามเงื่อนไขที่เลือก
-        </td>
-      </tr>`;
-    return;
-  }
-
-  tbody.innerHTML = provinces.map(province => {
-    const row = summary[province];
-
-    return `
-      <tr class="border-b border-slate-100 hover:bg-slate-50">
-        <td class="px-4 py-3 font-medium">${escapeHtml(province)}</td>
-        <td class="px-4 py-3 text-right">${formatNumber(row.career)}</td>
-        <td class="px-4 py-3 text-right">${formatNumber(row.industry)}</td>
-        <td class="px-4 py-3 text-right">${formatNumber(row.eduLevel)}</td>
-        <td class="px-4 py-3 text-right">${formatNumber(row.mou)}</td>
-      </tr>`;
-  }).join("");
+  const sorted = [...totals].sort((a, b) => b[1] - a[1]);
+  document.getElementById(id).innerHTML = sorted.length
+    ? sorted.map(([label, value]) => `<tr class="border-t"><td class="p-3">${escapeHtml(label)}</td><td class="p-3 text-right font-medium">${value.toLocaleString("th-TH")}</td></tr>`).join("")
+    : '<tr><td colspan="2" class="p-8 text-center text-slate-400">ไม่พบข้อมูล</td></tr>';
 }
 
-function formatNumber(value) {
-  return Number(value || 0).toLocaleString("th-TH");
+function renderTrend(rows) {
+  const monthly = Array(12).fill(0);
+  rows.forEach(row => {
+    const month = Number(row.MONTH);
+    if (month >= 1 && month <= 12) monthly[month - 1] += numberValue(row.VACANCY_COUNT);
+  });
+  trendChart?.destroy();
+  trendChart = new Chart(document.getElementById("workforceTrendChart"), {
+    type: "line",
+    data: { labels: MONTH_NAMES.slice(1), datasets: [{ label: "ตำแหน่งงานว่าง", data: monthly, borderColor: "#0d9488", backgroundColor: "rgba(13,148,136,.12)", fill: true, tension: .35, pointRadius: 4 }] },
+    options: { maintainAspectRatio: false, plugins: { legend: { display: false } }, scales: { y: { beginAtZero: true } } }
+  });
+}
+
+function renderMou(rows) {
+  const sorted = [...rows].sort((a, b) => String(a.BUSINESS_NAME).localeCompare(String(b.BUSINESS_NAME), "th"));
+  document.getElementById("mouTableSummary").textContent = `พบ ${sorted.length.toLocaleString("th-TH")} รายการ`;
+  document.getElementById("mouTableBody").innerHTML = sorted.length
+    ? sorted.map(row => `<tr class="border-t"><td class="p-3 font-medium">${escapeHtml(row.BUSINESS_NAME || "ไม่ระบุ")}</td><td class="p-3">${escapeHtml(row.BUSINESS_TYPE || "-")}</td><td class="p-3">${escapeHtml(row.PROV_NAME || "-")}</td></tr>`).join("")
+    : '<tr><td colspan="3" class="p-8 text-center text-slate-400">ไม่พบข้อมูล</td></tr>';
+}
+
+function initMap() {
+  businessMap = L.map("businessMap", { preferCanvas: true }).setView([18.4, 99.0], 7);
+  L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", { maxZoom: 18, attribution: "&copy; OpenStreetMap contributors" }).addTo(businessMap);
+  businessLayer = L.layerGroup().addTo(businessMap);
+}
+
+function parseCoordinate(value) {
+  const values = String(value || "").match(/-?\d+(?:\.\d+)?/g)?.map(Number);
+  if (!values || values.length < 2) return null;
+  let [lat, lng] = values;
+  if (Math.abs(lat) > 90 && Math.abs(lng) <= 90) [lat, lng] = [lng, lat];
+  return Math.abs(lat) <= 90 && Math.abs(lng) <= 180 ? [lat, lng] : null;
+}
+
+function renderMap(rows) {
+  businessLayer.clearLayers();
+  const bounds = [];
+  let valid = 0;
+  rows.forEach(row => {
+    const coordinate = parseCoordinate(row.COORDI);
+    if (!coordinate) return;
+    valid++;
+    bounds.push(coordinate);
+    L.circleMarker(coordinate, { radius: 6, color: "#6d28d9", fillColor: "#8b5cf6", fillOpacity: .75, weight: 1 })
+      .bindPopup(`<strong>${escapeHtml(row.BUSINESS_NAME || "สถานประกอบการ")}</strong><br>${escapeHtml(row.BUSINESS_TYPE || "")}`)
+      .addTo(businessLayer);
+  });
+  document.getElementById("businessMapSummary").textContent = `แสดงพิกัดที่ถูกต้อง ${valid.toLocaleString("th-TH")} แห่ง`;
+  if (bounds.length) businessMap.fitBounds(bounds, { padding: [24, 24], maxZoom: 13 });
+  setTimeout(() => businessMap.invalidateSize(), 0);
 }
 
 function escapeHtml(value) {
-  return String(value)
-    .replace(/&/g, "&amp;")
-    .replace(/</g, "&lt;")
-    .replace(/>/g, "&gt;")
-    .replace(/"/g, "&quot;")
-    .replace(/'/g, "&#039;");
+  return String(value).replace(/[&<>'"]/g, character => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", "'": "&#039;", '"': "&quot;" })[character]);
 }

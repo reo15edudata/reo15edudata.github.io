@@ -1,198 +1,204 @@
-// ==========================================================================
-// dashboard.js — ดึงข้อมูลจริงจาก Google Apps Script มาแสดงในหน้า dashboard.html
-//
-// ⚠️ ข้อสมมติที่ใช้ในไฟล์นี้ (โปรดตรวจสอบกับ Apps Script จริงของคุณ):
-// 1. เรียก GAS_WEB_APP_URL แบบ GET ด้วย ?dbKey=...&sheetName=... แล้วได้ JSON กลับมาเป็น
-//      { success: true, data: [ { COLUMN_NAME: value, ... }, ... ] }
-//    โดยแต่ละ object ใน data คือ 1 แถวของชีต ใช้ชื่อคอลัมน์ตรงกับหัวตาราง (header)
-// 2. คอลัมน์ DEPARTMENT_NAME มีค่าตรงกับ 4 สังกัดในหัวตาราง คือ "สพฐ.", "สช.", "อาชีวศึกษา", "อปท."
-//    ถ้าข้อมูลจริงสะกด/ใช้คำต่างไปจากนี้ ต้องแก้ AGENCY_COLUMNS ด้านล่างให้ตรง
-// ถ้าอย่างใดอย่างหนึ่งไม่ตรงกับความเป็นจริง ให้ปรับส่วนที่เกี่ยวข้องตามนั้นครับ
-// ==========================================================================
-
-const GAS_WEB_APP_URL = "https://script.google.com/macros/s/AKfycbxIaex-ZhKRkRFze1L8tyQF5UBQR4BQ2Is9L6nJMl9iGd9MTlg4ELJUqdzOZPO3w-OwDA/exec"; // URL เดียวกับที่ใช้ใน app.js
-
-async function fetchAllPages(dbKey, sheetName) {
-    const allRows = [];
-    let offset = 0;
-    const limit = 5000;
-
-    while (true) {
-        const url =
-            `${GAS_WEB_APP_URL}?dbKey=${encodeURIComponent(dbKey)}` +
-            `&sheetName=${encodeURIComponent(sheetName)}` +
-            `&limit=${limit}&offset=${offset}`;
-
-        const response = await fetch(url);
-        const result = await response.json();
-
-        if (!result.success) {
-            throw new Error(
-                `${sheetName}: ${result.message || "โหลดข้อมูลไม่สำเร็จ"}`
-            );
-        }
-
-        allRows.push(...(result.data || []));
-
-        if (!result.hasMore || result.data.length === 0) {
-            return allRows;
-        }
-
-        offset += result.data.length;
-    }
-}
-
-// เก็บข้อมูลดิบทั้งหมดไว้ในหน่วยความจำ เพื่อกรอง/แสดงผลใหม่โดยไม่ต้อง fetch ซ้ำทุกครั้งที่เปลี่ยนตัวกรอง
+const GAS_WEB_APP_URL = "https://script.google.com/macros/s/AKfycbxIaex-ZhKRkRFze1L8tyQF5UBQR4BQ2Is9L6nJMl9iGd9MTlg4ELJUqdzOZPO3w-OwDA/exec";
+const PAGE_SIZE = 25;
 let studentRows = [];
 let teacherRows = [];
+let locationRows = [];
+let currentSchools = [];
+let currentPage = 1;
+let genderChart;
+let schoolMap;
+let mapLayer;
 
-// สังกัด 4 กลุ่มหลักที่ตรงกับคอลัมน์ในตาราง (ต้องตรงกับค่าจริงในคอลัมน์ DEPARTMENT_NAME)
-const AGENCY_COLUMNS = ["สพฐ.", "สช.", "อาชีวศึกษา", "อปท."];
+async function fetchAllPages(dbKey, sheetName) {
+  return EDU15DataClient.fetchAllPages(GAS_WEB_APP_URL, dbKey, sheetName);
+}
 
-window.addEventListener('DOMContentLoaded', initDashboard);
+window.addEventListener("DOMContentLoaded", initDashboard);
 
 async function initDashboard() {
-    try {
-        // ดึงข้อมูลนักเรียนและครูพร้อมกัน (คนละชีต ต้อง fetch แยก เพราะ schema ไม่ได้รวมเป็นชีตเดียว)
-        const [students, teachers] = await Promise.all([
-            fetchAllPages("DB_1", "Student_Count"),
-            fetchAllPages("DB_1", "Teacher_Count")
-        ]);
-
-        studentRows = students;
-        teacherRows = teachers;
-
-        populateFilterOptions();
-        renderDashboard(getCurrentFilters());
-
-        const form = document.getElementById('filterForm');
-        form.addEventListener('submit', (e) => {
-            e.preventDefault();
-            renderDashboard(getCurrentFilters());
-        });
-        form.addEventListener('reset', () => {
-            // รอให้ browser เคลียร์ค่า select ก่อน ค่อยเรนเดอร์ใหม่
-            setTimeout(() => renderDashboard(getCurrentFilters()), 0);
-        });
-
-    } catch (error) {
-        console.error(error);
-        document.getElementById('dataTableBody').innerHTML =
-            `<tr><td colspan="6" class="px-4 py-8 text-center text-red-500">❌ โหลดข้อมูลไม่สำเร็จ: ${error.message}</td></tr>`;
-    }
-}
-
-// สร้าง <option> ของ dropdown ทั้งหมดจากข้อมูลจริงที่โหลดมา (ไม่ hardcode ค่าคงที่)
-function populateFilterOptions() {
-    const years = uniqueValues(studentRows, 'ACAD_YEAR').sort((a, b) => b - a);
-    const provinces = uniqueValues(studentRows, 'PROV_NAME').sort();
-    const agencies = uniqueValues(studentRows, 'DEPARTMENT_NAME').sort();
-    const eduAreas = uniqueValues(studentRows, 'EDU_AREA_NAME').sort();
-    const eduLevels = uniqueValues(studentRows, 'EDU_LEVEL').sort();
-
-    fillSelect('filterYear', years, 'ปีการศึกษา ');
-    fillSelect('filterProvince', provinces);
-    fillSelect('filterAgency', agencies);
-    fillSelect('filterEduArea', eduAreas);
-    fillSelect('filterEduLevel', eduLevels);
-
-    // ตั้งค่า default ให้เลือกปีล่าสุดไว้ก่อน (เหมือนพฤติกรรมเดิม)
-    if (years.length > 0) {
-        document.getElementById('filterYear').value = years[0];
-    }
-}
-
-function fillSelect(id, values, labelPrefix = '') {
-    const select = document.getElementById(id);
-    const placeholder = select.options[0]; // เก็บตัวเลือกแรก ("ทั้งหมด") ไว้
-    select.innerHTML = '';
-    select.appendChild(placeholder);
-    values.forEach(v => {
-        const opt = document.createElement('option');
-        opt.value = v;
-        opt.textContent = labelPrefix + v;
-        select.appendChild(opt);
+  try {
+    [studentRows, teacherRows, locationRows] = await Promise.all([
+      fetchAllPages("DB_1", "Student_Count"),
+      fetchAllPages("DB_1", "Teacher_Count"),
+      fetchAllPages("DB_1", "School_Location")
+    ]);
+    populateFilters();
+    initMap();
+    renderDashboard(getFilters());
+    document.getElementById("filterForm").addEventListener("submit", event => {
+      event.preventDefault();
+      currentPage = 1;
+      renderDashboard(getFilters());
     });
+    document.getElementById("filterForm").addEventListener("reset", () => {
+      setTimeout(() => {
+        currentPage = 1;
+        renderDashboard(getFilters());
+      }, 0);
+    });
+    document.getElementById("prevPage").addEventListener("click", () => {
+      if (currentPage > 1) { currentPage--; renderSchoolTable(); }
+    });
+    document.getElementById("nextPage").addEventListener("click", () => {
+      if (currentPage * PAGE_SIZE < currentSchools.length) { currentPage++; renderSchoolTable(); }
+    });
+  } catch (error) {
+    console.error(error);
+    document.getElementById("dataTableBody").innerHTML = `<tr><td colspan="4" class="px-5 py-10 text-center text-rose-600">โหลดข้อมูลไม่สำเร็จ: ${escapeHtml(error.message)}</td></tr>`;
+  } finally {
+    window.hidePageLoader?.();
+  }
 }
 
-function uniqueValues(rows, field) {
-    return Array.from(new Set(rows.map(r => String(r[field] ?? '').trim()).filter(v => v !== '')));
+function populateFilters() {
+  const fill = (id, values) => {
+    const select = document.getElementById(id);
+    const first = select.options[0];
+    select.innerHTML = "";
+    select.append(first);
+    values.forEach(value => select.add(new Option(value, value)));
+  };
+  const unique = (field) => [...new Set(studentRows.map(row => String(row[field] ?? "").trim()).filter(Boolean))];
+  const years = unique("ACAD_YEAR").sort((a, b) => Number(b) - Number(a));
+  fill("filterYear", years);
+  fill("filterProvince", unique("PROV_NAME").sort());
+  fill("filterAgency", unique("DEPARTMENT_NAME").sort());
+  fill("filterEduArea", unique("EDU_AREA_NAME").sort());
+  fill("filterEduLevel", unique("EDU_LEVEL").sort());
+  if (years.length) document.getElementById("filterYear").value = years[0];
 }
 
-function getCurrentFilters() {
-    return {
-        year: document.getElementById('filterYear').value,
-        province: document.getElementById('filterProvince').value,
-        agency: document.getElementById('filterAgency').value,
-        eduArea: document.getElementById('filterEduArea').value,
-        eduLevel: document.getElementById('filterEduLevel').value,
-        schoolName: document.getElementById('filterSchoolName').value.trim().toLowerCase()
-    };
+function getFilters() {
+  return {
+    year: document.getElementById("filterYear").value,
+    province: document.getElementById("filterProvince").value,
+    agency: document.getElementById("filterAgency").value,
+    area: document.getElementById("filterEduArea").value,
+    level: document.getElementById("filterEduLevel").value,
+    school: document.getElementById("filterSchoolName").value.trim().toLowerCase()
+  };
 }
 
-function matchesFilters(row, filters) {
-    if (filters.year && String(row.ACAD_YEAR) !== String(filters.year)) return false;
-    if (filters.province && row.PROV_NAME !== filters.province) return false;
-    if (filters.agency && row.DEPARTMENT_NAME !== filters.agency) return false;
-    if (filters.eduArea && row.EDU_AREA_NAME !== filters.eduArea) return false;
-    if (filters.eduLevel && row.EDU_LEVEL !== filters.eduLevel) return false;
-    if (filters.schoolName && !String(row.SCHOOL_NAME || '').toLowerCase().includes(filters.schoolName)) return false;
-    return true;
+function matchesCommon(row, filters) {
+  if (filters.year && String(row.ACAD_YEAR) !== filters.year) return false;
+  if (filters.province && String(row.PROV_NAME) !== filters.province) return false;
+  if (filters.agency && String(row.DEPARTMENT_NAME) !== filters.agency) return false;
+  if (filters.area && String(row.EDU_AREA_NAME) !== filters.area) return false;
+  if (filters.school && !String(row.SCHOOL_NAME || "").toLowerCase().includes(filters.school)) return false;
+  return true;
+}
+
+function numberValue(value) {
+  const number = Number(String(value ?? 0).replace(/,/g, ""));
+  return Number.isFinite(number) ? number : 0;
 }
 
 function renderDashboard(filters) {
-    const filteredStudents = studentRows.filter(r => matchesFilters(r, filters));
-    const filteredTeachers = teacherRows.filter(r => matchesFilters(r, filters));
+  const students = studentRows.filter(row => matchesCommon(row, filters) && (!filters.level || String(row.EDU_LEVEL) === filters.level));
+  const studentSchoolCodes = new Set(students.map(row => String(row.SCHOOL_CODE)));
+  const teachers = teacherRows.filter(row => matchesCommon(row, filters) && (!filters.level || studentSchoolCodes.has(String(row.SCHOOL_CODE))));
+  const locations = locationRows.filter(row => {
+    if (filters.province && String(row.PROV_NAME) !== filters.province) return false;
+    if (filters.agency && String(row.DEPARTMENT_NAME) !== filters.agency) return false;
+    if (filters.area && String(row.EDU_AREA_NAME) !== filters.area) return false;
+    if (filters.school && !String(row.SCHOOL_NAME || "").toLowerCase().includes(filters.school)) return false;
+    return !filters.level || studentSchoolCodes.has(String(row.SCHOOL_CODE));
+  });
 
-    renderStatCards(filteredStudents, filteredTeachers);
-    renderTable(filteredStudents);
+  renderStats(students, teachers);
+  currentSchools = aggregateSchools(students, teachers);
+  renderSchoolTable();
+  renderGenderChart(students);
+  renderMap(locations);
 }
 
-function renderStatCards(students, teachers) {
-    const totalStudents = students.reduce((sum, r) => sum + Number(r.STUDENT_MALE || 0) + Number(r.STUDENT_FEMALE || 0), 0);
-    const totalSchools = new Set(students.map(r => r.SCHOOL_CODE)).size;
-    const totalTeachers = teachers.reduce((sum, r) => sum + Number(r.TEACHER_MALE || 0) + Number(r.TEACHER_FEMALE || 0), 0);
-
-    document.getElementById('stat-total-students').textContent = totalStudents.toLocaleString('th-TH');
-    document.getElementById('stat-total-schools').textContent = totalSchools.toLocaleString('th-TH');
-    document.getElementById('stat-total-teachers').textContent = totalTeachers.toLocaleString('th-TH');
+function renderStats(students, teachers) {
+  const studentMale = students.reduce((sum, row) => sum + numberValue(row.STUDENT_MALE), 0);
+  const studentFemale = students.reduce((sum, row) => sum + numberValue(row.STUDENT_FEMALE), 0);
+  const teacherMale = teachers.reduce((sum, row) => sum + numberValue(row.TEACHER_MALE), 0);
+  const teacherFemale = teachers.reduce((sum, row) => sum + numberValue(row.TEACHER_FEMALE), 0);
+  const set = (id, value) => { document.getElementById(id).textContent = value.toLocaleString("th-TH"); };
+  set("stat-total-students", studentMale + studentFemale);
+  set("stat-male-students", studentMale);
+  set("stat-female-students", studentFemale);
+  set("stat-total-schools", new Set(students.map(row => String(row.SCHOOL_CODE))).size);
+  set("stat-total-teachers", teacherMale + teacherFemale);
+  set("stat-male-teachers", teacherMale);
+  set("stat-female-teachers", teacherFemale);
 }
 
-// ตารางสรุปแยกตามจังหวัด x สังกัด (สพฐ./สช./อาชีวศึกษา/อปท.)
-function renderTable(students) {
-    const summary = {}; // { [province]: { [agency]: count, total } }
+function aggregateSchools(students, teachers) {
+  const schools = new Map();
+  const ensure = row => {
+    const code = String(row.SCHOOL_CODE || row.SCHOOL_NAME || "");
+    if (!schools.has(code)) schools.set(code, { code, name: row.SCHOOL_NAME || "ไม่ระบุชื่อ", agency: row.DEPARTMENT_NAME || "ไม่ระบุสังกัด", students: 0, teachers: 0 });
+    return schools.get(code);
+  };
+  students.forEach(row => { ensure(row).students += numberValue(row.STUDENT_MALE) + numberValue(row.STUDENT_FEMALE); });
+  teachers.forEach(row => { ensure(row).teachers += numberValue(row.TEACHER_MALE) + numberValue(row.TEACHER_FEMALE); });
+  return [...schools.values()].sort((a, b) => a.name.localeCompare(b.name, "th"));
+}
 
-    students.forEach(row => {
-        const province = row.PROV_NAME || "ไม่ระบุ";
-        const agency = row.DEPARTMENT_NAME || "ไม่ระบุ";
-        const count = Number(row.STUDENT_MALE || 0) + Number(row.STUDENT_FEMALE || 0);
+function renderSchoolTable() {
+  const tbody = document.getElementById("dataTableBody");
+  const pages = Math.max(1, Math.ceil(currentSchools.length / PAGE_SIZE));
+  currentPage = Math.min(currentPage, pages);
+  const start = (currentPage - 1) * PAGE_SIZE;
+  const rows = currentSchools.slice(start, start + PAGE_SIZE);
+  tbody.innerHTML = rows.length ? rows.map(row => `<tr class="border-t border-slate-100 hover:bg-slate-50"><td class="px-5 py-3 font-medium text-slate-700">${escapeHtml(row.name)}</td><td class="px-5 py-3 text-slate-500">${escapeHtml(row.agency)}</td><td class="px-5 py-3 text-right">${row.students.toLocaleString("th-TH")}</td><td class="px-5 py-3 text-right">${row.teachers.toLocaleString("th-TH")}</td></tr>`).join("") : '<tr><td colspan="4" class="px-5 py-10 text-center text-slate-400">ไม่พบข้อมูลตามเงื่อนไข</td></tr>';
+  document.getElementById("schoolTableSummary").textContent = `พบ ${currentSchools.length.toLocaleString("th-TH")} โรงเรียน`;
+  document.getElementById("pageInfo").textContent = `หน้า ${currentPage} จาก ${pages}`;
+  document.getElementById("prevPage").disabled = currentPage <= 1;
+  document.getElementById("nextPage").disabled = currentPage >= pages;
+}
 
-        if (!summary[province]) {
-            summary[province] = { total: 0 };
-            AGENCY_COLUMNS.forEach(a => summary[province][a] = 0);
-        }
-        if (!(agency in summary[province])) summary[province][agency] = 0; // เผื่อมีสังกัดนอกเหนือ 4 กลุ่มหลัก
-        summary[province][agency] += count;
-        summary[province].total += count;
-    });
+function renderGenderChart(students) {
+  const male = students.reduce((sum, row) => sum + numberValue(row.STUDENT_MALE), 0);
+  const female = students.reduce((sum, row) => sum + numberValue(row.STUDENT_FEMALE), 0);
+  const max = Math.max(male, female);
+  const parity = max ? (Math.min(male, female) / max) * 100 : 0;
+  document.getElementById("genderEqualityText").textContent = `ดัชนีความใกล้เคียงระหว่างเพศ ${parity.toFixed(1)}%`;
+  genderChart?.destroy();
+  genderChart = new Chart(document.getElementById("genderChart"), {
+    type: "bar",
+    data: { labels: ["นักเรียนชาย", "นักเรียนหญิง"], datasets: [{ data: [male, female], backgroundColor: ["#3b82f6", "#ec4899"], borderRadius: 8 }] },
+    options: { maintainAspectRatio: false, plugins: { legend: { display: false } }, scales: { y: { beginAtZero: true, ticks: { callback: value => Number(value).toLocaleString("th-TH") } } } }
+  });
+}
 
-    const tbody = document.getElementById('dataTableBody');
-    const provinces = Object.keys(summary).sort();
+function initMap() {
+  schoolMap = L.map("schoolMap", { preferCanvas: true }).setView([18.4, 99.0], 7);
+  L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", { maxZoom: 18, attribution: "&copy; OpenStreetMap contributors" }).addTo(schoolMap);
+  mapLayer = L.layerGroup().addTo(schoolMap);
+}
 
-    if (provinces.length === 0) {
-        tbody.innerHTML = `<tr class="border-b border-slate-100">
-            <td colspan="6" class="px-4 py-8 text-center text-slate-400 italic">-- ไม่มีข้อมูลตามเงื่อนไขที่เลือก --</td>
-        </tr>`;
-        return;
-    }
+function parseCoordinate(value) {
+  const values = String(value || "").match(/-?\d+(?:\.\d+)?/g)?.map(Number);
+  if (!values || values.length < 2) return null;
+  let [lat, lng] = values;
+  if (Math.abs(lat) > 90 && Math.abs(lng) <= 90) [lat, lng] = [lng, lat];
+  if (Math.abs(lat) > 90 || Math.abs(lng) > 180) return null;
+  return [lat, lng];
+}
 
-    tbody.innerHTML = provinces.map(prov => {
-        const row = summary[prov];
-        const cells = AGENCY_COLUMNS.map(a => `<td class="px-4 py-3 text-right">${(row[a] || 0).toLocaleString('th-TH')}</td>`).join('');
-        return `<tr class="border-b border-slate-100 hover:bg-slate-50">
-            <td class="px-4 py-3 font-medium">${prov}</td>
-            ${cells}
-            <td class="px-4 py-3 text-right font-bold text-teal-600">${row.total.toLocaleString('th-TH')}</td>
-        </tr>`;
-    }).join('');
+function renderMap(locations) {
+  mapLayer.clearLayers();
+  const bounds = [];
+  let valid = 0;
+  locations.forEach(row => {
+    const coordinate = parseCoordinate(row.COORDI);
+    if (!coordinate) return;
+    valid++;
+    bounds.push(coordinate);
+    L.circleMarker(coordinate, { renderer: L.canvas(), radius: 5, color: "#0f766e", fillColor: "#14b8a6", fillOpacity: .75, weight: 1 })
+      .bindPopup(`<strong>${escapeHtml(row.SCHOOL_NAME || "สถานศึกษา")}</strong><br>${escapeHtml(row.DEPARTMENT_NAME || "")}`)
+      .addTo(mapLayer);
+  });
+  document.getElementById("mapSummary").textContent = `แสดงพิกัดที่ถูกต้อง ${valid.toLocaleString("th-TH")} แห่ง`;
+  if (bounds.length) schoolMap.fitBounds(bounds, { padding: [24, 24], maxZoom: 13 });
+  setTimeout(() => schoolMap.invalidateSize(), 0);
+}
+
+function escapeHtml(value) {
+  return String(value).replace(/[&<>'"]/g, character => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", "'": "&#039;", '"': "&quot;" })[character]);
 }

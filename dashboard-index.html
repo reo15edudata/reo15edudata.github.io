@@ -1,193 +1,105 @@
 <!DOCTYPE html>
 <html lang="th">
-
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Dashboard ดัชนีทางการศึกษา - ศธภ.15</title>
-
-    <!-- ========================================== -->
-    <!-- ส่วนที่ยืนยันตัวตน (Firebase Auth Guard) -->
-    <!-- เหมือนกับ index.html: ถ้ายังไม่ login จะเด้งไปหน้า login.html ทันที -->
-    <!-- ========================================== -->
-    <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
-    <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-auth.js"></script>
-
-    <!-- นำเข้า Tailwind CSS และ FontAwesome -->
+    <title>ดัชนีการศึกษา - ศธภ.15</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
-
-    <style>
-        .sidebar-scroll::-webkit-scrollbar {
-            width: 4px;
-        }
-
-        .sidebar-scroll::-webkit-scrollbar-track {
-            background: transparent;
-        }
-
-        .sidebar-scroll::-webkit-scrollbar-thumb {
-            background: #475569;
-            border-radius: 4px;
-        }
-    </style>
 </head>
-
-<body class="bg-slate-50 font-sans text-slate-800 h-screen flex overflow-hidden">
-
-    <!-- ========================================== -->
-    <!-- แถบเมนูด้านซ้าย (Sidebar) -->
-    <!-- ========================================== -->
-    <aside class="w-64 bg-[#1e293b] text-slate-300 flex flex-col h-full transition-all shrink-0">
-        <div class="h-16 flex items-center px-4 bg-[#1e293b] border-b border-slate-700/50">
-            <div class="bg-teal-500 text-white w-8 h-8 rounded flex items-center justify-center font-bold mr-3">
-                <i class="fa-solid fa-graduation-cap"></i>
-            </div>
-            <span class="text-white font-semibold text-lg tracking-wide">ศธภ.15</span>
-        </div>
-
-        <div class="flex-1 overflow-y-auto sidebar-scroll py-4 px-3">
+<body data-dashboard="true" class="bg-slate-50 font-sans text-slate-800 h-screen flex overflow-hidden">
+    <aside class="w-64 bg-[#1e293b] text-slate-300 flex flex-col h-full shrink-0">
+        <div class="h-16 flex items-center px-4 border-b border-slate-700/50"><div class="bg-teal-500 text-white w-8 h-8 rounded flex items-center justify-center mr-3"><i class="fa-solid fa-graduation-cap"></i></div><span class="text-white font-semibold text-lg">ศธภ.15</span></div>
+        <div class="flex-1 overflow-y-auto py-4 px-3">
             <div class="text-xs font-semibold text-slate-500 mb-2 px-3 tracking-wider">DASHBOARDS</div>
             <ul class="space-y-1 mb-6">
-                <li>
-                    <a href="dashboard.html"
-                        class="flex items-center justify-between px-3 py-2 text-slate-400 hover:text-white rounded-md transition-colors">
-                        <div class="flex items-center"><i class="fas fa-chart-pie w-6"></i> สารสนเทศการศึกษา</div>
-                    </a>
-                </li>
-                <li>
-                    <a href="dashboard-index.html"
-                        class="flex items-center justify-between px-3 py-2 text-teal-400 bg-slate-800 rounded-md border-l-2 border-teal-500">
-                        <div class="flex items-center"><i class="fas fa-chart-line w-6"></i> ข้อมูลดัชนีการศึกษา</div>
-                    </a>
-                </li>
-                <li>
-                    <a href="dashboard-workforce.html"
-                        class="flex items-center justify-between px-3 py-2 text-slate-400 hover:text-white rounded-md transition-colors">
-                        <div class="flex items-center"><i class="fas fa-users-gear w-6"></i> ความต้องการกำลังคน</div>
-                    </a>
-                </li>
+                <li><a href="dashboard.html" class="flex items-center px-3 py-2 rounded-md hover:bg-slate-800 hover:text-white"><i class="fas fa-chart-pie w-7"></i>สารสนเทศการศึกษา</a></li>
+                <li><a href="dashboard-index.html" class="flex items-center px-3 py-2 text-teal-400 bg-slate-800 rounded-md border-l-2 border-teal-500"><i class="fas fa-chart-line w-7"></i>ดัชนีการศึกษา</a></li>
+                <li><a href="dashboard-workforce.html" class="flex items-center px-3 py-2 rounded-md hover:bg-slate-800 hover:text-white"><i class="fas fa-users-gear w-7"></i>ความต้องการกำลังคน</a></li>
             </ul>
-
-            <div class="text-xs font-semibold text-slate-500 mb-2 px-3 tracking-wider mt-4">MANAGEMENT</div>
-            <ul class="space-y-1">
-                <li>
-                    <a href="admin.html"
-                        class="flex items-center justify-between px-3 py-2 text-slate-400 hover:text-white rounded-md transition-colors">
-                        <div class="flex items-center"><i class="fas fa-cloud-arrow-up w-6"></i> อัปโหลดข้อมูล</div>
-                    </a>
-                </li>
-            </ul>
+            <div class="text-xs font-semibold text-slate-500 mb-2 px-3 tracking-wider">MANAGEMENT</div>
+            <ul><li><a href="admin.html" class="flex items-center px-3 py-2 rounded-md hover:bg-slate-800 hover:text-white"><i class="fas fa-user-gear w-7"></i>Admin Console</a></li></ul>
         </div>
     </aside>
 
-    <!-- ========================================== -->
-    <!-- พื้นที่เนื้อหาหลัก (Main Content) -->
-    <!-- ========================================== -->
     <div class="flex-1 flex flex-col h-full overflow-hidden">
-
-        <!-- แถบเมนูด้านบน (Top Navbar) -->
-        <header class="h-16 bg-white border-b border-slate-200 flex items-center justify-between px-6 shrink-0">
-            <div class="flex items-center text-slate-500">
-                <button class="mr-4 hover:text-slate-800"><i class="fas fa-bars"></i></button>
-                <h2 class="font-semibold text-slate-700 text-lg">ดัชนีการศึกษา</h2>
-            </div>
-
-            <div class="flex items-center space-x-4">
-                <a href="login.html"
-                    class="flex items-center text-teal-700 border border-teal-200 bg-teal-50 px-4 py-1.5 rounded-full text-sm font-medium hover:bg-teal-100 transition">
-                    <i class="fas fa-right-to-bracket mr-2"></i> สำหรับเจ้าหน้าที่
-                </a>
-            </div>
+        <header class="h-16 bg-white border-b border-slate-200 flex items-center justify-between px-4 md:px-6 shrink-0">
+            <div class="flex items-center"><button type="button" class="mr-4 text-slate-500" aria-label="ย่อหรือขยายเมนู"><i class="fas fa-bars"></i></button><div><h1 class="font-semibold">ดัชนีทางการศึกษา</h1><p class="text-xs text-slate-400 hidden sm:block">Access · Equity · Quality · Efficiency · Relevancy</p></div></div>
+            <div class="flex items-center space-x-4"><a href="login.html" class="flex items-center text-teal-700 border border-teal-200 bg-teal-50 px-4 py-1.5 rounded-full text-sm font-medium"><i class="fas fa-right-to-bracket mr-2"></i>สำหรับเจ้าหน้าที่</a></div>
         </header>
 
-        <!-- พื้นที่แสดงข้อมูล Dashboard -->
-        <main class="flex-1 overflow-y-auto p-6">
-            <div class="bg-white p-5 rounded-lg border border-slate-200 shadow-sm mb-6">
-                <div class="flex items-center mb-4 border-b border-slate-100 pb-3">
-                    <i class="fas fa-filter text-teal-500 mr-2"></i>
-                    <h3 class="font-semibold text-slate-700">ตัวกรองข้อมูล</h3>
-                </div>
-
-                <form id="filterForm" class="grid grid-cols-1 md:grid-cols-3 gap-4">
-                    <div>
-                        <label for="filterYear" class="block text-sm font-medium mb-1">ปีข้อมูล</label>
-                        <select id="filterYear" class="w-full bg-slate-50 border border-slate-300 rounded-md p-2">
-                            <option value="">ทุกปี</option>
-                        </select>
-                    </div>
-
-                    <div>
-                        <label for="filterProvince" class="block text-sm font-medium mb-1">จังหวัด</label>
-                        <select id="filterProvince" class="w-full bg-slate-50 border border-slate-300 rounded-md p-2">
-                            <option value="">ทุกจังหวัด</option>
-                        </select>
-                    </div>
-
-                    <div class="flex items-end gap-2">
-                        <button type="submit" class="bg-teal-600 hover:bg-teal-700 text-white px-4 py-2 rounded-md">
-                            แสดงผล
-                        </button>
-                        <button type="reset"
-                            class="bg-slate-200 hover:bg-slate-300 text-slate-700 px-4 py-2 rounded-md">
-                            ล้างตัวกรอง
-                        </button>
-                    </div>
+        <main class="flex-1 overflow-y-auto p-4 md:p-6">
+            <section class="bg-white p-5 rounded-xl border border-slate-200 shadow-sm mb-6">
+                <form id="filterForm" class="grid grid-cols-1 sm:grid-cols-3 gap-4 items-end">
+                    <div><label class="block text-xs font-semibold text-slate-500 mb-1">ปีข้อมูล</label><select id="filterYear" class="w-full rounded-lg border border-slate-300 bg-slate-50 p-2.5"><option value="">ทุกปี</option></select></div>
+                    <div><label class="block text-xs font-semibold text-slate-500 mb-1">จังหวัด</label><select id="filterProvince" class="w-full rounded-lg border border-slate-300 bg-slate-50 p-2.5"><option value="">ทุกจังหวัด</option></select></div>
+                    <div class="flex gap-2"><button type="reset" class="flex-1 bg-slate-200 rounded-lg py-2.5">ล้างค่า</button><button type="submit" class="flex-1 bg-teal-600 text-white rounded-lg py-2.5">แสดงผล</button></div>
                 </form>
-            </div>
+            </section>
 
-            <div class="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-5 gap-4 mb-6">
-                <div class="bg-white p-5 rounded-lg border border-slate-200 shadow-sm">
-                    <p class="text-sm text-slate-500">จำนวนประชากร</p>
-                    <p id="stat-population" class="text-2xl font-bold text-slate-800">0</p>
-                </div>
+            <div id="dataReadiness" class="mb-6 rounded-xl border border-blue-200 bg-blue-50 px-5 py-4 text-sm text-blue-800"></div>
 
-                <div class="bg-white p-5 rounded-lg border border-slate-200 shadow-sm">
-                    <p class="text-sm text-slate-500">ผู้เรียนที่มีความต้องการพิเศษ</p>
-                    <p id="stat-special-needs" class="text-2xl font-bold text-slate-800">0</p>
+            <section class="indicator-section mb-7">
+                <div class="flex items-center gap-3 mb-4"><span class="w-9 h-9 rounded-lg bg-blue-100 text-blue-700 flex items-center justify-center font-bold">1</span><div><h2 class="font-semibold text-lg">การเข้าถึงโอกาสทางการศึกษา</h2><p class="text-xs text-slate-400">Access</p></div></div>
+                <div class="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
+                    <article class="indicator-card"><h3>ผู้เรียนปฐมวัยต่อประชากรอายุ 3–5 ปี</h3><strong id="access-early">—</strong><p id="access-early-note"></p></article>
+                    <article class="indicator-card"><h3>ผู้เรียนประถมศึกษาต่อประชากรอายุ 6–11 ปี</h3><strong id="access-primary">—</strong><p id="access-primary-note"></p></article>
+                    <article class="indicator-card"><h3>ผู้เรียนมัธยมศึกษาตอนต้นต่อประชากรอายุ 12–14 ปี</h3><strong id="access-lower">—</strong><p id="access-lower-note"></p></article>
+                    <article class="indicator-card"><h3>ผู้เรียน ม.ปลาย/ปวช. ต่อประชากรอายุ 15–17 ปี</h3><strong id="access-upper">—</strong><p id="access-upper-note"></p></article>
+                    <article class="indicator-card"><h3>ผู้เรียน ปวส. ต่อประชากรอายุ 18–19 ปี</h3><strong id="access-higher-voc">—</strong><p id="access-higher-voc-note"></p></article>
+                    <article class="indicator-card pending"><h3>ปีการศึกษาเฉลี่ยของประชากรวัยแรงงาน</h3><strong>รอข้อมูล</strong><p>ยังไม่มี Sheet รองรับประชากรอายุ 15–59 ปี</p></article>
                 </div>
+            </section>
 
-                <div class="bg-white p-5 rounded-lg border border-slate-200 shadow-sm">
-                    <p class="text-sm text-slate-500">เด็กนอกระบบการศึกษา</p>
-                    <p id="stat-out-of-school" class="text-2xl font-bold text-slate-800">0</p>
+            <section class="indicator-section mb-7">
+                <div class="flex items-center gap-3 mb-4"><span class="w-9 h-9 rounded-lg bg-pink-100 text-pink-700 flex items-center justify-center font-bold">2</span><div><h2 class="font-semibold text-lg">ความเท่าเทียมทางการศึกษา</h2><p class="text-xs text-slate-400">Equity</p></div></div>
+                <div class="grid grid-cols-1 lg:grid-cols-2 gap-4">
+                    <article class="indicator-card"><h3>ผู้เรียนที่มีความต้องการพิเศษต่อผู้เรียนทั้งหมด</h3><strong id="equity-special">—</strong><p id="equity-special-note"></p><div id="specialBreakdown" class="mt-3 text-xs text-slate-500"></div></article>
+                    <article class="indicator-card"><h3>เด็กที่กลับเข้าสู่ระบบเทียบกับเด็กนอกระบบ</h3><strong id="equity-returned">—</strong><p id="equity-returned-note"></p><div id="ooscBreakdown" class="mt-3 text-xs text-slate-500"></div></article>
                 </div>
+            </section>
 
-                <div class="bg-white p-5 rounded-lg border border-slate-200 shadow-sm">
-                    <p class="text-sm text-slate-500">ผู้เรียนออกกลางคัน</p>
-                    <p id="stat-dropout" class="text-2xl font-bold text-slate-800">0</p>
+            <section class="indicator-section mb-7">
+                <div class="flex items-center gap-3 mb-4"><span class="w-9 h-9 rounded-lg bg-violet-100 text-violet-700 flex items-center justify-center font-bold">3</span><div><h2 class="font-semibold text-lg">คุณภาพการศึกษา</h2><p class="text-xs text-slate-400">Quality</p></div></div>
+                <div class="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
+                    <article class="indicator-card pending"><h3>พัฒนาการสมวัยของเด็กปฐมวัย 0–5 ปี</h3><strong>รอข้อมูล</strong><p>เตรียมพื้นที่สำหรับชุดข้อมูลพัฒนาการเด็ก</p></article>
+                    <article class="indicator-card pending"><h3>คะแนนเฉลี่ย RT ชั้น ป.1</h3><strong>รอข้อมูล</strong><p>เตรียมพื้นที่สำหรับผล Reading Test</p></article>
+                    <article class="indicator-card pending"><h3>คะแนนเฉลี่ย NT ชั้น ป.3</h3><strong>รอข้อมูล</strong><p>คณิตศาสตร์และภาษาไทย</p></article>
+                    <article class="indicator-card pending"><h3>ผู้เรียน ม.3 ที่ O-NET ผ่าน 50%</h3><strong>รอข้อมูล</strong><p>เตรียมพื้นที่แยกรายวิชา</p></article>
+                    <article class="indicator-card pending"><h3>ผู้เรียน ม.6 ที่ O-NET ผ่าน 50%</h3><strong>รอข้อมูล</strong><p>เตรียมพื้นที่แยกรายวิชา</p></article>
                 </div>
+            </section>
 
-                <div class="bg-white p-5 rounded-lg border border-slate-200 shadow-sm">
-                    <p class="text-sm text-slate-500">ผู้เรียนมีงานทำ</p>
-                    <p id="stat-employed" class="text-2xl font-bold text-slate-800">0</p>
+            <section class="indicator-section mb-7">
+                <div class="flex items-center gap-3 mb-4"><span class="w-9 h-9 rounded-lg bg-orange-100 text-orange-700 flex items-center justify-center font-bold">4</span><div><h2 class="font-semibold text-lg">ประสิทธิภาพ</h2><p class="text-xs text-slate-400">Efficiency</p></div></div>
+                <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+                    <article class="indicator-card"><h3>ออกกลางคันระดับการศึกษาภาคบังคับ</h3><strong id="eff-compulsory">—</strong><p id="eff-compulsory-note"></p></article>
+                    <article class="indicator-card"><h3>ออกกลางคันระดับ ปวช.</h3><strong id="eff-voc">—</strong><p id="eff-voc-note"></p></article>
+                    <article class="indicator-card"><h3>ออกกลางคันระดับ ปวส.</h3><strong id="eff-higher-voc">—</strong><p id="eff-higher-voc-note"></p></article>
                 </div>
-            </div>
+            </section>
 
-            <div class="bg-white rounded-lg border border-slate-200 shadow-sm overflow-hidden">
-                <div class="p-5 border-b border-slate-100">
-                    <h3 class="font-semibold text-slate-700">สรุปข้อมูลรายจังหวัด</h3>
+            <section class="indicator-section">
+                <div class="flex items-center gap-3 mb-4"><span class="w-9 h-9 rounded-lg bg-teal-100 text-teal-700 flex items-center justify-center font-bold">5</span><div><h2 class="font-semibold text-lg">การตอบโจทย์บริบทที่เปลี่ยนแปลง</h2><p class="text-xs text-slate-400">Relevancy</p></div></div>
+                <div class="grid grid-cols-1 lg:grid-cols-2 gap-4">
+                    <article class="indicator-card"><h3>ผู้เรียนอาชีวศึกษาต่อผู้เรียนสามัญศึกษา</h3><strong id="rel-vocational">—</strong><p id="rel-vocational-note"></p></article>
+                    <article class="indicator-card"><h3>ผู้สำเร็จ ปวช./ปวส. ได้งานภายใน 1 ปี</h3><strong id="rel-employed">—</strong><p id="rel-employed-note"></p></article>
                 </div>
-
-                <div class="overflow-x-auto">
-                    <table class="min-w-full text-sm">
-                        <thead class="bg-slate-50 text-slate-600">
-                            <tr>
-                                <th class="px-4 py-3 text-left">จังหวัด</th>
-                                <th class="px-4 py-3 text-right">ประชากร</th>
-                                <th class="px-4 py-3 text-right">ความต้องการพิเศษ</th>
-                                <th class="px-4 py-3 text-right">เด็กนอกระบบ</th>
-                                <th class="px-4 py-3 text-right">ออกกลางคัน</th>
-                                <th class="px-4 py-3 text-right">มีงานทำ</th>
-                            </tr>
-                        </thead>
-                        <tbody id="indicatorTableBody"></tbody>
-                    </table>
-                </div>
-            </div>
+            </section>
         </main>
     </div>
 
+    <style>
+        .indicator-card{background:#fff;border:1px solid #e2e8f0;border-radius:.75rem;padding:1.1rem;box-shadow:0 1px 2px rgb(15 23 42/.05)}
+        .indicator-card h3{font-size:.875rem;font-weight:600;color:#475569;min-height:2.6rem}
+        .indicator-card strong{display:block;font-size:1.75rem;color:#0f172a;margin-top:.55rem}
+        .indicator-card p{font-size:.75rem;color:#94a3b8;margin-top:.35rem}
+        .indicator-card.pending{background:#f8fafc;border-style:dashed}.indicator-card.pending strong{font-size:1rem;color:#d97706}
+    </style>
+    <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-auth.js"></script>
+    <script src="site.js"></script>
+    <script src="data-client.js"></script>
     <script src="dashboard-index.js"></script>
 </body>
-
 </html>
