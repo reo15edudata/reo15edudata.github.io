@@ -1,0 +1,262 @@
+/* Shared responsive layout for the public dashboards and Admin Console. */
+html,
+body {
+  max-width: 100%;
+}
+
+.edu15-shell-content {
+  min-width: 0;
+  width: 100%;
+}
+
+.edu15-sidebar-backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 80;
+  background: rgba(15, 23, 42, 0.56);
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 0.2s ease;
+}
+
+.edu15-sidebar-backdrop.is-visible {
+  opacity: 1;
+  pointer-events: auto;
+}
+
+.mobile-menu-close {
+  display: none;
+}
+
+@media (max-width: 767px) {
+  body {
+    width: 100%;
+    min-height: 100dvh;
+    height: 100dvh !important;
+  }
+
+  [data-sidebar] {
+    position: fixed !important;
+    inset: 0 auto 0 0;
+    z-index: 90;
+    width: min(18rem, 86vw) !important;
+    height: 100dvh !important;
+    transform: translateX(-102%);
+    box-shadow: 0 20px 45px rgba(15, 23, 42, 0.28);
+    transition: transform 0.22s ease !important;
+  }
+
+  [data-sidebar].sidebar-mobile-open {
+    transform: translateX(0);
+  }
+
+  [data-sidebar] .mobile-menu-close {
+    display: inline-flex;
+    width: 2.5rem;
+    height: 2.5rem;
+    margin-left: auto;
+    align-items: center;
+    justify-content: center;
+    border-radius: 0.5rem;
+    color: #cbd5e1;
+  }
+
+  [data-sidebar] .mobile-menu-close:hover {
+    color: #fff;
+    background: #334155;
+  }
+
+  [data-sidebar] a,
+  [data-sidebar] .admin-nav {
+    min-height: 2.75rem;
+  }
+
+  .edu15-shell-content {
+    width: 100%;
+    min-width: 0;
+  }
+
+  header {
+    height: auto !important;
+    min-height: 4rem;
+    padding-left: 0.75rem !important;
+    padding-right: 0.75rem !important;
+    gap: 0.5rem;
+  }
+
+  header > .flex:first-child {
+    min-width: 0;
+    flex: 1 1 auto;
+  }
+
+  header > .flex:first-child > div:last-child {
+    min-width: 0;
+  }
+
+  header h1 {
+    display: -webkit-box;
+    overflow: hidden;
+    font-size: 0.875rem;
+    line-height: 1.2rem;
+    -webkit-box-orient: vertical;
+    -webkit-line-clamp: 2;
+  }
+
+  header button {
+    min-width: 2.5rem;
+    min-height: 2.5rem;
+    margin-right: 0.5rem !important;
+  }
+
+  header .space-x-4 {
+    flex: 0 0 auto;
+    margin-left: 0.25rem;
+  }
+
+  header .space-x-4 > :not([hidden]) ~ :not([hidden]) {
+    margin-left: 0.4rem;
+  }
+
+  header .space-x-4 a {
+    width: 2.75rem;
+    height: 2.75rem;
+    padding: 0 !important;
+    justify-content: center;
+    border-radius: 999px;
+  }
+
+  header .space-x-4 a i {
+    margin-right: 0 !important;
+  }
+
+  .header-auth-label {
+    display: none;
+  }
+
+  main {
+    min-width: 0;
+  }
+
+  main > section,
+  main > article {
+    scroll-margin-top: 1rem;
+  }
+
+  main .overflow-x-auto,
+  main .overflow-auto {
+    overscroll-behavior-inline: contain;
+    -webkit-overflow-scrolling: touch;
+  }
+
+  main table.edu15-wide-table {
+    min-width: 38rem;
+  }
+
+  main select,
+  main input:not([type="checkbox"]):not([type="radio"]),
+  main button {
+    min-height: 2.75rem;
+  }
+
+  .edu15-multi-button {
+    min-height: 2.75rem;
+  }
+
+  .edu15-multi-panel {
+    position: fixed !important;
+    z-index: 120 !important;
+    top: auto !important;
+    right: 1rem !important;
+    bottom: 1rem !important;
+    left: 1rem !important;
+    max-height: min(60dvh, 28rem) !important;
+    border-radius: 1rem !important;
+    box-shadow: 0 22px 55px rgba(15, 23, 42, 0.28) !important;
+  }
+
+  .edu15-multi-option {
+    min-height: 2.75rem;
+    align-items: center !important;
+  }
+
+  .edu15-loader {
+    padding: 1rem;
+  }
+
+  .edu15-loader > div {
+    width: min(100%, 22rem);
+    padding: 1.25rem !important;
+  }
+
+  .edu15-progress-track {
+    width: 100% !important;
+  }
+
+  .score-heading {
+    align-items: flex-start !important;
+    flex-wrap: wrap;
+  }
+
+  .score-heading > .ml-auto {
+    width: 100%;
+    margin-left: 0 !important;
+  }
+
+  .score-heading .min-w-48,
+  .score-heading .max-w-52,
+  .chart-card .max-w-52 {
+    width: 100%;
+    max-width: none;
+    min-width: 0;
+  }
+
+  .chart-card > .flex.items-end.justify-between {
+    align-items: stretch;
+    flex-direction: column;
+  }
+
+  #schoolMap,
+  #mouMap {
+    min-height: 18rem;
+  }
+}
+
+@media (max-width: 419px) {
+  main {
+    padding-left: 0.75rem !important;
+    padding-right: 0.75rem !important;
+  }
+
+  main section,
+  main article {
+    border-radius: 0.65rem;
+  }
+
+  main .p-5,
+  main .p-6 {
+    padding: 1rem;
+  }
+
+  main .px-5,
+  main .px-6 {
+    padding-left: 1rem;
+    padding-right: 1rem;
+  }
+
+  main .text-4xl {
+    font-size: 1.875rem;
+    line-height: 2.25rem;
+  }
+
+  main .text-3xl {
+    font-size: 1.65rem;
+    line-height: 2rem;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  [data-sidebar],
+  .edu15-sidebar-backdrop {
+    transition: none !important;
+  }
+}

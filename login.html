@@ -17,8 +17,11 @@
             display: flex;
             justify-content: center;
             align-items: center;
-            height: 100vh;
+            min-height: 100vh;
+            min-height: 100dvh;
             margin: 0;
+            padding: 20px;
+            box-sizing: border-box;
         }
 
         .login-container {
@@ -29,6 +32,7 @@
             width: 100%;
             max-width: 400px;
             text-align: center;
+            box-sizing: border-box;
         }
 
         input {
@@ -38,6 +42,8 @@
             border: 1px solid #ccc;
             border-radius: 4px;
             box-sizing: border-box;
+            min-height: 44px;
+            font-size: 16px;
         }
 
         button {
@@ -49,6 +55,7 @@
             border-radius: 4px;
             font-size: 16px;
             cursor: pointer;
+            min-height: 44px;
         }
 
         button:hover {
@@ -60,6 +67,23 @@
             margin-top: 15px;
             font-size: 14px;
             display: none;
+        }
+
+        @media (max-width: 480px) {
+            body {
+                align-items: flex-start;
+                padding: 16px;
+            }
+
+            .login-container {
+                margin: auto 0;
+                padding: 28px 20px;
+                border-radius: 12px;
+            }
+
+            .login-container h2 {
+                font-size: 1.5rem;
+            }
         }
     </style>
 </head>

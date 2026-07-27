@@ -48,7 +48,8 @@ function installSharedStyles() {
     [data-sidebar].sidebar-collapsed .sidebar-brand-text,
     [data-sidebar].sidebar-collapsed .sidebar-section,
     [data-sidebar].sidebar-collapsed .sidebar-link-text { display: none; }
-    [data-sidebar].sidebar-collapsed a { justify-content: center; padding-left: .75rem; padding-right: .75rem; }
+    [data-sidebar].sidebar-collapsed a,
+    [data-sidebar].sidebar-collapsed .admin-nav { justify-content: center; padding-left: .75rem; padding-right: .75rem; }
     .edu15-loader { position: fixed; inset: 0; z-index: 100; display: flex; align-items: center; justify-content: center; background: rgba(248,250,252,.82); backdrop-filter: blur(2px); }
     .edu15-loader[hidden] { display: none; }
     .edu15-progress-track { width: 18rem; height: .55rem; overflow: hidden; border-radius: 999px; background: #e2e8f0; }
@@ -68,6 +69,13 @@ function setupSidebar() {
   const sidebar = document.querySelector("aside");
   if (!sidebar) return;
   sidebar.dataset.sidebar = "true";
+  sidebar.id = sidebar.id || "siteSidebar";
+  sidebar.nextElementSibling?.classList.add("edu15-shell-content");
+
+  const backdrop = document.createElement("div");
+  backdrop.className = "edu15-sidebar-backdrop";
+  backdrop.hidden = true;
+  document.body.appendChild(backdrop);
 
   const firstDashboardLink = sidebar.querySelector('a[href="dashboard.html"]');
   if (firstDashboardLink && !sidebar.querySelector('a[href="index.html"]')) {
@@ -85,7 +93,7 @@ function setupSidebar() {
     workforceLink.closest("li")?.after(item);
   }
 
-  sidebar.querySelectorAll("a").forEach(link => {
+  sidebar.querySelectorAll("a, button.admin-nav").forEach(link => {
     const icon = link.querySelector("i");
     if (!icon) return;
     const text = link.textContent.trim();
@@ -104,7 +112,7 @@ function setupSidebar() {
   });
 
   sidebar.querySelectorAll("div").forEach(element => {
-    if (/DASHBOARDS|MANAGEMENT/.test(element.textContent.trim()) && !element.querySelector("a")) {
+    if (/DASHBOARDS|MANAGEMENT|ADMIN CONSOLE/.test(element.textContent.trim()) && !element.querySelector("a")) {
       element.classList.add("sidebar-section");
     }
   });
@@ -112,12 +120,78 @@ function setupSidebar() {
   const brand = sidebar.querySelector("span");
   if (brand) brand.classList.add("sidebar-brand-text");
 
+  const brandRow = sidebar.firstElementChild;
+  const closeButton = document.createElement("button");
+  closeButton.type = "button";
+  closeButton.className = "mobile-menu-close";
+  closeButton.setAttribute("aria-label", "ปิดเมนู");
+  closeButton.innerHTML = '<i class="fas fa-xmark" aria-hidden="true"></i>';
+  brandRow?.appendChild(closeButton);
+
   const toggle = document.querySelector("header button");
   if (toggle) {
     toggle.type = "button";
-    toggle.setAttribute("aria-label", "ย่อหรือขยายเมนูด้านข้าง");
-    toggle.addEventListener("click", () => sidebar.classList.toggle("sidebar-collapsed"));
+    toggle.setAttribute("aria-label", "เปิดหรือปิดเมนู");
+    toggle.setAttribute("aria-controls", sidebar.id);
   }
+
+  const mobileQuery = window.matchMedia("(max-width: 767px)");
+  const setMobileOpen = (open, returnFocus = false) => {
+    if (!mobileQuery.matches) open = false;
+    sidebar.classList.toggle("sidebar-mobile-open", open);
+    backdrop.classList.toggle("is-visible", open);
+    backdrop.hidden = !open;
+    document.body.classList.toggle("sidebar-mobile-active", open);
+    toggle?.setAttribute("aria-expanded", String(open));
+    sidebar.toggleAttribute("inert", mobileQuery.matches && !open);
+    if (mobileQuery.matches) sidebar.setAttribute("aria-hidden", String(!open));
+    else sidebar.removeAttribute("aria-hidden");
+    if (open) closeButton.focus();
+    else if (returnFocus) toggle?.focus();
+  };
+
+  const syncResponsiveSidebar = () => {
+    sidebar.classList.remove("sidebar-mobile-open");
+    backdrop.classList.remove("is-visible");
+    backdrop.hidden = true;
+    document.body.classList.remove("sidebar-mobile-active");
+    if (mobileQuery.matches) {
+      sidebar.classList.remove("sidebar-collapsed");
+      sidebar.setAttribute("aria-hidden", "true");
+      sidebar.setAttribute("inert", "");
+      toggle?.setAttribute("aria-expanded", "false");
+    } else {
+      sidebar.removeAttribute("aria-hidden");
+      sidebar.removeAttribute("inert");
+      toggle?.removeAttribute("aria-expanded");
+    }
+  };
+
+  toggle?.addEventListener("click", () => {
+    if (mobileQuery.matches) {
+      setMobileOpen(!sidebar.classList.contains("sidebar-mobile-open"));
+    } else {
+      sidebar.classList.toggle("sidebar-collapsed");
+    }
+  });
+  closeButton.addEventListener("click", () => setMobileOpen(false, true));
+  backdrop.addEventListener("click", () => setMobileOpen(false, true));
+  sidebar.querySelectorAll("a, button.admin-nav").forEach(item => {
+    item.addEventListener("click", () => {
+      if (mobileQuery.matches) setMobileOpen(false);
+    });
+  });
+  document.addEventListener("keydown", event => {
+    if (event.key === "Escape" && sidebar.classList.contains("sidebar-mobile-open")) {
+      setMobileOpen(false, true);
+    }
+  });
+  if (typeof mobileQuery.addEventListener === "function") {
+    mobileQuery.addEventListener("change", syncResponsiveSidebar);
+  } else {
+    mobileQuery.addListener(syncResponsiveSidebar);
+  }
+  syncResponsiveSidebar();
 }
 
 function installLoader() {
@@ -151,6 +225,19 @@ function installLoader() {
       progressItems.clear();
     }, 180);
   };
+}
+
+function setupResponsiveTables() {
+  document.querySelectorAll("main table").forEach(table => {
+    const columnCount = table.querySelectorAll("thead tr:first-child > *").length;
+    table.classList.toggle("edu15-wide-table", columnCount >= 3);
+    const scrollContainer = table.closest(".overflow-x-auto, .overflow-auto");
+    if (scrollContainer && columnCount >= 3) {
+      scrollContainer.setAttribute("tabindex", "0");
+      scrollContainer.setAttribute("role", "region");
+      scrollContainer.setAttribute("aria-label", "ตารางข้อมูล เลื่อนซ้ายหรือขวาเพื่อดูคอลัมน์เพิ่มเติม");
+    }
+  });
 }
 
 function createMultiSelect(element, values, placeholder = "เลือกข้อมูล") {
@@ -209,8 +296,8 @@ function updateAuthNavigation(user) {
   const headerArea = document.querySelector("header .flex.items-center.space-x-4");
   if (!headerArea) return;
   headerArea.innerHTML = user
-    ? `<a href="admin.html" class="flex items-center text-teal-700 border border-teal-200 bg-teal-50 px-4 py-1.5 rounded-full text-sm font-medium hover:bg-teal-100 transition"><i class="fas fa-user-gear mr-2"></i><span class="hidden sm:inline">${escapeHtml(user.email)}</span><span class="sm:hidden">บัญชี</span></a><button id="signOutButton" type="button" class="text-slate-500 hover:text-rose-600 text-sm" title="ออกจากระบบ"><i class="fas fa-right-from-bracket"></i></button>`
-    : `<a href="login.html" class="flex items-center text-teal-700 border border-teal-200 bg-teal-50 px-4 py-1.5 rounded-full text-sm font-medium hover:bg-teal-100 transition"><i class="fas fa-right-to-bracket mr-2"></i>สำหรับเจ้าหน้าที่</a>`;
+    ? `<a href="admin.html" class="flex items-center text-teal-700 border border-teal-200 bg-teal-50 px-4 py-1.5 rounded-full text-sm font-medium hover:bg-teal-100 transition" aria-label="จัดการบัญชี ${escapeHtml(user.email)}"><i class="fas fa-user-gear mr-2"></i><span class="header-auth-label">${escapeHtml(user.email)}</span></a><button id="signOutButton" type="button" class="text-slate-500 hover:text-rose-600 text-sm" title="ออกจากระบบ" aria-label="ออกจากระบบ"><i class="fas fa-right-from-bracket"></i></button>`
+    : `<a href="login.html" class="flex items-center text-teal-700 border border-teal-200 bg-teal-50 px-4 py-1.5 rounded-full text-sm font-medium hover:bg-teal-100 transition" aria-label="เข้าสู่ระบบสำหรับเจ้าหน้าที่"><i class="fas fa-right-to-bracket mr-2"></i><span class="header-auth-label">สำหรับเจ้าหน้าที่</span></a>`;
   document.getElementById("signOutButton")?.addEventListener("click", () => firebase.auth().signOut());
 }
 
@@ -222,6 +309,7 @@ document.addEventListener("DOMContentLoaded", () => {
   configureChartDataLabels();
   installSharedStyles();
   setupSidebar();
+  setupResponsiveTables();
   installLoader();
   if (!firebase.apps.length) firebase.initializeApp(EDU15_FIREBASE_CONFIG);
   firebase.auth().onAuthStateChanged(updateAuthNavigation);
