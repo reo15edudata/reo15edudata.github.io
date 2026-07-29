@@ -131,27 +131,23 @@ function renderMou(rows){
 }
 
 function setupLazyMap(){
-  const placeholder=document.getElementById("businessMapPlaceholder");
-  const loadButton=document.getElementById("loadBusinessMapButton");
+  const toggleButton=document.getElementById("toggleBusinessMapButton");
   const isMobile=window.matchMedia("(max-width: 767px)").matches;
-  const loadMap=()=>{if(!businessMapInitialized)initMap();};
-  loadButton.addEventListener("click",loadMap);
-  if(!isMobile&&"IntersectionObserver" in window){
-    const observer=new IntersectionObserver(entries=>{
-      if(!entries.some(entry=>entry.isIntersecting))return;
-      observer.disconnect();
-      loadMap();
-    },{rootMargin:"320px 0px"});
-    observer.observe(placeholder);
-  }else if(!isMobile){
-    loadMap();
-  }
+  toggleButton.addEventListener("click",()=>{if(businessMapInitialized)closeMap();else initMap();});
+  updateMapToggle(false);
+  if(!isMobile)requestAnimationFrame(initMap);
+}
+function updateMapToggle(isOpen){
+  const toggleButton=document.getElementById("toggleBusinessMapButton");
+  toggleButton.setAttribute("aria-expanded",String(isOpen));
+  toggleButton.querySelector("[data-map-toggle-label]").textContent=isOpen?"ปิดแผนที่":"เปิดแผนที่";
+  toggleButton.querySelector("[data-map-toggle-icon]").className=isOpen?"fas fa-map-location-dot mr-2":"fas fa-map mr-2";
 }
 function initMap(){
   if(businessMapInitialized)return;
   const isMobile=window.matchMedia("(max-width: 767px)").matches;
-  document.getElementById("businessMapPlaceholder").hidden=true;
-  document.getElementById("businessMap").classList.remove("hidden");
+  document.getElementById("businessMapPlaceholder").classList.add("edu15-map-hidden");
+  document.getElementById("businessMap").classList.remove("hidden","edu15-map-hidden");
   document.getElementById("businessMapSummary").textContent="กำลังเตรียมแผนที่…";
   businessMap=L.map("businessMap",{
     preferCanvas:true,
@@ -168,10 +164,26 @@ function initMap(){
   businessLayer=L.layerGroup().addTo(businessMap);
   businessPopup=L.popup({maxWidth:isMobile?240:320});
   businessMapInitialized=true;
+  updateMapToggle(true);
   requestAnimationFrame(()=>{
     businessMap.invalidateSize();
     renderMap(pendingBusinessRows,businessMapRenderVersion);
   });
+}
+function closeMap(){
+  if(!businessMapInitialized)return;
+  businessMapRenderVersion+=1;
+  businessMap.closePopup();
+  businessLayer.clearLayers();
+  businessMap.remove();
+  businessMap=null;
+  businessLayer=null;
+  businessPopup=null;
+  businessMapInitialized=false;
+  document.getElementById("businessMap").classList.add("hidden","edu15-map-hidden");
+  document.getElementById("businessMapPlaceholder").classList.remove("edu15-map-hidden");
+  document.getElementById("businessMapSummary").textContent="พร้อมแสดงพิกัดเมื่อเปิดแผนที่";
+  updateMapToggle(false);
 }
 function parseCoordinate(value){const values=String(value||"").match(/-?\d+(?:\.\d+)?/g)?.map(Number);if(!values||values.length<2)return null;let[lat,lng]=values;if(Math.abs(lat)>90&&Math.abs(lng)<=90)[lat,lng]=[lng,lat];return Math.abs(lat)<=90&&Math.abs(lng)<=180?[lat,lng]:null;}
 function coordinateForBusiness(row){

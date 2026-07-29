@@ -28,6 +28,10 @@ body {
   display: none;
 }
 
+.edu15-map-hidden {
+  display: none !important;
+}
+
 @media (max-width: 767px) {
   body {
     width: 100%;

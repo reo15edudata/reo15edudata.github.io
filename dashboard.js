@@ -208,32 +208,30 @@ function renderGenderChart(students) {
 }
 
 function setupLazyMap() {
-  const placeholder = document.getElementById("schoolMapPlaceholder");
-  const loadButton = document.getElementById("loadSchoolMapButton");
+  const toggleButton = document.getElementById("toggleSchoolMapButton");
   const isMobile = window.matchMedia("(max-width: 767px)").matches;
-  const loadMap = () => {
-    if (schoolMapInitialized) return;
-    initMap();
-  };
+  toggleButton.addEventListener("click", () => {
+    if (schoolMapInitialized) closeMap();
+    else initMap();
+  });
+  updateMapToggle(false);
+  if (!isMobile) requestAnimationFrame(initMap);
+}
 
-  loadButton.addEventListener("click", loadMap);
-  if (!isMobile && "IntersectionObserver" in window) {
-    const observer = new IntersectionObserver(entries => {
-      if (!entries.some(entry => entry.isIntersecting)) return;
-      observer.disconnect();
-      loadMap();
-    }, { rootMargin: "320px 0px" });
-    observer.observe(placeholder);
-  } else if (!isMobile) {
-    loadMap();
-  }
+function updateMapToggle(isOpen) {
+  const toggleButton = document.getElementById("toggleSchoolMapButton");
+  toggleButton.setAttribute("aria-expanded", String(isOpen));
+  toggleButton.querySelector("[data-map-toggle-label]").textContent = isOpen ? "ปิดแผนที่" : "เปิดแผนที่";
+  toggleButton.querySelector("[data-map-toggle-icon]").className = isOpen
+    ? "fas fa-map-location-dot mr-2"
+    : "fas fa-map mr-2";
 }
 
 function initMap() {
   if (schoolMapInitialized) return;
   const isMobile = window.matchMedia("(max-width: 767px)").matches;
-  document.getElementById("schoolMapPlaceholder").hidden = true;
-  document.getElementById("schoolMap").classList.remove("hidden");
+  document.getElementById("schoolMapPlaceholder").classList.add("edu15-map-hidden");
+  document.getElementById("schoolMap").classList.remove("hidden", "edu15-map-hidden");
   document.getElementById("mapSummary").textContent = "กำลังเตรียมแผนที่…";
 
   schoolMap = L.map("schoolMap", {
@@ -251,10 +249,27 @@ function initMap() {
   mapLayer = L.layerGroup().addTo(schoolMap);
   schoolPopup = L.popup({ maxWidth: isMobile ? 240 : 320 });
   schoolMapInitialized = true;
+  updateMapToggle(true);
   requestAnimationFrame(() => {
     schoolMap.invalidateSize();
     renderMap(pendingMapLocations, mapRenderVersion);
   });
+}
+
+function closeMap() {
+  if (!schoolMapInitialized) return;
+  mapRenderVersion += 1;
+  schoolMap.closePopup();
+  mapLayer.clearLayers();
+  schoolMap.remove();
+  schoolMap = null;
+  mapLayer = null;
+  schoolPopup = null;
+  schoolMapInitialized = false;
+  document.getElementById("schoolMap").classList.add("hidden", "edu15-map-hidden");
+  document.getElementById("schoolMapPlaceholder").classList.remove("edu15-map-hidden");
+  document.getElementById("mapSummary").textContent = "พร้อมแสดงพิกัดเมื่อเปิดแผนที่";
+  updateMapToggle(false);
 }
 
 function parseCoordinate(value) {
