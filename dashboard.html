@@ -83,8 +83,16 @@
                     <div class="h-72"><canvas id="genderChart"></canvas></div>
                 </article>
                 <article class="xl:col-span-3 bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden">
-                    <div class="p-5 border-b border-slate-100 flex justify-between"><div><h2 class="font-semibold text-slate-700">แผนที่สถานศึกษา</h2><p id="mapSummary" class="text-xs text-slate-400 mt-1">พิกัดจาก School_Location.COORDI</p></div><i class="fas fa-map-location-dot text-teal-500"></i></div>
-                    <div id="schoolMap" class="h-80"></div>
+                    <div class="p-5 border-b border-slate-100 flex justify-between"><div><h2 class="font-semibold text-slate-700">แผนที่สถานศึกษา</h2><p id="mapSummary" class="text-xs text-slate-400 mt-1">แผนที่จะโหลดเมื่อเปิดใช้งาน</p></div><i class="fas fa-map-location-dot text-teal-500"></i></div>
+                    <div id="schoolMapPlaceholder" class="h-80 flex items-center justify-center bg-gradient-to-br from-slate-50 to-teal-50 p-6 text-center">
+                        <div>
+                            <div class="mx-auto flex h-12 w-12 items-center justify-center rounded-full bg-white text-teal-600 shadow-sm"><i class="fas fa-map-location-dot text-xl"></i></div>
+                            <p class="mt-3 text-sm font-medium text-slate-700">โหลดแผนที่เมื่อคุณต้องการใช้งาน</p>
+                            <p class="mt-1 text-xs text-slate-500">ช่วยลดการใช้หน่วยความจำและแบตเตอรี่ โดยเฉพาะบนมือถือ</p>
+                            <button id="loadSchoolMapButton" type="button" class="mt-4 rounded-lg bg-teal-600 px-4 py-2.5 text-sm font-medium text-white hover:bg-teal-700"><i class="fas fa-map mr-2"></i>เปิดแผนที่สถานศึกษา</button>
+                        </div>
+                    </div>
+                    <div id="schoolMap" class="h-80 hidden" aria-label="แผนที่พิกัดสถานศึกษา"></div>
                 </article>
             </section>
 

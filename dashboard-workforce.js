@@ -3,9 +3,14 @@ const SHEETS = { career:"Job_Vacancy_Career", industry:"Job_Vacancy_Industry", e
 const MONTHS = ["มกราคม","กุมภาพันธ์","มีนาคม","เมษายน","พฤษภาคม","มิถุนายน","กรกฎาคม","สิงหาคม","กันยายน","ตุลาคม","พฤศจิกายน","ธันวาคม"];
 const MONTH_SHORT = ["ม.ค.","ก.พ.","มี.ค.","เม.ย.","พ.ค.","มิ.ย.","ก.ค.","ส.ค.","ก.ย.","ต.ค.","พ.ย.","ธ.ค."];
 let data = {career:[],industry:[],eduLevel:[],mou:[]};
-let trendChart, businessMap, businessLayer;
+let trendChart, businessMap, businessLayer, businessPopup;
 let trendProvinceFilter, tableProvinceFilter, tableMonthFilter;
 let tableDefaultYear = "";
+let businessMapInitialized = false;
+let pendingBusinessRows = [];
+let businessMapRenderVersion = 0;
+const businessCoordinateCache = new WeakMap();
+const BUSINESS_MAP_CHUNK_SIZE = 200;
 
 window.addEventListener("DOMContentLoaded", initDashboard);
 
@@ -14,7 +19,7 @@ async function initDashboard(){
     const results=await Promise.all(Object.entries(SHEETS).map(async([key,sheet])=>[key,await EDU15DataClient.fetchAllPages(GAS_WEB_APP_URL,"DB_3",sheet)]));
     data=Object.fromEntries(results);
     populateFilters();
-    initMap();
+    setupLazyMap();
     renderTrend();
     renderTables();
     document.getElementById("trendFilterForm").addEventListener("change",renderTrend);
@@ -109,7 +114,7 @@ function renderTables(){
   renderSummaryTable("eduLevelTableBody",filter(data.eduLevel),"EDU_LEVEL");
   const mou=data.mou.filter(row=>String(row.YEAR)===year&&(!provinces.length||provinces.includes(String(row.PROV_NAME))));
   renderMou(mou);
-  renderMap(mou);
+  queueBusinessMapRender(mou);
 }
 
 function renderSummaryTable(id,rows,field){
@@ -125,17 +130,102 @@ function renderMou(rows){
   document.getElementById("mouTableBody").innerHTML=sorted.length?sorted.map(row=>`<tr class="border-t"><td class="p-3 font-medium">${escapeHtml(row.BUSINESS_NAME||"ไม่ระบุ")}</td><td class="p-3">${escapeHtml(row.BUSINESS_TYPE||"-")}</td></tr>`).join(""):'<tr><td colspan="2" class="p-8 text-center text-slate-400">รอข้อมูลอัปเดต</td></tr>';
 }
 
+function setupLazyMap(){
+  const placeholder=document.getElementById("businessMapPlaceholder");
+  const loadButton=document.getElementById("loadBusinessMapButton");
+  const isMobile=window.matchMedia("(max-width: 767px)").matches;
+  const loadMap=()=>{if(!businessMapInitialized)initMap();};
+  loadButton.addEventListener("click",loadMap);
+  if(!isMobile&&"IntersectionObserver" in window){
+    const observer=new IntersectionObserver(entries=>{
+      if(!entries.some(entry=>entry.isIntersecting))return;
+      observer.disconnect();
+      loadMap();
+    },{rootMargin:"320px 0px"});
+    observer.observe(placeholder);
+  }else if(!isMobile){
+    loadMap();
+  }
+}
 function initMap(){
-  businessMap=L.map("businessMap",{preferCanvas:true}).setView([18.4,99.0],7);
-  L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png",{maxZoom:18,attribution:"&copy; OpenStreetMap contributors"}).addTo(businessMap);
+  if(businessMapInitialized)return;
+  const isMobile=window.matchMedia("(max-width: 767px)").matches;
+  document.getElementById("businessMapPlaceholder").hidden=true;
+  document.getElementById("businessMap").classList.remove("hidden");
+  document.getElementById("businessMapSummary").textContent="กำลังเตรียมแผนที่…";
+  businessMap=L.map("businessMap",{
+    preferCanvas:true,
+    zoomAnimation:!isMobile,
+    fadeAnimation:!isMobile,
+    markerZoomAnimation:!isMobile
+  }).setView([18.4,99.0],7);
+  L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png",{
+    maxZoom:18,
+    updateWhenIdle:true,
+    keepBuffer:isMobile?1:2,
+    attribution:"&copy; OpenStreetMap contributors"
+  }).addTo(businessMap);
   businessLayer=L.layerGroup().addTo(businessMap);
+  businessPopup=L.popup({maxWidth:isMobile?240:320});
+  businessMapInitialized=true;
+  requestAnimationFrame(()=>{
+    businessMap.invalidateSize();
+    renderMap(pendingBusinessRows,businessMapRenderVersion);
+  });
 }
 function parseCoordinate(value){const values=String(value||"").match(/-?\d+(?:\.\d+)?/g)?.map(Number);if(!values||values.length<2)return null;let[lat,lng]=values;if(Math.abs(lat)>90&&Math.abs(lng)<=90)[lat,lng]=[lng,lat];return Math.abs(lat)<=90&&Math.abs(lng)<=180?[lat,lng]:null;}
-function renderMap(rows){
-  businessLayer.clearLayers();const bounds=[];let valid=0;
-  rows.forEach(row=>{const coordinate=parseCoordinate(row.COORDI);if(!coordinate)return;valid++;bounds.push(coordinate);L.circleMarker(coordinate,{radius:6,color:"#6d28d9",fillColor:"#8b5cf6",fillOpacity:.75,weight:1}).bindPopup(`<strong>${escapeHtml(row.BUSINESS_NAME||"สถานประกอบการ")}</strong><br>${escapeHtml(row.BUSINESS_TYPE||"")}`).addTo(businessLayer);});
-  document.getElementById("businessMapSummary").textContent=valid?`แสดงพิกัดที่ถูกต้อง ${valid.toLocaleString("th-TH")} แห่ง`:"รอข้อมูลอัปเดต";
-  if(bounds.length)businessMap.fitBounds(bounds,{padding:[24,24],maxZoom:13});
-  setTimeout(()=>businessMap.invalidateSize(),0);
+function coordinateForBusiness(row){
+  if(businessCoordinateCache.has(row))return businessCoordinateCache.get(row);
+  const coordinate=parseCoordinate(row.COORDI);
+  businessCoordinateCache.set(row,coordinate);
+  return coordinate;
+}
+function openBusinessPopup(event){
+  const marker=event.target;
+  businessPopup.setLatLng(event.latlng).setContent(marker.options.edu15PopupHtml).openOn(businessMap);
+}
+function queueBusinessMapRender(rows){
+  pendingBusinessRows=rows;
+  businessMapRenderVersion+=1;
+  if(!businessMapInitialized){
+    document.getElementById("businessMapSummary").textContent="พร้อมแสดงพิกัดเมื่อเปิดแผนที่";
+    return;
+  }
+  renderMap(rows,businessMapRenderVersion);
+}
+function renderMap(rows,version){
+  businessMap.closePopup();
+  businessLayer.clearLayers();
+  const bounds=L.latLngBounds([]);
+  const summary=document.getElementById("businessMapSummary");
+  let valid=0,index=0;
+  const addChunk=()=>{
+    if(version!==businessMapRenderVersion||!businessMapInitialized)return;
+    const end=Math.min(index+BUSINESS_MAP_CHUNK_SIZE,rows.length);
+    for(;index<end;index++){
+      const row=rows[index];
+      const coordinate=coordinateForBusiness(row);
+      if(!coordinate)continue;
+      valid++;
+      bounds.extend(coordinate);
+      L.circleMarker(coordinate,{
+        radius:6,
+        color:"#6d28d9",
+        fillColor:"#8b5cf6",
+        fillOpacity:.75,
+        weight:1,
+        edu15PopupHtml:`<strong>${escapeHtml(row.BUSINESS_NAME||"สถานประกอบการ")}</strong><br>${escapeHtml(row.BUSINESS_TYPE||"")}`
+      }).on("click",openBusinessPopup).addTo(businessLayer);
+    }
+    if(index<rows.length){
+      summary.textContent=`กำลังแสดงพิกัด ${index.toLocaleString("th-TH")} จาก ${rows.length.toLocaleString("th-TH")} รายการ`;
+      requestAnimationFrame(addChunk);
+      return;
+    }
+    summary.textContent=valid?`แสดงพิกัดที่ถูกต้อง ${valid.toLocaleString("th-TH")} แห่ง`:"ไม่พบพิกัดตามตัวกรอง";
+    if(bounds.isValid())businessMap.fitBounds(bounds,{padding:[24,24],maxZoom:13,animate:false});
+    businessMap.invalidateSize();
+  };
+  requestAnimationFrame(addChunk);
 }
 function escapeHtml(value){return String(value).replace(/[&<>'"]/g,char=>({"&":"&amp;","<":"&lt;",">":"&gt;","'":"&#039;",'"':"&quot;"})[char]);}

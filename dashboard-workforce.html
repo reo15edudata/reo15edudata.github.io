@@ -68,7 +68,18 @@
                     <div class="p-5 border-b"><div class="flex items-center justify-between gap-4"><div><h2 class="font-semibold">สถานประกอบการที่ร่วมจัดการศึกษา</h2><p id="mouTableSummary" class="text-xs text-slate-400 mt-1"></p></div><div class="shrink-0 rounded-xl bg-teal-50 px-4 py-3 text-right"><span class="block text-xs text-slate-500">สถานประกอบการ MOU</span><strong id="stat-mou" class="text-2xl text-teal-700">0</strong></div></div><div class="mt-3 rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-xs text-amber-800"><i class="fas fa-triangle-exclamation mr-1"></i><strong>ข้อจำกัดของข้อมูล:</strong> รายชื่อและพิกัดสถานประกอบการในตารางนี้เป็นข้อมูลจำลองเพื่อการพัฒนาระบบ ส่วนจำนวนสถานประกอบการที่ร่วมจัดการอาชีวศึกษาเป็นข้อมูลจริง และจะปรับเป็นรายชื่อจริงเมื่อได้รับข้อมูลครบถ้วน</div></div>
                     <div class="overflow-auto max-h-[28rem]"><table class="w-full text-sm"><thead class="bg-slate-50 sticky top-0"><tr><th class="p-3 text-left">สถานประกอบการ</th><th class="p-3 text-left">ประเภท</th></tr></thead><tbody id="mouTableBody"></tbody></table></div>
                 </article>
-                <article class="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden"><div class="p-5 border-b"><h2 class="font-semibold">แผนที่สถานประกอบการ</h2><p id="businessMapSummary" class="text-xs text-slate-400 mt-1">พิกัดจาก Vocational_Busi_MOU.COORDI</p></div><div id="businessMap" class="h-[28rem]"></div></article>
+                <article class="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden">
+                    <div class="p-5 border-b"><h2 class="font-semibold">แผนที่สถานประกอบการ</h2><p id="businessMapSummary" class="text-xs text-slate-400 mt-1">แผนที่จะโหลดเมื่อเปิดใช้งาน</p></div>
+                    <div id="businessMapPlaceholder" class="h-[28rem] flex items-center justify-center bg-gradient-to-br from-slate-50 to-violet-50 p-6 text-center">
+                        <div>
+                            <div class="mx-auto flex h-12 w-12 items-center justify-center rounded-full bg-white text-violet-600 shadow-sm"><i class="fas fa-map-location-dot text-xl"></i></div>
+                            <p class="mt-3 text-sm font-medium text-slate-700">โหลดแผนที่เมื่อคุณต้องการใช้งาน</p>
+                            <p class="mt-1 text-xs text-slate-500">ลดภาระของอุปกรณ์ระหว่างดูกราฟและตาราง</p>
+                            <button id="loadBusinessMapButton" type="button" class="mt-4 rounded-lg bg-violet-600 px-4 py-2.5 text-sm font-medium text-white hover:bg-violet-700"><i class="fas fa-map mr-2"></i>เปิดแผนที่สถานประกอบการ</button>
+                        </div>
+                    </div>
+                    <div id="businessMap" class="h-[28rem] hidden" aria-label="แผนที่พิกัดสถานประกอบการ"></div>
+                </article>
             </section>
         </main>
     </div>

@@ -8,7 +8,13 @@ let currentPage = 1;
 let genderChart;
 let schoolMap;
 let mapLayer;
+let schoolPopup;
+let schoolMapInitialized = false;
+let pendingMapLocations = [];
+let mapRenderVersion = 0;
 let multiFilters = {};
+const schoolCoordinateCache = new WeakMap();
+const MAP_CHUNK_SIZE = 250;
 
 async function fetchAllPages(dbKey, sheetName) {
   return EDU15DataClient.fetchAllPages(GAS_WEB_APP_URL, dbKey, sheetName);
@@ -24,7 +30,7 @@ async function initDashboard() {
       fetchAllPages("DB_1", "School_Location")
     ]);
     populateFilters();
-    initMap();
+    setupLazyMap();
     renderDashboard(getFilters());
     document.getElementById("filterForm").addEventListener("submit", event => {
       event.preventDefault();
@@ -134,7 +140,7 @@ function renderDashboard(filters) {
   currentSchools = aggregateSchools(students, teachers);
   renderSchoolTable();
   renderGenderChart(students);
-  renderMap(locations);
+  queueMapRender(locations);
 }
 
 function renderStats(students, teachers) {
@@ -201,10 +207,54 @@ function renderGenderChart(students) {
   });
 }
 
+function setupLazyMap() {
+  const placeholder = document.getElementById("schoolMapPlaceholder");
+  const loadButton = document.getElementById("loadSchoolMapButton");
+  const isMobile = window.matchMedia("(max-width: 767px)").matches;
+  const loadMap = () => {
+    if (schoolMapInitialized) return;
+    initMap();
+  };
+
+  loadButton.addEventListener("click", loadMap);
+  if (!isMobile && "IntersectionObserver" in window) {
+    const observer = new IntersectionObserver(entries => {
+      if (!entries.some(entry => entry.isIntersecting)) return;
+      observer.disconnect();
+      loadMap();
+    }, { rootMargin: "320px 0px" });
+    observer.observe(placeholder);
+  } else if (!isMobile) {
+    loadMap();
+  }
+}
+
 function initMap() {
-  schoolMap = L.map("schoolMap", { preferCanvas: true }).setView([18.4, 99.0], 7);
-  L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", { maxZoom: 18, attribution: "&copy; OpenStreetMap contributors" }).addTo(schoolMap);
+  if (schoolMapInitialized) return;
+  const isMobile = window.matchMedia("(max-width: 767px)").matches;
+  document.getElementById("schoolMapPlaceholder").hidden = true;
+  document.getElementById("schoolMap").classList.remove("hidden");
+  document.getElementById("mapSummary").textContent = "กำลังเตรียมแผนที่…";
+
+  schoolMap = L.map("schoolMap", {
+    preferCanvas: true,
+    zoomAnimation: !isMobile,
+    fadeAnimation: !isMobile,
+    markerZoomAnimation: !isMobile
+  }).setView([18.4, 99.0], 7);
+  L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", {
+    maxZoom: 18,
+    updateWhenIdle: true,
+    keepBuffer: isMobile ? 1 : 2,
+    attribution: "&copy; OpenStreetMap contributors"
+  }).addTo(schoolMap);
   mapLayer = L.layerGroup().addTo(schoolMap);
+  schoolPopup = L.popup({ maxWidth: isMobile ? 240 : 320 });
+  schoolMapInitialized = true;
+  requestAnimationFrame(() => {
+    schoolMap.invalidateSize();
+    renderMap(pendingMapLocations, mapRenderVersion);
+  });
 }
 
 function parseCoordinate(value) {
@@ -216,22 +266,72 @@ function parseCoordinate(value) {
   return [lat, lng];
 }
 
-function renderMap(locations) {
+function coordinateForSchool(row) {
+  if (schoolCoordinateCache.has(row)) return schoolCoordinateCache.get(row);
+  const coordinate = parseCoordinate(row.COORDI);
+  schoolCoordinateCache.set(row, coordinate);
+  return coordinate;
+}
+
+function openSchoolPopup(event) {
+  const marker = event.target;
+  schoolPopup
+    .setLatLng(event.latlng)
+    .setContent(marker.options.edu15PopupHtml)
+    .openOn(schoolMap);
+}
+
+function queueMapRender(locations) {
+  pendingMapLocations = locations;
+  mapRenderVersion += 1;
+  if (!schoolMapInitialized) {
+    document.getElementById("mapSummary").textContent = "พร้อมแสดงพิกัดเมื่อเปิดแผนที่";
+    return;
+  }
+  renderMap(locations, mapRenderVersion);
+}
+
+function renderMap(locations, version) {
+  schoolMap.closePopup();
   mapLayer.clearLayers();
-  const bounds = [];
+  const bounds = L.latLngBounds([]);
   let valid = 0;
-  locations.forEach(row => {
-    const coordinate = parseCoordinate(row.COORDI);
-    if (!coordinate) return;
-    valid++;
-    bounds.push(coordinate);
-    L.circleMarker(coordinate, { renderer: L.canvas(), radius: 5, color: "#0f766e", fillColor: "#14b8a6", fillOpacity: .75, weight: 1 })
-      .bindPopup(`<strong>${escapeHtml(row.SCHOOL_NAME || "สถานศึกษา")}</strong><br>${escapeHtml(row.DEPARTMENT_NAME || "")}`)
-      .addTo(mapLayer);
-  });
-  document.getElementById("mapSummary").textContent = `แสดงพิกัดที่ถูกต้อง ${valid.toLocaleString("th-TH")} แห่ง`;
-  if (bounds.length) schoolMap.fitBounds(bounds, { padding: [24, 24], maxZoom: 13 });
-  setTimeout(() => schoolMap.invalidateSize(), 0);
+  let index = 0;
+  const summary = document.getElementById("mapSummary");
+
+  const addChunk = () => {
+    if (version !== mapRenderVersion || !schoolMapInitialized) return;
+    const end = Math.min(index + MAP_CHUNK_SIZE, locations.length);
+    for (; index < end; index++) {
+      const row = locations[index];
+      const coordinate = coordinateForSchool(row);
+      if (!coordinate) continue;
+      valid++;
+      bounds.extend(coordinate);
+      L.circleMarker(coordinate, {
+        radius: 5,
+        color: "#0f766e",
+        fillColor: "#14b8a6",
+        fillOpacity: .75,
+        weight: 1,
+        edu15PopupHtml: `<strong>${escapeHtml(row.SCHOOL_NAME || "สถานศึกษา")}</strong><br>${escapeHtml(row.DEPARTMENT_NAME || "")}`
+      }).on("click", openSchoolPopup).addTo(mapLayer);
+    }
+
+    if (index < locations.length) {
+      summary.textContent = `กำลังแสดงพิกัด ${index.toLocaleString("th-TH")} จาก ${locations.length.toLocaleString("th-TH")} รายการ`;
+      requestAnimationFrame(addChunk);
+      return;
+    }
+
+    summary.textContent = valid
+      ? `แสดงพิกัดที่ถูกต้อง ${valid.toLocaleString("th-TH")} แห่ง`
+      : "ไม่พบพิกัดตามตัวกรอง";
+    if (bounds.isValid()) schoolMap.fitBounds(bounds, { padding: [24, 24], maxZoom: 13, animate: false });
+    schoolMap.invalidateSize();
+  };
+
+  requestAnimationFrame(addChunk);
 }
 
 function escapeHtml(value) {
