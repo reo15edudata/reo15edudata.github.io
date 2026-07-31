@@ -3,7 +3,7 @@ const EDU15DataClient = (() => {
   const STORE_NAME = "datasets";
   const CACHE_TTL = 60 * 60 * 1000;
   const STALE_TTL = 24 * 60 * 60 * 1000;
-  const CACHE_VERSION = "schema-2026-07-31-v2";
+  const CACHE_VERSION = "schema-2026-07-31-v4";
   const pendingRequests = new Map();
 
   function openDatabase() {

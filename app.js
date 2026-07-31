@@ -67,7 +67,8 @@ const SCHEMA_DICT = {
             "YEAR", "MONTH", "PROV_NAME", "DATA_TYPE", "EDU_LEVEL", "VACANCY_COUNT"
         ],
         "Vocational_Busi_MOU": [
-            "YEAR", "PROV_NAME", "BUSINESS_TYPE", "BUSINESS_NAME", "COORDI"
+            "YEAR", "PROV_NAME", "BUSINESS_TYPE", "BUSINESS_NAME", "COORDI",
+            "BUSINESS_DETAILS", "BUSINESS_PAY", "BUSINESS_WANTS", "BUSINESS_CONTACT"
         ]
     },
 

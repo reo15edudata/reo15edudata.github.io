@@ -14,6 +14,9 @@ let tableDefaultYear = "";
 let businessMapInitialized = false;
 let pendingBusinessRows = [];
 let businessMapRenderVersion = 0;
+let currentMouRows = [];
+let selectedBusinessRow = null;
+let businessMarkerByRow = new WeakMap();
 const businessCoordinateCache = new WeakMap();
 const BUSINESS_MAP_CHUNK_SIZE = 200;
 
@@ -68,6 +71,7 @@ async function initDashboard(){
     );
     populateFilters(vacancyMetadata,{});
     setupLazyMap();
+    setupBusinessDetails();
     const currentYear=tableDefaultYear;
     const currentFilters={year:currentYear};
     const currentRows=await Promise.all(["career","industry","eduLevel"].map(key=>
@@ -218,9 +222,60 @@ function renderSummaryTable(id,rows,field){
 }
 function renderMou(rows){
   const sorted=[...rows].sort((a,b)=>String(a.BUSINESS_NAME).localeCompare(String(b.BUSINESS_NAME),"th"));
+  currentMouRows=sorted;
+  if(selectedBusinessRow&&!sorted.includes(selectedBusinessRow))closeBusinessDetails();
   document.getElementById("stat-mou").textContent=sorted.length.toLocaleString("th-TH");
-  document.getElementById("mouTableSummary").textContent=sorted.length?`พบ ${sorted.length.toLocaleString("th-TH")} รายการ`:"รอข้อมูลอัปเดต";
-  document.getElementById("mouTableBody").innerHTML=sorted.length?sorted.map(row=>`<tr class="border-t"><td class="p-3 font-medium">${escapeHtml(row.BUSINESS_NAME||"ไม่ระบุ")}</td><td class="p-3">${escapeHtml(row.BUSINESS_TYPE||"-")}</td></tr>`).join(""):'<tr><td colspan="2" class="p-8 text-center text-slate-400">รอข้อมูลอัปเดต</td></tr>';
+  document.getElementById("mouTableSummary").textContent=sorted.length?`พบ ${sorted.length.toLocaleString("th-TH")} รายการ · คลิกชื่อเพื่อดูรายละเอียด`:"รอข้อมูลอัปเดต";
+  document.getElementById("mouTableBody").innerHTML=sorted.length?sorted.map((row,index)=>`<tr class="border-t transition-colors hover:bg-teal-50/60"><td class="p-3"><button type="button" class="text-left font-medium text-teal-700 hover:text-teal-900 hover:underline" data-business-index="${index}" aria-controls="businessDetailPanel" aria-expanded="${row===selectedBusinessRow}">${escapeHtml(row.BUSINESS_NAME||"ไม่ระบุ")}</button></td><td class="p-3">${escapeHtml(row.BUSINESS_TYPE||"-")}</td></tr>`).join(""):'<tr><td colspan="2" class="p-8 text-center text-slate-400">รอข้อมูลอัปเดต</td></tr>';
+}
+
+function setupBusinessDetails(){
+  document.getElementById("mouTableBody").addEventListener("click",event=>{
+    const button=event.target.closest("[data-business-index]");
+    if(!button)return;
+    const row=currentMouRows[Number(button.dataset.businessIndex)];
+    if(row)showBusinessDetails(row);
+  });
+  document.getElementById("closeBusinessDetail").addEventListener("click",closeBusinessDetails);
+}
+function closeBusinessDetails(){
+  selectedBusinessRow=null;
+  document.getElementById("businessDetailPanel").hidden=true;
+  document.querySelectorAll("[data-business-index]").forEach(button=>{
+    button.setAttribute("aria-expanded","false");
+    button.closest("tr")?.classList.remove("bg-teal-50");
+  });
+}
+function showBusinessDetails(row,{focusMap=true}={}){
+  selectedBusinessRow=row;
+  document.getElementById("businessDetailName").textContent=row.BUSINESS_NAME||"ไม่ระบุชื่อสถานประกอบการ";
+  document.getElementById("businessDetailMeta").textContent=[row.BUSINESS_TYPE,row.PROV_NAME].map(value=>String(value||"").trim()).filter(Boolean).join(" · ")||"ไม่ระบุประเภทและจังหวัด";
+  document.getElementById("businessDetailText").textContent=String(row.BUSINESS_DETAILS||"").trim()||"ไม่มีรายละเอียดเพิ่มเติม";
+  document.getElementById("businessDetailPay").textContent=String(row.BUSINESS_PAY||"").trim()||"ไม่ระบุค่าตอบแทน";
+  const keywords=[...new Set(String(row.BUSINESS_WANTS||"").split(",").map(value=>value.trim()).filter(Boolean))];
+  document.getElementById("businessDetailWants").innerHTML=keywords.length
+    ?keywords.map(keyword=>`<span class="rounded-full border border-violet-200 bg-violet-50 px-2.5 py-1 text-xs font-medium text-violet-700">${escapeHtml(keyword)}</span>`).join("")
+    :'<span class="text-sm text-slate-400">ไม่ระบุทักษะที่ต้องการ</span>';
+  document.getElementById("businessDetailContact").innerHTML=businessContactHtml(row.BUSINESS_CONTACT);
+  document.getElementById("businessDetailPanel").hidden=false;
+  document.querySelectorAll("[data-business-index]").forEach(button=>{
+    const active=currentMouRows[Number(button.dataset.businessIndex)]===row;
+    button.setAttribute("aria-expanded",String(active));
+    button.closest("tr")?.classList.toggle("bg-teal-50",active);
+  });
+  if(focusMap)focusBusinessOnMap(row);
+}
+function businessContactHtml(value){
+  const contact=String(value||"").trim();
+  if(!contact)return'<span class="text-slate-400">ไม่ระบุช่องทางติดต่อ</span>';
+  const url=/^https?:\/\//i.test(contact)
+    ?contact
+    :/^www\./i.test(contact)
+      ?`https://${contact}`
+      :"";
+  return url
+    ?`<a href="${escapeHtml(url)}" target="_blank" rel="noopener noreferrer" class="font-medium text-blue-700 hover:underline">${escapeHtml(contact)}</a>`
+    :escapeHtml(contact);
 }
 
 function setupLazyMap(){
@@ -255,7 +310,7 @@ function initMap(){
     attribution:"&copy; OpenStreetMap contributors"
   }).addTo(businessMap);
   businessLayer=L.layerGroup().addTo(businessMap);
-  businessPopup=L.popup({maxWidth:isMobile?240:320});
+  businessPopup=L.popup({maxWidth:isMobile?240:320,autoPan:false});
   businessMapInitialized=true;
   updateMapToggle(true);
   requestAnimationFrame(()=>{
@@ -287,7 +342,23 @@ function coordinateForBusiness(row){
 }
 function openBusinessPopup(event){
   const marker=event.target;
+  if(marker.options.edu15BusinessRow)showBusinessDetails(marker.options.edu15BusinessRow,{focusMap:false});
   businessPopup.setLatLng(event.latlng).setContent(marker.options.edu15PopupHtml).openOn(businessMap);
+}
+function focusBusinessOnMap(row){
+  if(!businessMapInitialized)return;
+  const coordinate=coordinateForBusiness(row);
+  if(!coordinate){
+    document.getElementById("businessMapSummary").textContent="สถานประกอบการที่เลือกไม่ได้ระบุพิกัดที่ถูกต้อง";
+    return;
+  }
+  businessMap.stop();
+  businessMap.invalidateSize({pan:false});
+  businessMap.setView(coordinate,16,{animate:!window.matchMedia("(prefers-reduced-motion: reduce)").matches});
+  const popupHtml=`<strong>${escapeHtml(row.BUSINESS_NAME||"สถานประกอบการ")}</strong><br>${escapeHtml(row.BUSINESS_TYPE||"")}`;
+  businessPopup.setLatLng(coordinate).setContent(popupHtml).openOn(businessMap);
+  businessMarkerByRow.get(row)?.bringToFront();
+  document.getElementById("businessMapSummary").textContent=`กำลังแสดงตำแหน่ง ${row.BUSINESS_NAME||"สถานประกอบการที่เลือก"}`;
 }
 function queueBusinessMapRender(rows){
   pendingBusinessRows=rows;
@@ -301,6 +372,7 @@ function queueBusinessMapRender(rows){
 function renderMap(rows,version){
   businessMap.closePopup();
   businessLayer.clearLayers();
+  businessMarkerByRow=new WeakMap();
   const bounds=L.latLngBounds([]);
   const summary=document.getElementById("businessMapSummary");
   let valid=0,index=0;
@@ -313,14 +385,16 @@ function renderMap(rows,version){
       if(!coordinate)continue;
       valid++;
       bounds.extend(coordinate);
-      L.circleMarker(coordinate,{
+      const marker=L.circleMarker(coordinate,{
         radius:6,
         color:"#6d28d9",
         fillColor:"#8b5cf6",
         fillOpacity:.75,
         weight:1,
+        edu15BusinessRow:row,
         edu15PopupHtml:`<strong>${escapeHtml(row.BUSINESS_NAME||"สถานประกอบการ")}</strong><br>${escapeHtml(row.BUSINESS_TYPE||"")}`
       }).on("click",openBusinessPopup).addTo(businessLayer);
+      businessMarkerByRow.set(row,marker);
     }
     if(index<rows.length){
       summary.textContent=`กำลังแสดงพิกัด ${index.toLocaleString("th-TH")} จาก ${rows.length.toLocaleString("th-TH")} รายการ`;
@@ -328,7 +402,11 @@ function renderMap(rows,version){
       return;
     }
     summary.textContent=valid?`แสดงพิกัดที่ถูกต้อง ${valid.toLocaleString("th-TH")} แห่ง`:"ไม่พบพิกัดตามตัวกรอง";
-    if(bounds.isValid())businessMap.fitBounds(bounds,{padding:[24,24],maxZoom:13,animate:false});
+    if(selectedBusinessRow&&rows.includes(selectedBusinessRow)&&coordinateForBusiness(selectedBusinessRow)){
+      focusBusinessOnMap(selectedBusinessRow);
+    }else if(bounds.isValid()){
+      businessMap.fitBounds(bounds,{padding:[24,24],maxZoom:13,animate:false});
+    }
     businessMap.invalidateSize();
   };
   requestAnimationFrame(addChunk);
