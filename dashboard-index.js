@@ -59,27 +59,13 @@ window.addEventListener("DOMContentLoaded", initDashboard);
 async function initDashboard() {
   try {
     data = Object.fromEntries(Object.keys(SHEETS).map(key => [key, []]));
-    const [studentMetadata, populationMetadata, scoreMetadata] = await Promise.all([
-      EDU15DataClient.fetchMetadata(
-        GAS_WEB_APP_URL,
-        "DB_1",
-        "Student_Count",
-        ["ACAD_YEAR", "PROV_NAME"]
-      ),
-      EDU15DataClient.fetchMetadata(
-        GAS_WEB_APP_URL,
-        "DB_2",
-        "Population",
-        ["YEAR", "PROV_NAME"]
-      ),
-      EDU15DataClient.fetchMetadata(
-        GAS_WEB_APP_URL,
-        "DB_4",
-        "ONET_Score",
-        ["YEAR"]
-      )
-    ]);
-    populateFilters(studentMetadata, populationMetadata, scoreMetadata);
+    const studentMetadata = await EDU15DataClient.fetchMetadata(
+      GAS_WEB_APP_URL,
+      "DB_1",
+      "Student_Count",
+      ["ACAD_YEAR", "PROV_NAME"]
+    );
+    populateFilters(studentMetadata, {}, {});
     await loadIndexData(getFilters());
     document.getElementById("filterForm").addEventListener("submit", async event => {
       event.preventDefault();
@@ -143,7 +129,7 @@ async function fetchIndexDataset(key, filters) {
   }
 }
 
-async function loadIndexData(filters) {
+async function loadIndexDataLegacy(filters) {
   const version = ++indexLoadVersion;
   window.showPageLoader?.("กำลังโหลดดัชนีตามปีและพื้นที่", 0);
   document.getElementById("dataReadiness").className = "mb-6 rounded-xl border border-blue-200 bg-blue-50 px-5 py-4 text-sm text-blue-800";
@@ -205,6 +191,81 @@ async function loadIndexData(filters) {
     }
   } finally {
     if (version === indexLoadVersion) window.hidePageLoader?.();
+  }
+}
+
+async function loadIndexData(filters) {
+  const version = ++indexLoadVersion;
+  window.cancelBackgroundTasks?.();
+  window.showPageLoader?.("กำลังโหลดข้อมูลหลักของดัชนี", 0);
+  document.getElementById("dataReadiness").className = "mb-6 rounded-xl border border-blue-200 bg-blue-50 px-5 py-4 text-sm text-blue-800";
+  document.getElementById("dataReadiness").innerHTML = `<i class="fas fa-circle-info mr-2"></i>กำลังเตรียมข้อมูลปี ${filters.year} ${filters.provinces.length ? `· ${filters.provinces.length} จังหวัด` : "· ภาพรวมพื้นที่ ศธภ.15"}`;
+
+  const store = async key => {
+    const rows = await fetchIndexDataset(key, filters);
+    if (version !== indexLoadVersion) return false;
+    data[key] = rows;
+    return true;
+  };
+
+  try {
+    await Promise.all([store("students"), store("population")]);
+    if (version !== indexLoadVersion) return;
+    renderAccess({
+      students: filteredDataset("students", filters),
+      population: filteredDataset("population", filters),
+      studyYear: [],
+      studyRatio: []
+    }, filters);
+    document.getElementById("dataReadiness").innerHTML = `<i class="fas fa-circle-check mr-2"></i>ข้อมูลหลักปี ${filters.year} พร้อมใช้งาน · กำลังเตรียมตัวชี้วัดส่วนอื่นในเบื้องหลัง`;
+    await window.hidePageLoader?.();
+
+    const rerenderAccess = () => renderAccess({
+      students: filteredDataset("students", filters),
+      population: filteredDataset("population", filters),
+      studyYear: filteredDataset("studyYear", filters),
+      studyRatio: filteredDataset("studyRatio", filters)
+    }, filters);
+    const rerenderEquity = () => renderEquity({
+      students: filteredDataset("students", filters),
+      special: filteredDataset("special", filters),
+      oosc: filteredDataset("oosc", filters)
+    });
+    const rerenderEfficiency = () => renderEfficiency({
+      students: filteredDataset("students", filters),
+      dropout: filteredDataset("dropout", filters)
+    });
+    const rerenderRelevancy = () => renderRelevancy({
+      students: filteredDataset("students", filters),
+      jobs: filteredDataset("jobs", filters)
+    });
+    const task = (key, label, renderer) => ({
+      label,
+      run: async () => {
+        if (!await store(key) || version !== indexLoadVersion) return;
+        renderer();
+      }
+    });
+
+    window.runBackgroundTasks?.([
+      task("studyYear", "แนวโน้มปีการศึกษาเฉลี่ย", rerenderAccess),
+      task("studyRatio", "สัดส่วนระดับการศึกษา", rerenderAccess),
+      task("special", "ผู้เรียนที่มีความต้องการพิเศษ", rerenderEquity),
+      task("oosc", "เด็กนอกระบบการศึกษา", rerenderEquity),
+      task("earlyDevelopment", "พัฒนาการเด็กปฐมวัย", () => renderQuality(filters, filteredDataset("earlyDevelopment", filters))),
+      task("onet", "ผลการทดสอบ O-NET", () => renderQuality(filters, filteredDataset("earlyDevelopment", filters))),
+      task("nt", "ผลการทดสอบ NT", () => renderQuality(filters, filteredDataset("earlyDevelopment", filters))),
+      task("rt", "ผลการทดสอบ RT", () => renderQuality(filters, filteredDataset("earlyDevelopment", filters))),
+      task("dropout", "ข้อมูลผู้เรียนออกกลางคัน", rerenderEfficiency),
+      task("jobs", "ข้อมูลการมีงานทำ", rerenderRelevancy)
+    ], { title: "กำลังเตรียมตัวชี้วัดเพิ่มเติม" });
+  } catch (error) {
+    console.error(error);
+    if (version === indexLoadVersion) {
+      document.getElementById("dataReadiness").className = "mb-6 rounded-xl border border-rose-200 bg-rose-50 px-5 py-4 text-sm text-rose-700";
+      document.getElementById("dataReadiness").textContent = `โหลดข้อมูลไม่สำเร็จ: ${error.message}`;
+      await window.hidePageLoader?.();
+    }
   }
 }
 

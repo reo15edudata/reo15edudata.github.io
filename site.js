@@ -54,6 +54,15 @@ function installSharedStyles() {
     .edu15-loader[hidden] { display: none; }
     .edu15-progress-track { width: 18rem; height: .55rem; overflow: hidden; border-radius: 999px; background: #e2e8f0; }
     .edu15-progress-bar { height: 100%; width: 4%; border-radius: inherit; background: linear-gradient(90deg,#14b8a6,#0ea5e9); transition: width .25s ease; }
+    .edu15-background-status { margin-top: auto; flex-shrink: 0; border-top: 1px solid rgba(148,163,184,.2); padding: .85rem .75rem; color: #cbd5e1; }
+    .edu15-background-status[hidden] { display: none; }
+    .edu15-background-status-label { display: flex; align-items: center; gap: .5rem; font-size: .72rem; line-height: 1.25; }
+    .edu15-background-status-track { height: .3rem; margin-top: .55rem; overflow: hidden; border-radius: 999px; background: rgba(148,163,184,.24); }
+    .edu15-background-status-bar { height: 100%; width: 0; border-radius: inherit; background: linear-gradient(90deg,#2dd4bf,#38bdf8); transition: width .25s ease; }
+    [data-sidebar].sidebar-collapsed .edu15-background-status { padding: .75rem .5rem; }
+    [data-sidebar].sidebar-collapsed .edu15-background-status-copy,
+    [data-sidebar].sidebar-collapsed .edu15-background-status-track { display: none; }
+    [data-sidebar].sidebar-collapsed .edu15-background-status-label { justify-content: center; }
     .edu15-multi { position: relative; }
     .edu15-multi-button { width: 100%; display: flex; align-items: center; justify-content: space-between; gap: .75rem; border: 1px solid #cbd5e1; border-radius: .5rem; background: #f8fafc; padding: .625rem .75rem; text-align: left; }
     .edu15-multi-panel { position: absolute; z-index: 60; top: calc(100% + .35rem); left: 0; right: 0; max-height: 17rem; overflow: auto; border: 1px solid #cbd5e1; border-radius: .65rem; background: white; padding: .45rem; box-shadow: 0 12px 30px rgba(15,23,42,.16); }
@@ -194,7 +203,7 @@ function setupSidebar() {
   syncResponsiveSidebar();
 }
 
-function installLoader() {
+function installLegacyLoader() {
   const progressItems = new Map();
   const loader = document.createElement("div");
   loader.id = "pageLoader";
@@ -224,6 +233,124 @@ function installLoader() {
       loader.hidden = true;
       progressItems.clear();
     }, 180);
+  };
+}
+
+function installLoader() {
+  const progressItems = new Map();
+  let loaderVersion = 0;
+  let backgroundVersion = 0;
+  const loader = document.createElement("div");
+  loader.id = "pageLoader";
+  loader.className = "edu15-loader";
+  loader.hidden = true;
+  loader.innerHTML = '<div class="rounded-xl bg-white border border-slate-200 shadow-lg px-7 py-6 text-center"><i class="fas fa-chart-line text-teal-500 text-2xl"></i><p id="pageLoaderText" class="mt-3 mb-3 text-sm font-medium text-slate-600">กำลังเตรียมข้อมูลสำหรับแสดงผล</p><div class="edu15-progress-track" role="progressbar" aria-label="ความคืบหน้าการโหลดข้อมูล" aria-valuemin="0" aria-valuemax="100"><div id="pageLoaderBar" class="edu15-progress-bar"></div></div><p id="pageLoaderPercent" class="mt-2 text-xs text-slate-400">0%</p></div>';
+  document.body.appendChild(loader);
+
+  const updateProgress = percent => {
+    const safe = Math.min(100, Math.max(0, Math.round(percent || 0)));
+    document.getElementById("pageLoaderBar").style.width = `${Math.max(4, safe)}%`;
+    document.getElementById("pageLoaderPercent").textContent = `${safe}%`;
+    loader.querySelector('[role="progressbar"]').setAttribute("aria-valuenow", String(safe));
+  };
+
+  window.waitForDashboardPaint = () => new Promise(resolve => {
+    requestAnimationFrame(() => requestAnimationFrame(resolve));
+  });
+  window.showPageLoader = (message = "กำลังเตรียมข้อมูลสำหรับแสดงผล", percent = 0) => {
+    loaderVersion++;
+    progressItems.clear();
+    document.getElementById("pageLoaderText").textContent = message;
+    updateProgress(percent);
+    loader.hidden = false;
+  };
+  window.reportPageProgress = (key, loaded, total) => {
+    progressItems.set(key, total > 0 ? Math.min(1, loaded / total) : 0);
+    const values = [...progressItems.values()];
+    const networkPercent = values.length
+      ? values.reduce((sum, value) => sum + value, 0) / values.length * 88
+      : 0;
+    updateProgress(networkPercent);
+  };
+  window.hidePageLoader = async () => {
+    const version = loaderVersion;
+    await window.waitForDashboardPaint();
+    if (version !== loaderVersion || loader.hidden) return;
+    updateProgress(100);
+    await new Promise(resolve => setTimeout(resolve, 140));
+    if (version !== loaderVersion) return;
+    loader.hidden = true;
+    progressItems.clear();
+  };
+
+  const sidebar = document.querySelector("[data-sidebar]");
+  const backgroundStatus = document.createElement("div");
+  backgroundStatus.className = "edu15-background-status";
+  backgroundStatus.hidden = true;
+  backgroundStatus.setAttribute("role", "status");
+  backgroundStatus.setAttribute("aria-live", "polite");
+  backgroundStatus.innerHTML = '<div class="edu15-background-status-label"><i class="fas fa-cloud-arrow-down text-teal-400" aria-hidden="true"></i><span class="edu15-background-status-copy"><strong class="block text-xs font-medium text-slate-200">กำลังเตรียมข้อมูลเพิ่มเติม</strong><span data-background-detail>รอเริ่มดาวน์โหลด</span></span></div><div class="edu15-background-status-track"><div class="edu15-background-status-bar"></div></div>';
+  sidebar?.appendChild(backgroundStatus);
+
+  const waitForIdle = () => new Promise(resolve => {
+    if ("requestIdleCallback" in window) {
+      window.requestIdleCallback(resolve, { timeout: 900 });
+    } else {
+      setTimeout(resolve, 250);
+    }
+  });
+
+  window.cancelBackgroundTasks = () => {
+    backgroundVersion++;
+    backgroundStatus.hidden = true;
+  };
+  window.runBackgroundTasks = async (tasks, options = {}) => {
+    const queue = (tasks || []).filter(task => task && typeof task.run === "function");
+    const version = ++backgroundVersion;
+    if (!queue.length) {
+      backgroundStatus.hidden = true;
+      return;
+    }
+
+    await waitForIdle();
+    if (version !== backgroundVersion) return;
+    backgroundStatus.hidden = false;
+    const title = backgroundStatus.querySelector("strong");
+    const detail = backgroundStatus.querySelector("[data-background-detail]");
+    const bar = backgroundStatus.querySelector(".edu15-background-status-bar");
+    const icon = backgroundStatus.querySelector("i");
+    icon.className = "fas fa-cloud-arrow-down text-teal-400";
+    bar.style.width = "0%";
+    title.textContent = options.title || "กำลังเตรียมข้อมูลเพิ่มเติม";
+    let completed = 0;
+    let failed = 0;
+
+    for (const task of queue) {
+      if (version !== backgroundVersion) return;
+      detail.textContent = `${task.label || "ข้อมูลเพิ่มเติม"} · ${completed}/${queue.length}`;
+      try {
+        await task.run();
+      } catch (error) {
+        failed++;
+        console.warn(`Background task failed: ${task.label || "unnamed"}`, error);
+      }
+      completed++;
+      const percent = Math.round(completed / queue.length * 100);
+      bar.style.width = `${percent}%`;
+      detail.textContent = `${completed} จาก ${queue.length} ชุด · ${percent}%`;
+    }
+
+    if (version !== backgroundVersion) return;
+    title.textContent = failed ? "เตรียมข้อมูลเพิ่มเติมบางส่วนแล้ว" : "ข้อมูลเพิ่มเติมพร้อมใช้งาน";
+    detail.textContent = failed
+      ? `สำเร็จ ${queue.length - failed} จาก ${queue.length} ชุด`
+      : "พร้อมสำหรับการดูรายละเอียดและตัวกรองถัดไป";
+    icon.className = failed
+      ? "fas fa-circle-exclamation text-amber-400"
+      : "fas fa-circle-check text-emerald-400";
+    setTimeout(() => {
+      if (version === backgroundVersion) backgroundStatus.hidden = true;
+    }, 5000);
   };
 }
 

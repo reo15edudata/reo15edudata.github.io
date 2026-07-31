@@ -11,13 +11,13 @@ window.addEventListener("DOMContentLoaded",initScoreDashboard);
 async function initScoreDashboard(){
   try{
     scoreData=Object.fromEntries(SCORE_SHEETS.map(sheet=>[sheet,[]]));
-    const[onetMetadata,ntMetadata,bnetMetadata,nnetMetadata]=await Promise.all([
-      EDU15DataClient.fetchMetadata(GAS_WEB_APP_URL,"DB_4","ONET_Score",["YEAR","TEST_LEVEL","EDU_LEVEL"]),
-      EDU15DataClient.fetchMetadata(GAS_WEB_APP_URL,"DB_4","NT_LevelScore",["TEST_SUBJECT"]),
-      EDU15DataClient.fetchMetadata(GAS_WEB_APP_URL,"DB_4","BNET_Score",["TEST_LEVEL"]),
-      EDU15DataClient.fetchMetadata(GAS_WEB_APP_URL,"DB_4","NNET_Score",["PERIOD_NO","TEST_LEVEL"])
-    ]);
-    populateFilters(onetMetadata,ntMetadata,bnetMetadata,nnetMetadata);
+    const onetMetadata=await EDU15DataClient.fetchMetadata(
+      GAS_WEB_APP_URL,
+      "DB_4",
+      "ONET_Score",
+      ["YEAR","TEST_LEVEL","EDU_LEVEL"]
+    );
+    populateFilters(onetMetadata,{},{},{});
     await loadScoreYear();
     document.getElementById("scoreFilterForm").addEventListener("submit",async event=>{event.preventDefault();await loadScoreYear();});
     document.getElementById("scoreFilterForm").addEventListener("reset",()=>setTimeout(async()=>{
@@ -51,7 +51,7 @@ function populateFilters(onetMetadata,ntMetadata,bnetMetadata,nnetMetadata){
   fillSelect("nnetPeriod",(nnetMetadata.PERIOD_NO||[]).map(String).sort((a,b)=>Number(a)-Number(b)),value=>`ภาคเรียนที่ ${value}`);
   fillSelect("nnetLevel",(nnetMetadata.TEST_LEVEL||[]).map(String));
 }
-async function loadScoreYear(){
+async function loadScoreYearLegacy(){
   const version=++scoreLoadVersion;
   const year=document.getElementById("scoreYear").value;
   window.showPageLoader?.(`กำลังโหลดผลการทดสอบปี ${year}`,0);
@@ -80,6 +80,78 @@ async function loadScoreYear(){
     }
   }finally{
     if(version===scoreLoadVersion)window.hidePageLoader?.();
+  }
+}
+async function loadScoreYear(){
+  const version=++scoreLoadVersion;
+  const year=document.getElementById("scoreYear").value;
+  window.cancelBackgroundTasks?.();
+  window.showPageLoader?.(`กำลังโหลดผล O-NET ปี ${year}`,0);
+  SCORE_SHEETS.forEach(sheet=>{scoreData[sheet]=[];});
+  renderAll();
+
+  const loadRows=async sheet=>{
+    const rows=await EDU15DataClient.fetchAllPages(GAS_WEB_APP_URL,"DB_4",sheet,{filters:{year}});
+    if(version!==scoreLoadVersion)return false;
+    scoreData[sheet]=rows;
+    return true;
+  };
+
+  try{
+    await loadRows("ONET_Score");
+    if(version!==scoreLoadVersion)return;
+    renderOnet();
+    await window.hidePageLoader?.();
+
+    const dataTask=(sheet,label,renderer)=>({
+      label,
+      run:async()=>{
+        if(!await loadRows(sheet)||version!==scoreLoadVersion)return;
+        renderer();
+      }
+    });
+    window.runBackgroundTasks?.([
+      {
+        label:"ตัวกรองผล NT",
+        run:async()=>{
+          const metadata=await EDU15DataClient.fetchMetadata(GAS_WEB_APP_URL,"DB_4","NT_LevelScore",["TEST_SUBJECT"]);
+          if(version!==scoreLoadVersion)return;
+          const subjects=(metadata.TEST_SUBJECT||[]).map(String);
+          fillSelect("ntSubject",subjects);
+          const combined=subjects.find(subject=>/รวม\s*2\s*ด้าน/.test(subject));
+          if(combined)document.getElementById("ntSubject").value=combined;
+        }
+      },
+      dataTask("NT_AVGScore","คะแนนเฉลี่ย NT",renderNtAverage),
+      dataTask("NT_LevelScore","ระดับคุณภาพ NT",renderNtLevel),
+      dataTask("RT_Score","ผลการทดสอบ RT",renderRt),
+      dataTask("VNET_Score","ผลการทดสอบ V-NET",renderVnet),
+      {
+        label:"ผลการทดสอบ B-NET",
+        run:async()=>{
+          const metadata=await EDU15DataClient.fetchMetadata(GAS_WEB_APP_URL,"DB_4","BNET_Score",["TEST_LEVEL"]);
+          if(!await loadRows("BNET_Score")||version!==scoreLoadVersion)return;
+          fillSelect("bnetLevel",(metadata.TEST_LEVEL||[]).map(String));
+          renderBnet();
+        }
+      },
+      {
+        label:"ผลการทดสอบ N-NET",
+        run:async()=>{
+          const metadata=await EDU15DataClient.fetchMetadata(GAS_WEB_APP_URL,"DB_4","NNET_Score",["PERIOD_NO","TEST_LEVEL"]);
+          if(!await loadRows("NNET_Score")||version!==scoreLoadVersion)return;
+          fillSelect("nnetPeriod",(metadata.PERIOD_NO||[]).map(String).sort((a,b)=>Number(a)-Number(b)),value=>`ภาคเรียนที่ ${value}`);
+          fillSelect("nnetLevel",(metadata.TEST_LEVEL||[]).map(String));
+          renderNnet();
+        }
+      }
+    ],{title:"กำลังเตรียมผลการทดสอบเพิ่มเติม"});
+  }catch(error){
+    console.error(error);
+    if(version===scoreLoadVersion){
+      document.getElementById("onetCards").innerHTML=`<div class="col-span-full rounded-xl bg-rose-50 p-5 text-rose-700">โหลดข้อมูลไม่สำเร็จ: ${escapeHtml(error.message)}</div>`;
+      await window.hidePageLoader?.();
+    }
   }
 }
 function fillSelect(id,values,label=value=>value){const select=document.getElementById(id);select.innerHTML="";values.forEach(value=>select.add(new Option(label(value),value)));}

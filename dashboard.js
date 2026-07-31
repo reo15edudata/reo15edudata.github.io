@@ -25,21 +25,13 @@ window.addEventListener("DOMContentLoaded", initDashboard);
 
 async function initDashboard() {
   try {
-    const [studentMetadata, locationMetadata] = await Promise.all([
-      EDU15DataClient.fetchMetadata(
-        GAS_WEB_APP_URL,
-        "DB_1",
-        "Student_Count",
-        ["ACAD_YEAR", "PROV_NAME", "DEPARTMENT_NAME", "EDU_LEVEL"]
-      ),
-      EDU15DataClient.fetchMetadata(
-        GAS_WEB_APP_URL,
-        "DB_1",
-        "School_Location",
-        ["PROV_NAME", "DEPARTMENT_NAME", "EDU_AREA_NAME"]
-      )
-    ]);
-    populateFilters(studentMetadata, locationMetadata);
+    const studentMetadata = await EDU15DataClient.fetchMetadata(
+      GAS_WEB_APP_URL,
+      "DB_1",
+      "Student_Count",
+      ["ACAD_YEAR", "PROV_NAME", "DEPARTMENT_NAME", "EDU_LEVEL"]
+    );
+    populateFilters(studentMetadata, {});
     setupLazyMap();
     await loadDashboardData(getFilters());
     document.getElementById("filterForm").addEventListener("submit", async event => {
@@ -78,6 +70,8 @@ async function initDashboard() {
       currentPage = 1;
       renderSchoolTable();
     });
+    const years = (studentMetadata.ACAD_YEAR || []).map(String).sort((a, b) => Number(b) - Number(a));
+    startLocationBackgroundLoad(years.find(year => year !== getFilters().year));
   } catch (error) {
     console.error(error);
     document.getElementById("dataTableBody").innerHTML = `<tr><td colspan="5" class="px-5 py-10 text-center text-rose-600">โหลดข้อมูลไม่สำเร็จ: ${escapeHtml(error.message)}</td></tr>`;
@@ -91,7 +85,7 @@ async function loadDashboardData(filters) {
   window.showPageLoader?.("กำลังโหลดข้อมูลตามตัวกรอง", 0);
   try {
     const serverFilters = { year: filters.year, province: filters.provinces };
-    const [students, teachers, locations] = await Promise.all([
+    const [students, teachers] = await Promise.all([
       EDU15DataClient.fetchSummary(GAS_WEB_APP_URL, "DB_1", "Student_Count", {
         groupBy: ["ACAD_YEAR", "DEPARTMENT_NAME", "SCHOOL_CODE", "SCHOOL_NAME", "EDU_LEVEL", "PROV_NAME"],
         metrics: ["STUDENT_MALE", "STUDENT_FEMALE"],
@@ -101,13 +95,11 @@ async function loadDashboardData(filters) {
         groupBy: ["ACAD_YEAR", "DEPARTMENT_NAME", "SCHOOL_CODE", "SCHOOL_NAME", "PROV_NAME"],
         metrics: ["TEACHER_MALE", "TEACHER_FEMALE"],
         filters: serverFilters
-      }),
-      fetchAllPages("DB_1", "School_Location", { province: filters.provinces })
+      })
     ]);
     if (version !== dashboardLoadVersion) return;
     studentRows = students;
     teacherRows = teachers;
-    locationRows = locations;
     renderDashboard(filters);
   } catch (error) {
     console.error(error);
@@ -115,8 +107,48 @@ async function loadDashboardData(filters) {
       document.getElementById("dataTableBody").innerHTML = `<tr><td colspan="5" class="px-5 py-10 text-center text-rose-600">โหลดข้อมูลไม่สำเร็จ: ${escapeHtml(error.message)}</td></tr>`;
     }
   } finally {
-    if (version === dashboardLoadVersion) window.hidePageLoader?.();
+    if (version === dashboardLoadVersion) await window.hidePageLoader?.();
   }
+}
+
+function startLocationBackgroundLoad(previousYear) {
+  const tasks = [
+    {
+      label: "รายชื่อเขตพื้นที่และพิกัดสถานศึกษา",
+      run: async () => {
+        const rows = await fetchAllPages("DB_1", "School_Location");
+        locationRows = rows;
+        const areaValues = [...new Set(rows.map(row => String(row.EDU_AREA_NAME || "").trim()).filter(Boolean))].sort();
+        multiFilters.area = EDU15MultiSelect.create(
+          document.getElementById("filterEduArea"),
+          areaValues,
+          "ทุกเขตพื้นที่"
+        );
+        renderDashboard(getFilters());
+      }
+    }
+  ];
+  if (previousYear) {
+    tasks.push(
+      {
+        label: `ข้อมูลนักเรียนปี ${previousYear}`,
+        run: () => EDU15DataClient.fetchSummary(GAS_WEB_APP_URL, "DB_1", "Student_Count", {
+          groupBy: ["ACAD_YEAR", "DEPARTMENT_NAME", "SCHOOL_CODE", "SCHOOL_NAME", "EDU_LEVEL", "PROV_NAME"],
+          metrics: ["STUDENT_MALE", "STUDENT_FEMALE"],
+          filters: { year: previousYear }
+        })
+      },
+      {
+        label: `ข้อมูลครูปี ${previousYear}`,
+        run: () => EDU15DataClient.fetchSummary(GAS_WEB_APP_URL, "DB_1", "Teacher_Count", {
+          groupBy: ["ACAD_YEAR", "DEPARTMENT_NAME", "SCHOOL_CODE", "SCHOOL_NAME", "PROV_NAME"],
+          metrics: ["TEACHER_MALE", "TEACHER_FEMALE"],
+          filters: { year: previousYear }
+        })
+      }
+    );
+  }
+  window.runBackgroundTasks?.(tasks, { title: "กำลังเตรียมข้อมูลการศึกษาเพิ่มเติม" });
 }
 
 function populateFilters(studentMetadata, locationMetadata) {

@@ -19,7 +19,7 @@ const BUSINESS_MAP_CHUNK_SIZE = 200;
 
 window.addEventListener("DOMContentLoaded", initDashboard);
 
-async function initDashboard(){
+async function initDashboardLegacy(){
   try{
     const[vacancyMetadata,mouMetadata]=await Promise.all([
       EDU15DataClient.fetchMetadata(GAS_WEB_APP_URL,"DB_3","Job_Vacancy_Career",["YEAR","MONTH","PROV_NAME"]),
@@ -56,6 +56,72 @@ async function initDashboard(){
     console.error(error);
     document.getElementById("careerTableBody").innerHTML=`<tr><td colspan="2" class="p-8 text-center text-rose-600">${escapeHtml(error.message)}</td></tr>`;
   }finally{window.hidePageLoader?.();}
+}
+
+async function initDashboard(){
+  try{
+    const vacancyMetadata=await EDU15DataClient.fetchMetadata(
+      GAS_WEB_APP_URL,
+      "DB_3",
+      "Job_Vacancy_Career",
+      ["YEAR","MONTH","PROV_NAME"]
+    );
+    populateFilters(vacancyMetadata,{});
+    setupLazyMap();
+    const currentYear=tableDefaultYear;
+    const currentFilters={year:currentYear};
+    const currentRows=await Promise.all(["career","industry","eduLevel"].map(key=>
+      EDU15DataClient.fetchSummary(
+        GAS_WEB_APP_URL,
+        "DB_3",
+        SHEETS[key],
+        {...VACANCY_SUMMARIES[key],filters:currentFilters}
+      )
+    ));
+    ["career","industry","eduLevel"].forEach((key,index)=>{data[key]=currentRows[index];});
+    renderTrend();
+    renderTables();
+    await window.hidePageLoader?.();
+
+    document.getElementById("trendFilterForm").addEventListener("change",renderTrend);
+    document.getElementById("tableFilterForm").addEventListener("submit",event=>{event.preventDefault();renderTables();});
+    document.getElementById("tableFilterForm").addEventListener("reset",()=>setTimeout(()=>{
+      tableProvinceFilter.clear();
+      tableMonthFilter.clear();
+      document.getElementById("tableYear").value=tableDefaultYear;
+      renderTables();
+    },0));
+
+    const fullVacancyTask=(key,label)=>({
+      label,
+      run:async()=>{
+        data[key]=await EDU15DataClient.fetchSummary(
+          GAS_WEB_APP_URL,
+          "DB_3",
+          SHEETS[key],
+          VACANCY_SUMMARIES[key]
+        );
+        renderTrend();
+        renderTables();
+      }
+    });
+    window.runBackgroundTasks?.([
+      fullVacancyTask("career","ประวัติตำแหน่งงานตามอาชีพ"),
+      fullVacancyTask("industry","ประวัติตำแหน่งงานตามอุตสาหกรรม"),
+      fullVacancyTask("eduLevel","ประวัติตำแหน่งงานตามระดับการศึกษา"),
+      {
+        label:"สถานประกอบการที่ร่วมจัดการศึกษา",
+        run:async()=>{
+          data.mou=await EDU15DataClient.fetchAllPages(GAS_WEB_APP_URL,"DB_3",SHEETS.mou);
+          renderTables();
+        }
+      }
+    ],{title:"กำลังเตรียมข้อมูลกำลังคนย้อนหลัง"});
+  }catch(error){
+    console.error(error);
+    document.getElementById("careerTableBody").innerHTML=`<tr><td colspan="2" class="p-8 text-center text-rose-600">${escapeHtml(error.message)}</td></tr>`;
+    await window.hidePageLoader?.();
+  }
 }
 
 function populateFilters(vacancyMetadata,mouMetadata){
