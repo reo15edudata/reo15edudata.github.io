@@ -15,8 +15,8 @@ let data = { career: [], industry: [], eduLevel: [] };
 let trendChart;
 let trendProvinceFilter;
 let tableProvinceFilter;
-let tableMonthFilter;
 let tableDefaultYear = "";
+let tableDefaultMonth = "";
 
 window.addEventListener("DOMContentLoaded", initDashboard);
 
@@ -54,8 +54,8 @@ async function initDashboard() {
     });
     document.getElementById("tableFilterForm").addEventListener("reset", () => setTimeout(() => {
       tableProvinceFilter.clear();
-      tableMonthFilter.clear();
       document.getElementById("tableYear").value = tableDefaultYear;
+      document.getElementById("tableMonth").value = tableDefaultMonth;
       renderTables();
     }, 0));
 
@@ -100,7 +100,13 @@ function populateFilters(metadata) {
   });
   trendProvinceFilter = EDU15MultiSelect.create(document.getElementById("trendProvince"), provinces, "ทุกจังหวัด");
   tableProvinceFilter = EDU15MultiSelect.create(document.getElementById("tableProvince"), provinces, "ทุกจังหวัด");
-  tableMonthFilter = EDU15MultiSelect.create(document.getElementById("tableMonth"), months, "ทุกเดือน");
+  const tableMonthSelect = document.getElementById("tableMonth");
+  months.forEach(value => {
+    const number = monthNumber(value);
+    tableMonthSelect.add(new Option(number ? MONTHS[number - 1] : value, value));
+  });
+  tableDefaultMonth = months[months.length - 1] || "";
+  tableMonthSelect.value = tableDefaultMonth;
   if (years.length) {
     document.getElementById("trendStartYear").value = years[0];
     document.getElementById("trendEndYear").value = years[years.length - 1];
@@ -175,11 +181,11 @@ function renderTrend() {
 function renderTables() {
   const year = document.getElementById("tableYear").value;
   const provinces = tableProvinceFilter.getValues();
-  const months = tableMonthFilter.getValues();
+  const selectedMonth = monthNumber(document.getElementById("tableMonth").value);
   const filter = rows => rows.filter(row =>
     String(row.YEAR) === year &&
     (!provinces.length || provinces.includes(String(row.PROV_NAME))) &&
-    (!months.length || months.includes(String(row.MONTH)))
+    monthNumber(row.MONTH) === selectedMonth
   );
   renderSummaryTable("careerTableBody", filter(data.career), "CAREER_TYPE");
   renderSummaryTable("industryTableBody", filter(data.industry), "INDUSTRY_TYPE");

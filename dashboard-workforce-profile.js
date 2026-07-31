@@ -5,6 +5,7 @@ let profileRows = [];
 let filteredProfileRows = [];
 let profilePage = 1;
 let visibleProfileRows = [];
+let lastProfileTrigger = null;
 
 window.addEventListener("DOMContentLoaded", initProfileDashboard);
 
@@ -74,9 +75,14 @@ function setupProfileEvents() {
     const button = event.target.closest("[data-profile-index]");
     if (!button) return;
     const row = visibleProfileRows[Number(button.dataset.profileIndex)];
-    if (row) showStudentDetail(row);
+    if (row) {
+      lastProfileTrigger = button;
+      showStudentDetail(row);
+    }
   });
   document.getElementById("closeStudentDetail").addEventListener("click", closeStudentDetail);
+  document.querySelector("[data-close-profile-modal]").addEventListener("click", closeStudentDetail);
+  document.addEventListener("keydown", handleProfileModalKeydown);
   document.getElementById("profilePrevPage").addEventListener("click", () => {
     if (profilePage > 1) {
       profilePage--;
@@ -129,25 +135,54 @@ function renderProfileTable() {
 
 function showStudentDetail(row) {
   document.getElementById("detailStudentName").textContent = row.STUDENT_NAME || "ไม่ระบุชื่อ";
-  document.getElementById("detailStudentMeta").textContent =
-    [row.GENDER, row.SCHOOL_NAME, row.EDU_LEVEL].map(value => String(value || "").trim()).filter(Boolean).join(" · ");
+  document.getElementById("detailGender").textContent = row.GENDER || "ไม่ได้ระบุ";
+  document.getElementById("detailSchool").textContent = row.SCHOOL_NAME || "ไม่ได้ระบุ";
+  document.getElementById("detailEduLevel").textContent = row.EDU_LEVEL || "ไม่ได้ระบุ";
   document.getElementById("detailDescription").textContent = row.DESCRIPTION_STUDENT || "ไม่ได้ระบุ";
   const rawSkills = String(row.TOP_SKILLS || "");
   const skillParts = rawSkills.includes("|") ? rawSkills.split("|") : rawSkills.split(",");
   const skills = [...new Set(skillParts.map(value => value.trim()).filter(Boolean))];
   document.getElementById("detailSkills").innerHTML = skills.length
-    ? skills.map(skill => `<span class="rounded-full border border-teal-200 bg-teal-50 px-2.5 py-1 text-xs font-medium text-teal-700">${escapeHtml(skill)}</span>`).join("")
+    ? skills.map(skill => {
+        const thai = typeof WEF_SKILL_TRANSLATIONS !== "undefined" ? WEF_SKILL_TRANSLATIONS[skill] : "";
+        return `<div class="rounded-lg border border-teal-100 bg-teal-50 px-3 py-2"><span class="block text-sm font-semibold leading-5 text-teal-800">${escapeHtml(thai || skill)}</span>${thai ? `<span class="mt-0.5 block text-xs leading-4 text-teal-600/80">${escapeHtml(skill)}</span>` : ""}</div>`;
+      }).join("")
     : '<span class="text-sm text-slate-400">ไม่ได้ระบุ</span>';
   document.getElementById("detailLookingWork").textContent = row.LOOKING_WORK || "ไม่ได้ระบุ";
   document.getElementById("detailAvailableTime").textContent = row.AVAILABLE_TIME || "ไม่ได้ระบุ";
   document.getElementById("detailPortfolio").innerHTML = externalLinkHtml(row.PORTFOLIO_LINK, "เปิด Portfolio");
   document.getElementById("detailContact").innerHTML = contactHtml(row.STUDENT_CONTRACT);
   document.getElementById("detailSubmittedTime").textContent = formatSubmittedTime(row.SUBMITED_TIME);
-  document.getElementById("studentDetailPanel").hidden = false;
-  document.getElementById("studentDetailPanel").scrollIntoView({ behavior: "smooth", block: "nearest" });
+  const modal = document.getElementById("studentDetailModal");
+  modal.hidden = false;
+  document.getElementById("closeStudentDetail").focus();
 }
 function closeStudentDetail() {
-  document.getElementById("studentDetailPanel").hidden = true;
+  const modal = document.getElementById("studentDetailModal");
+  if (modal.hidden) return;
+  modal.hidden = true;
+  lastProfileTrigger?.focus();
+}
+function handleProfileModalKeydown(event) {
+  const modal = document.getElementById("studentDetailModal");
+  if (modal.hidden) return;
+  if (event.key === "Escape") {
+    closeStudentDetail();
+    return;
+  }
+  if (event.key !== "Tab") return;
+  const focusable = [...modal.querySelectorAll('button:not([disabled]), a[href], input:not([disabled]), [tabindex]:not([tabindex="-1"])')]
+    .filter(element => !element.hidden);
+  if (!focusable.length) return;
+  const first = focusable[0];
+  const last = focusable[focusable.length - 1];
+  if (event.shiftKey && document.activeElement === first) {
+    event.preventDefault();
+    last.focus();
+  } else if (!event.shiftKey && document.activeElement === last) {
+    event.preventDefault();
+    first.focus();
+  }
 }
 function normalizeExternalUrl(value) {
   const raw = String(value || "").trim();

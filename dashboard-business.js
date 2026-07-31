@@ -112,7 +112,7 @@ function closeBusinessDetails() {
     button.closest("tr")?.classList.remove("bg-teal-50");
   });
 }
-function showBusinessDetails(row, { focusMap = true } = {}) {
+function showBusinessDetails(row, { focusMap = true, scrollToDetails = true } = {}) {
   selectedBusinessRow = row;
   document.getElementById("businessDetailName").textContent = row.BUSINESS_NAME || "ไม่ระบุชื่อสถานประกอบการ";
   document.getElementById("businessDetailMeta").textContent = [row.BUSINESS_TYPE, row.PROV_NAME]
@@ -130,7 +130,18 @@ function showBusinessDetails(row, { focusMap = true } = {}) {
     button.setAttribute("aria-expanded", String(active));
     button.closest("tr")?.classList.toggle("bg-teal-50", active);
   });
-  if (focusMap) focusBusinessOnMap(row);
+  if (focusMap) {
+    if (!businessMapInitialized) initMap();
+    focusBusinessOnMap(row);
+  }
+  if (scrollToDetails) scrollToBusinessDetails();
+}
+function scrollToBusinessDetails() {
+  const panel = document.getElementById("businessDetailPanel");
+  const behavior = window.matchMedia("(prefers-reduced-motion: reduce)").matches ? "auto" : "smooth";
+  requestAnimationFrame(() => requestAnimationFrame(() => {
+    panel.scrollIntoView({ behavior, block: "start" });
+  }));
 }
 function businessContactHtml(value) {
   const contact = String(value || "").trim();
@@ -207,7 +218,9 @@ function coordinateForBusiness(row) {
 }
 function openBusinessPopup(event) {
   const marker = event.target;
-  if (marker.options.edu15BusinessRow) showBusinessDetails(marker.options.edu15BusinessRow, { focusMap: false });
+  if (marker.options.edu15BusinessRow) {
+    showBusinessDetails(marker.options.edu15BusinessRow, { focusMap: false, scrollToDetails: false });
+  }
   businessPopup.setLatLng(event.latlng).setContent(marker.options.edu15PopupHtml).openOn(businessMap);
 }
 function focusBusinessOnMap(row) {

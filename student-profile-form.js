@@ -27,13 +27,22 @@ function renderSkillOptions(searchValue = "") {
   const query = String(searchValue).trim().toLowerCase();
   const groups = WEF_SKILL_GROUPS.map(group => ({
     group: group.group,
-    skills: group.skills.filter(skill => !query || `${group.group} ${skill}`.toLowerCase().includes(query))
+    skills: group.skills.filter(skill => {
+      const searchable = [
+        group.group,
+        WEF_SKILL_GROUP_TRANSLATIONS[group.group],
+        skill,
+        WEF_SKILL_TRANSLATIONS[skill]
+      ].filter(Boolean).join(" ").toLowerCase();
+      return !query || searchable.includes(query);
+    })
   })).filter(group => group.skills.length);
   const atLimit = selectedSkills.size >= 4;
   document.getElementById("skillOptions").innerHTML = groups.length
-    ? groups.map(group => `<section><h4 class="mb-2 text-xs font-semibold uppercase tracking-wide text-slate-400">${escapeHtml(group.group)}</h4><div class="grid grid-cols-1 gap-2 sm:grid-cols-2">${group.skills.map(skill => {
+    ? groups.map(group => `<section><div class="mb-2 border-l-4 border-teal-400 pl-3"><h4 class="text-sm font-semibold leading-5 text-slate-700">${escapeHtml(WEF_SKILL_GROUP_TRANSLATIONS[group.group] || group.group)}</h4><p class="text-xs leading-4 text-slate-400">${escapeHtml(group.group)}</p></div><div class="grid grid-cols-1 items-stretch gap-2 lg:grid-cols-2">${group.skills.map(skill => {
         const checked = selectedSkills.has(skill);
-        return `<label class="flex cursor-pointer items-start gap-2 rounded-lg border px-3 py-2 text-sm ${checked ? "border-teal-300 bg-teal-50 text-teal-800" : "border-slate-200 bg-white text-slate-600"}"><input type="checkbox" value="${escapeHtml(skill)}" ${checked ? "checked" : ""} ${atLimit && !checked ? "disabled" : ""} class="mt-0.5 h-4 w-4 accent-teal-600"><span>${escapeHtml(skill)}</span></label>`;
+        const thai = WEF_SKILL_TRANSLATIONS[skill] || skill;
+        return `<label class="flex h-full min-h-[4.75rem] cursor-pointer items-start gap-3 rounded-lg border px-3 py-3 transition ${checked ? "border-teal-400 bg-teal-50 shadow-sm" : "border-slate-200 bg-white hover:border-teal-200 hover:bg-slate-50"} ${atLimit && !checked ? "cursor-not-allowed opacity-50" : ""}"><input type="checkbox" value="${escapeHtml(skill)}" ${checked ? "checked" : ""} ${atLimit && !checked ? "disabled" : ""} class="mt-1 h-4 w-4 shrink-0 accent-teal-600"><span class="min-w-0"><span class="block text-sm font-medium leading-5 ${checked ? "text-teal-800" : "text-slate-700"}">${escapeHtml(thai)}</span><span class="mt-1 block text-xs leading-4 text-slate-400">${escapeHtml(skill)}</span></span></label>`;
       }).join("")}</div></section>`).join("")
     : '<p class="py-8 text-center text-sm text-slate-400">ไม่พบทักษะที่ค้นหา</p>';
 }
@@ -51,6 +60,9 @@ function syncSelectedSkills() {
   // ใช้ | เพราะชื่อทักษะ WEF บางรายการมี comma อยู่ภายในชื่อ
   document.getElementById("topSkills").value = [...selectedSkills].join(" | ");
   document.getElementById("skillSelectionCount").textContent = `เลือกแล้ว ${selectedSkills.size} / 4`;
+  document.getElementById("selectedSkillsPreview").innerHTML = selectedSkills.size
+    ? [...selectedSkills].map(skill => `<span class="inline-flex items-center rounded-full border border-teal-200 bg-white px-2.5 py-1 font-medium text-teal-700">${escapeHtml(WEF_SKILL_TRANSLATIONS[skill] || skill)}</span>`).join("")
+    : "ยังไม่ได้เลือกทักษะ";
   document.getElementById("skillSelectionError").hidden = selectedSkills.size >= 3 && selectedSkills.size <= 4;
 }
 
