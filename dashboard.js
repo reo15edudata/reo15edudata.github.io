@@ -14,6 +14,7 @@ let pendingMapLocations = [];
 let mapRenderVersion = 0;
 let multiFilters = {};
 let dashboardLoadVersion = 0;
+let availableAcademicYears = [];
 const schoolCoordinateCache = new WeakMap();
 const MAP_CHUNK_SIZE = 250;
 
@@ -31,6 +32,7 @@ async function initDashboard() {
       "Student_Count",
       ["ACAD_YEAR", "PROV_NAME", "DEPARTMENT_NAME", "EDU_LEVEL"]
     );
+    availableAcademicYears = (studentMetadata.ACAD_YEAR || []).map(String);
     populateFilters(studentMetadata, {});
     setupLazyMap();
     await loadDashboardData(getFilters());
@@ -70,8 +72,6 @@ async function initDashboard() {
       currentPage = 1;
       renderSchoolTable();
     });
-    const years = (studentMetadata.ACAD_YEAR || []).map(String).sort((a, b) => Number(b) - Number(a));
-    startLocationBackgroundLoad(years.find(year => year !== getFilters().year));
   } catch (error) {
     console.error(error);
     document.getElementById("dataTableBody").innerHTML = `<tr><td colspan="5" class="px-5 py-10 text-center text-rose-600">โหลดข้อมูลไม่สำเร็จ: ${escapeHtml(error.message)}</td></tr>`;
@@ -82,6 +82,7 @@ async function initDashboard() {
 
 async function loadDashboardData(filters) {
   const version = ++dashboardLoadVersion;
+  let foregroundReady = false;
   window.showPageLoader?.("กำลังโหลดข้อมูลตามตัวกรอง", 0);
   try {
     const serverFilters = { year: filters.year, province: filters.provinces };
@@ -101,6 +102,7 @@ async function loadDashboardData(filters) {
     studentRows = students;
     teacherRows = teachers;
     renderDashboard(filters);
+    foregroundReady = true;
   } catch (error) {
     console.error(error);
     if (version === dashboardLoadVersion) {
@@ -109,11 +111,15 @@ async function loadDashboardData(filters) {
   } finally {
     if (version === dashboardLoadVersion) await window.hidePageLoader?.();
   }
+  if (foregroundReady && version === dashboardLoadVersion) {
+    scheduleDashboardBackground(filters);
+  }
 }
 
-function startLocationBackgroundLoad(previousYear) {
-  const tasks = [
-    {
+function scheduleDashboardBackground(filters) {
+  const tasks = [];
+  if (!locationRows.length) {
+    tasks.push({
       label: "รายชื่อเขตพื้นที่และพิกัดสถานศึกษา",
       run: async () => {
         const rows = await fetchAllPages("DB_1", "School_Location");
@@ -126,29 +132,25 @@ function startLocationBackgroundLoad(previousYear) {
         );
         renderDashboard(getFilters());
       }
-    }
-  ];
-  if (previousYear) {
-    tasks.push(
-      {
-        label: `ข้อมูลนักเรียนปี ${previousYear}`,
-        run: () => EDU15DataClient.fetchSummary(GAS_WEB_APP_URL, "DB_1", "Student_Count", {
-          groupBy: ["ACAD_YEAR", "DEPARTMENT_NAME", "SCHOOL_CODE", "SCHOOL_NAME", "EDU_LEVEL", "PROV_NAME"],
-          metrics: ["STUDENT_MALE", "STUDENT_FEMALE"],
-          filters: { year: previousYear }
-        })
-      },
-      {
-        label: `ข้อมูลครูปี ${previousYear}`,
-        run: () => EDU15DataClient.fetchSummary(GAS_WEB_APP_URL, "DB_1", "Teacher_Count", {
-          groupBy: ["ACAD_YEAR", "DEPARTMENT_NAME", "SCHOOL_CODE", "SCHOOL_NAME", "PROV_NAME"],
-          metrics: ["TEACHER_MALE", "TEACHER_FEMALE"],
-          filters: { year: previousYear }
-        })
-      }
-    );
+    });
   }
-  window.runBackgroundTasks?.(tasks, { title: "กำลังเตรียมข้อมูลการศึกษาเพิ่มเติม" });
+  const selectedYear = Number(filters.year);
+  const previousYear = Number.isFinite(selectedYear) ? String(selectedYear - 1) : "";
+  if (previousYear && availableAcademicYears.includes(previousYear)) {
+    tasks.push({
+      label: `ข้อมูลนักเรียนปี ${previousYear}`,
+      run: () => EDU15DataClient.fetchSummary(GAS_WEB_APP_URL, "DB_1", "Student_Count", {
+        groupBy: ["ACAD_YEAR", "DEPARTMENT_NAME", "SCHOOL_CODE", "SCHOOL_NAME", "EDU_LEVEL", "PROV_NAME"],
+        metrics: ["STUDENT_MALE", "STUDENT_FEMALE"],
+        filters: { year: previousYear, province: filters.provinces }
+      })
+    });
+  }
+  window.runBackgroundTasks?.(tasks, {
+    title: previousYear
+      ? `กำลังเตรียมข้อมูลต่อเนื่องจากปี ${filters.year}`
+      : "กำลังเตรียมข้อมูลการศึกษาเพิ่มเติม"
+  });
 }
 
 function populateFilters(studentMetadata, locationMetadata) {

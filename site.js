@@ -54,6 +54,11 @@ function installSharedStyles() {
     .edu15-loader[hidden] { display: none; }
     .edu15-progress-track { width: 18rem; height: .55rem; overflow: hidden; border-radius: 999px; background: #e2e8f0; }
     .edu15-progress-bar { height: 100%; width: 4%; border-radius: inherit; background: linear-gradient(90deg,#14b8a6,#0ea5e9); transition: width .25s ease; }
+    .edu15-loader-activity { display: flex; align-items: center; justify-content: center; gap: .45rem; margin-top: .65rem; color: #64748b; font-size: .7rem; }
+    .edu15-loader-spinner { width: .8rem; height: .8rem; flex: 0 0 auto; border: 2px solid #cbd5e1; border-top-color: #0d9488; border-radius: 999px; animation: edu15-loader-spin .8s linear infinite; }
+    @keyframes edu15-loader-spin { to { transform: rotate(360deg); } }
+    @keyframes edu15-loader-pulse { 50% { opacity: .35; } }
+    @media (prefers-reduced-motion: reduce) { .edu15-loader-spinner { animation: edu15-loader-pulse 1.6s ease-in-out infinite; } }
     .edu15-background-status { margin-top: auto; flex-shrink: 0; border-top: 1px solid rgba(148,163,184,.2); padding: .85rem .75rem; color: #cbd5e1; }
     .edu15-background-status[hidden] { display: none; }
     .edu15-background-status-label { display: flex; align-items: center; gap: .5rem; font-size: .72rem; line-height: 1.25; }
@@ -240,11 +245,13 @@ function installLoader() {
   const progressItems = new Map();
   let loaderVersion = 0;
   let backgroundVersion = 0;
+  let activityTimer = null;
+  let loaderStartedAt = 0;
   const loader = document.createElement("div");
   loader.id = "pageLoader";
   loader.className = "edu15-loader";
   loader.hidden = true;
-  loader.innerHTML = '<div class="rounded-xl bg-white border border-slate-200 shadow-lg px-7 py-6 text-center"><i class="fas fa-chart-line text-teal-500 text-2xl"></i><p id="pageLoaderText" class="mt-3 mb-3 text-sm font-medium text-slate-600">กำลังเตรียมข้อมูลสำหรับแสดงผล</p><div class="edu15-progress-track" role="progressbar" aria-label="ความคืบหน้าการโหลดข้อมูล" aria-valuemin="0" aria-valuemax="100"><div id="pageLoaderBar" class="edu15-progress-bar"></div></div><p id="pageLoaderPercent" class="mt-2 text-xs text-slate-400">0%</p></div>';
+  loader.innerHTML = '<div class="rounded-xl bg-white border border-slate-200 shadow-lg px-7 py-6 text-center"><i class="fas fa-chart-line text-teal-500 text-2xl"></i><p id="pageLoaderText" class="mt-3 mb-3 text-sm font-medium text-slate-600">กำลังเตรียมข้อมูลสำหรับแสดงผล</p><div class="edu15-progress-track" role="progressbar" aria-label="ความคืบหน้าการโหลดข้อมูล" aria-valuemin="0" aria-valuemax="100"><div id="pageLoaderBar" class="edu15-progress-bar"></div></div><p id="pageLoaderPercent" class="mt-2 text-xs text-slate-400">0%</p><div class="edu15-loader-activity"><span class="edu15-loader-spinner" aria-hidden="true"></span><span id="pageLoaderActivity">ระบบกำลังติดต่อแหล่งข้อมูล</span></div></div>';
   document.body.appendChild(loader);
 
   const updateProgress = percent => {
@@ -260,6 +267,16 @@ function installLoader() {
   window.showPageLoader = (message = "กำลังเตรียมข้อมูลสำหรับแสดงผล", percent = 0) => {
     loaderVersion++;
     progressItems.clear();
+    if (activityTimer) clearInterval(activityTimer);
+    loaderStartedAt = Date.now();
+    const updateActivity = () => {
+      const seconds = Math.max(0, Math.floor((Date.now() - loaderStartedAt) / 1000));
+      document.getElementById("pageLoaderActivity").textContent = seconds
+        ? `ระบบยังคงดึงและประมวลผลข้อมูล · ${seconds} วินาที`
+        : "ระบบกำลังติดต่อแหล่งข้อมูล";
+    };
+    updateActivity();
+    activityTimer = setInterval(updateActivity, 1000);
     document.getElementById("pageLoaderText").textContent = message;
     updateProgress(percent);
     loader.hidden = false;
@@ -281,6 +298,10 @@ function installLoader() {
     if (version !== loaderVersion) return;
     loader.hidden = true;
     progressItems.clear();
+    if (activityTimer) {
+      clearInterval(activityTimer);
+      activityTimer = null;
+    }
   };
 
   const sidebar = document.querySelector("[data-sidebar]");
