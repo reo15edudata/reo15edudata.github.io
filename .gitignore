@@ -3,4 +3,4 @@ node_modules/
 *.xlsx
 *.xls
 .env
-Code.gs
+Code*.gs

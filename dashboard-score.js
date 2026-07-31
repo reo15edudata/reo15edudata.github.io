@@ -11,13 +11,19 @@ window.addEventListener("DOMContentLoaded",initScoreDashboard);
 async function initScoreDashboard(){
   try{
     scoreData=Object.fromEntries(SCORE_SHEETS.map(sheet=>[sheet,[]]));
-    const onetMetadata=await EDU15DataClient.fetchMetadata(
-      GAS_WEB_APP_URL,
-      "DB_4",
-      "ONET_Score",
-      ["YEAR","TEST_LEVEL","EDU_LEVEL"]
-    );
-    populateFilters(onetMetadata,{},{},{});
+    const metadataEntries=await Promise.all([
+      ["ONET_Score",["YEAR","TEST_LEVEL","EDU_LEVEL"]],
+      ["NT_AVGScore",["YEAR","TEST_LEVEL"]],
+      ["NT_LevelScore",["YEAR","TEST_SUBJECT"]],
+      ["RT_Score",["YEAR","TEST_LEVEL"]],
+      ["VNET_Score",["YEAR"]],
+      ["BNET_Score",["YEAR","TEST_LEVEL"]],
+      ["NNET_Score",["YEAR","PERIOD_NO","TEST_LEVEL"]]
+    ].map(async([sheet,fields])=>[
+      sheet,
+      await EDU15DataClient.fetchMetadata(GAS_WEB_APP_URL,"DB_4",sheet,fields)
+    ]));
+    populateFilters(Object.fromEntries(metadataEntries));
     await loadScoreYear();
     document.getElementById("scoreFilterForm").addEventListener("submit",async event=>{event.preventDefault();await loadScoreYear();});
     document.getElementById("scoreFilterForm").addEventListener("reset",()=>setTimeout(async()=>{
@@ -35,9 +41,19 @@ async function initScoreDashboard(){
   }finally{window.hidePageLoader?.();}
 }
 
-function populateFilters(onetMetadata,ntMetadata,bnetMetadata,nnetMetadata){
-  fillSelect("scoreYear",(onetMetadata.YEAR||[]).map(String).sort((a,b)=>Number(b)-Number(a)));
-  const scopes=(onetMetadata.TEST_LEVEL||[]).map(String).filter(scope=>!/ประเทศ/.test(scope));
+function populateFilters(metadata){
+  const onetMetadata=metadata.ONET_Score||{};
+  const ntMetadata=metadata.NT_LevelScore||{};
+  const bnetMetadata=metadata.BNET_Score||{};
+  const nnetMetadata=metadata.NNET_Score||{};
+  const years=[...new Set(Object.values(metadata).flatMap(item=>item.YEAR||[]).map(String).filter(Boolean))]
+    .sort((a,b)=>Number(b)-Number(a));
+  fillSelect("scoreYear",years);
+  const scopes=[...new Set([
+    ...(onetMetadata.TEST_LEVEL||[]),
+    ...(metadata.NT_AVGScore?.TEST_LEVEL||[]),
+    ...(metadata.RT_Score?.TEST_LEVEL||[])
+  ].map(String).filter(scope=>scope&&!/ประเทศ/.test(scope)))];
   fillSelect("scoreScope",scopes);
   const preferred=scopes.find(scope=>/ศธภ\.?\s*15/.test(scope));
   defaultScoreScope=preferred||scopes[0]||"";
@@ -50,37 +66,6 @@ function populateFilters(onetMetadata,ntMetadata,bnetMetadata,nnetMetadata){
   fillSelect("bnetLevel",(bnetMetadata.TEST_LEVEL||[]).map(String));
   fillSelect("nnetPeriod",(nnetMetadata.PERIOD_NO||[]).map(String).sort((a,b)=>Number(a)-Number(b)),value=>`ภาคเรียนที่ ${value}`);
   fillSelect("nnetLevel",(nnetMetadata.TEST_LEVEL||[]).map(String));
-}
-async function loadScoreYearLegacy(){
-  const version=++scoreLoadVersion;
-  const year=document.getElementById("scoreYear").value;
-  window.showPageLoader?.(`กำลังโหลดผลการทดสอบปี ${year}`,0);
-  let firstGroupRendered=false;
-  const load=async sheet=>{
-    const rows=await EDU15DataClient.fetchAllPages(GAS_WEB_APP_URL,"DB_4",sheet,{filters:{year}});
-    if(version===scoreLoadVersion)scoreData[sheet]=rows;
-  };
-  const group=async(sheets,renderer)=>{
-    await Promise.all(sheets.map(load));
-    if(version!==scoreLoadVersion)return;
-    renderer();
-    if(!firstGroupRendered){firstGroupRendered=true;window.hidePageLoader?.();}
-  };
-  try{
-    await Promise.all([
-      group(["ONET_Score","NT_AVGScore","NT_LevelScore","RT_Score"],renderCoreTests),
-      group(["VNET_Score"],renderVnet),
-      group(["BNET_Score"],renderBnet),
-      group(["NNET_Score"],renderNnet)
-    ]);
-  }catch(error){
-    console.error(error);
-    if(version===scoreLoadVersion){
-      document.getElementById("onetCards").innerHTML=`<div class="col-span-full rounded-xl bg-rose-50 p-5 text-rose-700">โหลดข้อมูลไม่สำเร็จ: ${escapeHtml(error.message)}</div>`;
-    }
-  }finally{
-    if(version===scoreLoadVersion)window.hidePageLoader?.();
-  }
 }
 async function loadScoreYear(){
   const version=++scoreLoadVersion;

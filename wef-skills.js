@@ -1,0 +1,30 @@
+const WEF_SKILL_GROUPS = [
+  { group: "Manual dexterity, endurance and precision", skills: ["Dexterity", "Strength and stamina", "Flexibility and coordination"] },
+  { group: "Sensory-processing abilities", skills: ["Visual abilities", "Auditory abilities", "Information-processing abilities", "Spatial abilities"] },
+  { group: "Creativity and problem solving", skills: ["Creative thinking", "Analytical thinking", "Systems thinking"] },
+  { group: "Mathematical and statistical thinking", skills: ["Number facility", "Calculating and estimating", "Algebraic facility", "Data analysis and mathematical modelling"] },
+  { group: "Speaking, writing and languages", skills: ["Reading", "Speaking", "Writing", "Editing", "Multi-lingualism"] },
+  { group: "Talent management", skills: ["Skill evaluation", "Talent planning and development"] },
+  { group: "Operations and logistics", skills: ["Coordination and time management", "Project management", "Supply-chain management"] },
+  { group: "Financial management", skills: ["Accounting", "Finance"] },
+  { group: "Quality management", skills: ["Quality assurance", "Quality control", "Risk management"] },
+  { group: "Marketing and media", skills: ["Sales, communication and marketing of products and services", "Digital marketing"] },
+  { group: "Customer experience", skills: ["Customer service", "Customer relationship management"] },
+  { group: "Technology literacy", skills: ["Collaboration and productivity software", "Manufacturing technologies", "Installation"] },
+  { group: "Programming", skills: ["Functional programming", "Object-oriented programming", "Computational thinking"] },
+  { group: "Design and user experience", skills: ["Human-technology interaction", "Mobile development", "Web development"] },
+  { group: "Networks and cybersecurity", skills: ["Computer hardware and networking", "Cybersecurity and application security", "Cloud computing"] },
+  { group: "Artificial intelligence and big data", skills: ["Data mining", "Supervised learning", "Unsupervised learning"] },
+  { group: "Motivation and self-awareness", skills: ["Internal self-awareness", "External self-awareness", "Self-control", "Working independently", "Initiative"] },
+  { group: "Curiosity and lifelong learning", skills: ["Curiosity", "Willingness to learn"] },
+  { group: "Dependability and attention to detail", skills: ["Meeting commitments and deadlines", "Time management and prioritisation", "Attention to detail", "Assuming responsibility"] },
+  { group: "Resilience, flexibility and agility", skills: ["Frustration management", "Stress management", "Adaptation to change", "Persistence"] },
+  { group: "Empathy and active listening", skills: ["Empathy", "Asking questions", "Giving and receiving feedback"] },
+  { group: "Service orientation", skills: ["Following instructions and procedures", "Assisting and supporting co-workers"] },
+  { group: "Teaching, mentoring and coaching", skills: ["Teaching", "Mentoring", "Coaching"] },
+  { group: "Leadership and social influence", skills: ["Persuasion and negotiation", "Liaising, networking and exchanging information", "Building trust"] },
+  { group: "Civic responsibility", skills: ["Ethical leadership", "Social justice", "Social-cultural awareness", "Technology ethics"] },
+  { group: "Environmental stewardship", skills: ["Environmental awareness", "Sustainable and efficient resource usage", "Adopting green technologies"] }
+];
+
+const WEF_SKILLS = WEF_SKILL_GROUPS.flatMap(group => group.skills);

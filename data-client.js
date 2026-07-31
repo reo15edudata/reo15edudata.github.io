@@ -72,10 +72,36 @@ const EDU15DataClient = (() => {
     return url.toString();
   }
 
-  async function requestJson(url) {
+  async function requestJson(url, progressKey = "") {
+    if (progressKey) window.reportPageProgress?.(progressKey, 8, 100);
     const response = await fetch(url);
     if (!response.ok) throw new Error(`HTTP ${response.status}`);
-    const result = await response.json();
+    if (progressKey) window.reportPageProgress?.(progressKey, 42, 100);
+    let responseText;
+    const totalBytes = Number(response.headers.get("content-length"));
+    if (progressKey && response.body && Number.isFinite(totalBytes) && totalBytes > 0) {
+      const reader = response.body.getReader();
+      const chunks = [];
+      let loadedBytes = 0;
+      while (true) {
+        const { done, value } = await reader.read();
+        if (done) break;
+        chunks.push(value);
+        loadedBytes += value.byteLength;
+        window.reportPageProgress?.(progressKey, 42 + Math.min(48, loadedBytes / totalBytes * 48), 100);
+      }
+      const combined = new Uint8Array(loadedBytes);
+      let offset = 0;
+      chunks.forEach(chunk => {
+        combined.set(chunk, offset);
+        offset += chunk.byteLength;
+      });
+      responseText = new TextDecoder().decode(combined);
+    } else {
+      responseText = await response.text();
+    }
+    if (progressKey) window.reportPageProgress?.(progressKey, 94, 100);
+    const result = JSON.parse(responseText);
     if (!result.success) throw new Error(result.message || "โหลดข้อมูลไม่สำเร็จ");
     return result;
   }
@@ -118,6 +144,7 @@ const EDU15DataClient = (() => {
 
   async function cachedRequest(key, loader, backgroundLoader = loader) {
     if (pendingRequests.has(key)) return pendingRequests.get(key);
+    window.reportPageProgress?.(key, 2, 100);
 
     try {
       const cached = await readCache(key);
@@ -133,6 +160,7 @@ const EDU15DataClient = (() => {
     if (pendingRequests.has(key)) return pendingRequests.get(key);
     const request = loader()
       .then(value => {
+        window.reportPageProgress?.(key, 1, 1);
         writeCache(key, value).catch(error => console.warn("Dashboard cache write skipped", error));
         return value;
       })
@@ -160,7 +188,7 @@ const EDU15DataClient = (() => {
           dbKey,
           sheetName,
           fields
-        }));
+        }), key);
         if (result.mode === "metadata" && result.data && !Array.isArray(result.data)) return result.data;
       } catch (error) {
         console.warn(`Metadata endpoint fallback for ${sheetName}`, error);
@@ -186,7 +214,7 @@ const EDU15DataClient = (() => {
           groupBy,
           metrics,
           ...filters
-        }));
+        }), key);
         if (result.mode === "summary" && Array.isArray(result.data)) return result.data;
       } catch (error) {
         console.warn(`Summary endpoint fallback for ${sheetName}`, error);

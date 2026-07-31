@@ -1,0 +1,75 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>สถานประกอบการที่ร่วมจัดการอาชีวศึกษา - ศธภ.15</title>
+  <link href="tailwind.css?v=20260731-1" rel="stylesheet">
+  <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
+  <link href="responsive.css?v=20260731-2" rel="stylesheet">
+  <link href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" rel="stylesheet">
+  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+</head>
+<body data-dashboard="true" class="bg-slate-50 font-sans text-slate-800 h-screen flex overflow-hidden">
+  <aside class="w-64 bg-[#1e293b] text-slate-300 flex flex-col h-full shrink-0">
+    <div class="h-16 flex items-center px-4 border-b border-slate-700/50"><div class="bg-teal-500 text-white w-8 h-8 rounded flex items-center justify-center mr-3"><i class="fa-solid fa-graduation-cap"></i></div><span class="text-white font-semibold text-lg">ศธภ.15</span></div>
+    <div class="flex-1 overflow-y-auto py-4 px-3">
+      <div class="text-xs font-semibold text-slate-500 mb-2 px-3 tracking-wider">DASHBOARDS</div>
+      <ul class="space-y-1 mb-6">
+        <li><a href="dashboard.html" class="flex items-center px-3 py-2 rounded-md hover:bg-slate-800 hover:text-white"><i class="fas fa-chart-pie w-7"></i>สารสนเทศการศึกษา</a></li>
+        <li><a href="dashboard-index.html" class="flex items-center px-3 py-2 rounded-md hover:bg-slate-800 hover:text-white"><i class="fas fa-chart-line w-7"></i>ดัชนีการศึกษา</a></li>
+        <li><a href="dashboard-workforce.html" class="flex items-center px-3 py-2 rounded-md hover:bg-slate-800 hover:text-white"><i class="fas fa-users-gear w-7"></i>ความต้องการกำลังคน</a></li>
+      </ul>
+      <div class="text-xs font-semibold text-slate-500 mb-2 px-3 tracking-wider">MANAGEMENT</div>
+      <ul><li><a href="admin.html" class="flex items-center px-3 py-2 rounded-md hover:bg-slate-800 hover:text-white"><i class="fas fa-user-gear w-7"></i>Admin Console</a></li></ul>
+    </div>
+  </aside>
+  <div class="flex-1 flex flex-col h-full overflow-hidden">
+    <header class="h-16 bg-white border-b border-slate-200 flex items-center justify-between px-4 md:px-6 shrink-0">
+      <div class="flex items-center"><button type="button" class="mr-4 text-slate-500" aria-label="ย่อหรือขยายเมนู"><i class="fas fa-bars"></i></button><div><h1 class="font-semibold">สถานประกอบการที่ร่วมจัดการอาชีวศึกษา</h1><p class="text-xs text-slate-400 hidden sm:block">รายชื่อ รายละเอียด และพิกัดสถานประกอบการ</p></div></div>
+      <div class="flex items-center space-x-4"><a href="login.html" class="flex items-center text-teal-700 border border-teal-200 bg-teal-50 px-4 py-1.5 rounded-full text-sm font-medium"><i class="fas fa-right-to-bracket mr-2"></i>สำหรับเจ้าหน้าที่</a></div>
+    </header>
+    <main class="flex-1 overflow-y-auto p-4 md:p-6">
+      <section class="bg-white rounded-xl border border-slate-200 shadow-sm p-5 mb-6">
+        <div class="flex items-center gap-2 mb-4"><i class="fas fa-filter text-violet-500"></i><h2 class="font-semibold text-slate-700">ตัวกรองสถานประกอบการ</h2></div>
+        <form id="businessFilterForm" class="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-4 items-end">
+          <div><label class="filter-label">ปีข้อมูล</label><select id="businessYear" class="filter-control"></select></div>
+          <div><label class="filter-label">จังหวัด</label><div id="businessProvince"></div></div>
+          <div class="flex gap-2"><button type="reset" class="flex-1 rounded-lg bg-slate-200 py-2.5 text-slate-700">ล้างตัวกรอง</button><button type="submit" class="flex-1 rounded-lg bg-violet-600 py-2.5 text-white">แสดงผล</button></div>
+        </form>
+      </section>
+      <div class="mb-6 rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-900">
+        <i class="fas fa-triangle-exclamation mr-2"></i>
+        ข้อมูลรายชื่อ รายละเอียด และพิกัดสถานประกอบการบางส่วนเป็นข้อมูลจำลองเพื่อแสดงรูปแบบระบบ และจะปรับปรุงเมื่อได้รับข้อมูลจริงครบถ้วน
+      </div>
+      <section class="grid grid-cols-1 xl:grid-cols-2 gap-6">
+        <article class="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden">
+          <div class="p-5 border-b"><div class="flex items-center justify-between gap-4"><div><h2 class="font-semibold">สถานประกอบการที่ร่วมจัดการศึกษา</h2><p id="mouTableSummary" class="text-xs text-slate-400 mt-1"></p></div><div class="shrink-0 rounded-xl bg-teal-50 px-4 py-3 text-right"><span class="block text-xs text-slate-500">สถานประกอบการ MOU</span><strong id="stat-mou" class="text-2xl text-teal-700">0</strong></div></div><div class="mt-3 rounded-lg border border-blue-200 bg-blue-50 px-3 py-2 text-xs text-blue-800"><i class="fas fa-circle-info mr-1"></i>คลิกชื่อสถานประกอบการเพื่อดูรายละเอียด ค่าตอบแทน ทักษะที่ต้องการ และตำแหน่งบนแผนที่</div></div>
+          <div class="overflow-auto max-h-[28rem]"><table class="w-full text-sm"><thead class="bg-slate-50 sticky top-0"><tr><th class="p-3 text-left">สถานประกอบการ</th><th class="p-3 text-left">ประเภท</th></tr></thead><tbody id="mouTableBody"></tbody></table></div>
+          <div id="businessDetailPanel" class="border-t border-slate-200 bg-slate-50 p-5" hidden aria-live="polite">
+            <div class="flex items-start justify-between gap-4"><div><p class="text-xs font-semibold uppercase tracking-wide text-teal-700">รายละเอียดสถานประกอบการ</p><h3 id="businessDetailName" class="mt-1 text-lg font-semibold text-slate-800"></h3><p id="businessDetailMeta" class="mt-1 text-xs text-slate-500"></p></div><button id="closeBusinessDetail" type="button" class="rounded-lg border border-slate-300 bg-white px-2.5 py-1.5 text-xs text-slate-500 hover:bg-slate-100" aria-label="ปิดรายละเอียด"><i class="fas fa-xmark"></i></button></div>
+            <div class="mt-4 space-y-3 text-sm">
+              <div><span class="block text-xs font-medium text-slate-500">รายละเอียด</span><p id="businessDetailText" class="mt-1 whitespace-pre-line leading-6 text-slate-700"></p></div>
+              <div><span class="block text-xs font-medium text-slate-500">ค่าตอบแทน</span><p id="businessDetailPay" class="mt-1 font-semibold text-emerald-700"></p></div>
+              <div><span class="block text-xs font-medium text-slate-500">ทักษะที่สถานประกอบการต้องการ</span><div id="businessDetailWants" class="mt-2 flex flex-wrap gap-2"></div></div>
+              <div><span class="block text-xs font-medium text-slate-500">ช่องทางติดต่อ</span><div id="businessDetailContact" class="mt-1 break-words text-slate-700"></div></div>
+            </div>
+          </div>
+        </article>
+        <article class="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden">
+          <div class="p-5 border-b flex flex-wrap sm:flex-nowrap items-center justify-between gap-4"><div><h2 class="font-semibold">แผนที่สถานประกอบการ</h2><p id="businessMapSummary" class="text-xs text-slate-400 mt-1">พร้อมแสดงพิกัดเมื่อเปิดแผนที่</p></div><button id="toggleBusinessMapButton" type="button" class="shrink-0 rounded-lg border border-violet-200 bg-violet-50 px-3 py-2 text-sm font-medium text-violet-700 hover:bg-violet-100" aria-controls="businessMap" aria-expanded="false"><i class="fas fa-map mr-2" data-map-toggle-icon></i><span data-map-toggle-label>เปิดแผนที่</span></button></div>
+          <div id="businessMapPlaceholder" class="h-[28rem] flex items-center justify-center bg-gradient-to-br from-slate-50 to-violet-50 p-6 text-center"><div><div class="mx-auto flex h-12 w-12 items-center justify-center rounded-full bg-white text-violet-600 shadow-sm"><i class="fas fa-map-location-dot text-xl"></i></div><p class="mt-3 text-sm font-medium text-slate-700">คลิกปุ่ม “เปิดแผนที่” เพื่อดูพิกัดสถานประกอบการ</p><p class="mt-1 text-xs text-slate-500">แผนที่จะแสดงสถานประกอบการตามข้อมูลที่คุณเลือก</p></div></div>
+          <div id="businessMap" class="h-[28rem] hidden edu15-map-hidden" aria-label="แผนที่พิกัดสถานประกอบการ"></div>
+        </article>
+      </section>
+    </main>
+  </div>
+  <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-auth.js"></script>
+  <script src="site.js?v=20260731-6"></script>
+  <script src="data-client.js?v=20260731-5"></script>
+  <script src="dashboard-business.js?v=20260731-1"></script>
+  <style>.filter-label{display:block;font-size:.75rem;font-weight:600;color:#64748b;margin-bottom:.25rem}.filter-control{width:100%;border:1px solid #cbd5e1;background:#f8fafc;border-radius:.5rem;padding:.625rem}</style>
+  <script src="footer.js?v=20260731-2"></script>
+</body>
+</html>

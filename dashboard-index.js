@@ -59,13 +59,29 @@ window.addEventListener("DOMContentLoaded", initDashboard);
 async function initDashboard() {
   try {
     data = Object.fromEntries(Object.keys(SHEETS).map(key => [key, []]));
-    const studentMetadata = await EDU15DataClient.fetchMetadata(
-      GAS_WEB_APP_URL,
-      "DB_1",
-      "Student_Count",
-      ["ACAD_YEAR", "PROV_NAME"]
-    );
-    populateFilters(studentMetadata, {}, {});
+    const metadataEntries = await Promise.all([
+      ["students", "DB_1", "Student_Count", ["ACAD_YEAR", "PROV_NAME"]],
+      ["population", "DB_2", "Population", ["YEAR", "PROV_NAME"]],
+      ["special", "DB_2", "Special_Needs", ["YEAR", "PROV_NAME"]],
+      ["oosc", "DB_2", "Out_of_School", ["YEAR", "PROV_NAME"]],
+      ["dropout", "DB_2", "Dropout", ["YEAR", "PROV_NAME"]],
+      ["jobs", "DB_2", "Get_a_Jobs", ["YEAR", "PROV_NAME"]],
+      ["studyYear", "DB_2", "Study_YearAVG", ["YEAR", "PROV_NAME"]],
+      ["studyRatio", "DB_2", "Ratio_StudyLevel", ["YEAR", "PROV_NAME"]],
+      ["earlyDevelopment", "DB_2", "5YearsOld_Fertile", ["YEAR", "PROV_NAME"]],
+      ["onet", "DB_4", "ONET_Score", ["YEAR"]],
+      ["nt", "DB_4", "NT_AVGScore", ["YEAR"]],
+      ["rt", "DB_4", "RT_Score", ["YEAR"]]
+    ].map(async ([key, dbKey, sheetName, fields]) => {
+      try {
+        return [key, await EDU15DataClient.fetchMetadata(GAS_WEB_APP_URL, dbKey, sheetName, fields)];
+      } catch (error) {
+        if (!OPTIONAL_SHEETS.has(key)) throw error;
+        console.warn(`Optional metadata ${sheetName} is not available yet`, error);
+        return [key, {}];
+      }
+    }));
+    populateFilters(Object.fromEntries(metadataEntries));
     await loadIndexData(getFilters());
     document.getElementById("filterForm").addEventListener("submit", async event => {
       event.preventDefault();
@@ -86,18 +102,17 @@ async function initDashboard() {
   }
 }
 
-function populateFilters(studentMetadata, populationMetadata, scoreMetadata) {
-  const years = [...new Set([
-    ...(studentMetadata.ACAD_YEAR || []),
-    ...(populationMetadata.YEAR || []),
-    ...(scoreMetadata.YEAR || [])
-  ].map(String).filter(Boolean))].sort((a, b) => Number(b) - Number(a));
+function populateFilters(metadata) {
+  const years = [...new Set(Object.values(metadata).flatMap(item => [
+    ...(item.ACAD_YEAR || []),
+    ...(item.YEAR || [])
+  ]).map(String).filter(Boolean))].sort((a, b) => Number(b) - Number(a));
   const yearSelect = document.getElementById("filterYear");
   years.forEach(year => yearSelect.add(new Option(year, year)));
-  const provinces = [...new Set([
-    ...(studentMetadata.PROV_NAME || []),
-    ...(populationMetadata.PROV_NAME || [])
-  ].map(String).filter(Boolean))].sort();
+  const provinces = [...new Set(Object.values(metadata)
+    .flatMap(item => item.PROV_NAME || [])
+    .map(String)
+    .filter(Boolean))].sort();
   provinceFilter = EDU15MultiSelect.create(document.getElementById("filterProvince"), provinces, "ทุกจังหวัด");
 }
 
@@ -126,71 +141,6 @@ async function fetchIndexDataset(key, filters) {
     if (!OPTIONAL_SHEETS.has(key)) throw error;
     console.warn(`Optional dataset ${sheetName} is not available yet`, error);
     return [];
-  }
-}
-
-async function loadIndexDataLegacy(filters) {
-  const version = ++indexLoadVersion;
-  window.showPageLoader?.("กำลังโหลดดัชนีตามปีและพื้นที่", 0);
-  document.getElementById("dataReadiness").className = "mb-6 rounded-xl border border-blue-200 bg-blue-50 px-5 py-4 text-sm text-blue-800";
-  document.getElementById("dataReadiness").innerHTML = `<i class="fas fa-circle-info mr-2"></i>กำลังโหลดปี ${filters.year} ${filters.provinces.length ? `· ${filters.provinces.length} จังหวัด` : "· ภาพรวมพื้นที่ ศธภ.15"}`;
-
-  const loaders = {};
-  let firstGroupRendered = false;
-  const load = key => {
-    if (!loaders[key]) loaders[key] = fetchIndexDataset(key, filters);
-    return loaders[key];
-  };
-  const loadGroup = async (keys, renderer) => {
-    const values = await Promise.all(keys.map(load));
-    if (version !== indexLoadVersion) return;
-    keys.forEach((key, index) => { data[key] = values[index]; });
-    renderer();
-    if (!firstGroupRendered) {
-      firstGroupRendered = true;
-      window.hidePageLoader?.();
-    }
-  };
-
-  const tasks = [
-    loadGroup(["students", "population", "studyYear", "studyRatio"], () => {
-      renderAccess({
-        students: filteredDataset("students", filters),
-        population: filteredDataset("population", filters),
-        studyYear: filteredDataset("studyYear", filters),
-        studyRatio: filteredDataset("studyRatio", filters)
-      }, filters);
-    }),
-    loadGroup(["students", "special", "oosc"], () => renderEquity({
-      students: filteredDataset("students", filters),
-      special: filteredDataset("special", filters),
-      oosc: filteredDataset("oosc", filters)
-    })),
-    loadGroup(["earlyDevelopment", "onet", "nt", "rt"], () => {
-      renderQuality(filters, filteredDataset("earlyDevelopment", filters));
-    }),
-    loadGroup(["students", "dropout"], () => renderEfficiency({
-      students: filteredDataset("students", filters),
-      dropout: filteredDataset("dropout", filters)
-    })),
-    loadGroup(["students", "jobs"], () => renderRelevancy({
-      students: filteredDataset("students", filters),
-      jobs: filteredDataset("jobs", filters)
-    }))
-  ];
-
-  try {
-    await Promise.all(tasks);
-    if (version !== indexLoadVersion) return;
-    document.getElementById("dataReadiness").innerHTML = `<i class="fas fa-circle-info mr-2"></i>กำลังแสดงปี ${filters.year} ${filters.provinces.length ? `· ${filters.provinces.length} จังหวัด` : "· ภาพรวมพื้นที่ ศธภ.15"} · แต่ละส่วนแสดงทันทีเมื่อข้อมูลพร้อม`;
-  } catch (error) {
-    console.error(error);
-    if (version === indexLoadVersion) {
-      document.getElementById("dataReadiness").className = "mb-6 rounded-xl border border-rose-200 bg-rose-50 px-5 py-4 text-sm text-rose-700";
-      document.getElementById("dataReadiness").textContent = `โหลดข้อมูลไม่สำเร็จ: ${error.message}`;
-    }
-  } finally {
-    if (version === indexLoadVersion) window.hidePageLoader?.();
   }
 }
 

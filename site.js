@@ -50,7 +50,7 @@ function installSharedStyles() {
     [data-sidebar].sidebar-collapsed .sidebar-link-text { display: none; }
     [data-sidebar].sidebar-collapsed a,
     [data-sidebar].sidebar-collapsed .admin-nav { justify-content: center; padding-left: .75rem; padding-right: .75rem; }
-    .edu15-loader { position: fixed; inset: 0; z-index: 100; display: flex; align-items: center; justify-content: center; background: rgba(248,250,252,.82); backdrop-filter: blur(2px); }
+    .edu15-loader { position: fixed; inset: 0; z-index: 2000; isolation: isolate; display: flex; align-items: center; justify-content: center; background: rgba(248,250,252,.82); backdrop-filter: blur(2px); }
     .edu15-loader[hidden] { display: none; }
     .edu15-progress-track { width: 18rem; height: .55rem; overflow: hidden; border-radius: 999px; background: #e2e8f0; }
     .edu15-progress-bar { height: 100%; width: 4%; border-radius: inherit; background: linear-gradient(90deg,#14b8a6,#0ea5e9); transition: width .25s ease; }
@@ -64,10 +64,22 @@ function installSharedStyles() {
     .edu15-background-status-label { display: flex; align-items: center; gap: .5rem; font-size: .72rem; line-height: 1.25; }
     .edu15-background-status-track { height: .3rem; margin-top: .55rem; overflow: hidden; border-radius: 999px; background: rgba(148,163,184,.24); }
     .edu15-background-status-bar { height: 100%; width: 0; border-radius: inherit; background: linear-gradient(90deg,#2dd4bf,#38bdf8); transition: width .25s ease; }
+    .edu15-background-status.is-error { border-top-color: rgba(251,113,133,.45); background: rgba(127,29,29,.22); }
+    .edu15-background-status.is-error .edu15-background-status-bar { background: #fb7185; }
+    .edu15-background-reload { width: 100%; margin-top: .65rem; border: 1px solid rgba(253,164,175,.45); border-radius: .5rem; background: rgba(159,18,57,.28); padding: .45rem .6rem; color: #ffe4e6; font-size: .72rem; font-weight: 600; }
+    .edu15-background-reload:hover { background: rgba(159,18,57,.5); }
     [data-sidebar].sidebar-collapsed .edu15-background-status { padding: .75rem .5rem; }
     [data-sidebar].sidebar-collapsed .edu15-background-status-copy,
-    [data-sidebar].sidebar-collapsed .edu15-background-status-track { display: none; }
+    [data-sidebar].sidebar-collapsed .edu15-background-status-track,
+    [data-sidebar].sidebar-collapsed .edu15-background-reload { display: none; }
     [data-sidebar].sidebar-collapsed .edu15-background-status-label { justify-content: center; }
+    .edu15-workforce-toggle { width: 100%; }
+    .edu15-workforce-submenu { margin: .3rem 0 .4rem 1.7rem; padding-left: .6rem; border-left: 1px solid rgba(148,163,184,.25); }
+    .edu15-workforce-submenu a { display: block; border-radius: .4rem; padding: .45rem .55rem; color: #94a3b8; font-size: .75rem; line-height: 1.25; }
+    .edu15-workforce-submenu a:hover,
+    .edu15-workforce-submenu a.is-active { background: #334155; color: #5eead4; }
+    [data-sidebar].sidebar-collapsed .edu15-workforce-submenu { display: none; }
+    [data-sidebar].sidebar-collapsed [data-workforce-chevron] { display: none; }
     .edu15-multi { position: relative; }
     .edu15-multi-button { width: 100%; display: flex; align-items: center; justify-content: space-between; gap: .75rem; border: 1px solid #cbd5e1; border-radius: .5rem; background: #f8fafc; padding: .625rem .75rem; text-align: left; }
     .edu15-multi-panel { position: absolute; z-index: 60; top: calc(100% + .35rem); left: 0; right: 0; max-height: 17rem; overflow: auto; border: 1px solid #cbd5e1; border-radius: .65rem; background: white; padding: .45rem; box-shadow: 0 12px 30px rgba(15,23,42,.16); }
@@ -106,6 +118,7 @@ function setupSidebar() {
     item.innerHTML = `<a href="dashboard-score.html" class="flex items-center px-3 py-2 rounded-md ${isActive ? "text-teal-400 bg-slate-800 border-l-2 border-teal-500" : "hover:bg-slate-800 hover:text-white"}"><i class="fas fa-square-poll-vertical w-7"></i>ผลการทดสอบทางการศึกษา</a>`;
     workforceLink.closest("li")?.after(item);
   }
+  setupWorkforceNavigation(sidebar);
 
   sidebar.querySelectorAll("a, button.admin-nav").forEach(link => {
     const icon = link.querySelector("i");
@@ -208,37 +221,37 @@ function setupSidebar() {
   syncResponsiveSidebar();
 }
 
-function installLegacyLoader() {
-  const progressItems = new Map();
-  const loader = document.createElement("div");
-  loader.id = "pageLoader";
-  loader.className = "edu15-loader";
-  loader.hidden = true;
-  loader.innerHTML = '<div class="rounded-xl bg-white border border-slate-200 shadow-lg px-7 py-6 text-center"><i class="fas fa-chart-line text-teal-500 text-2xl"></i><p id="pageLoaderText" class="mt-3 mb-3 text-sm font-medium text-slate-600">กำลังเตรียมข้อมูลสำหรับแสดงผล</p><div class="edu15-progress-track" role="progressbar" aria-label="ความคืบหน้าการโหลดข้อมูล" aria-valuemin="0" aria-valuemax="100"><div id="pageLoaderBar" class="edu15-progress-bar"></div></div><p id="pageLoaderPercent" class="mt-2 text-xs text-slate-400">0%</p></div>';
-  document.body.appendChild(loader);
-  const updateProgress = percent => {
-    const safe = Math.min(100, Math.max(0, Math.round(percent || 0)));
-    document.getElementById("pageLoaderBar").style.width = `${Math.max(4, safe)}%`;
-    document.getElementById("pageLoaderPercent").textContent = `${safe}%`;
-    loader.querySelector('[role="progressbar"]').setAttribute("aria-valuenow", String(safe));
-  };
-  window.showPageLoader = (message = "กำลังเตรียมข้อมูลสำหรับแสดงผล", percent = 0) => {
-    document.getElementById("pageLoaderText").textContent = message;
-    updateProgress(percent);
-    loader.hidden = false;
-  };
-  window.reportPageProgress = (key, loaded, total) => {
-    progressItems.set(key, total > 0 ? Math.min(1, loaded / total) : 0);
-    const values = [...progressItems.values()];
-    updateProgress(values.length ? values.reduce((sum, value) => sum + value, 0) / values.length * 100 : 0);
-  };
-  window.hidePageLoader = () => {
-    updateProgress(100);
-    setTimeout(() => {
-      loader.hidden = true;
-      progressItems.clear();
-    }, 180);
-  };
+function setupWorkforceNavigation(sidebar) {
+  const workforceLink = sidebar.querySelector('a[href="dashboard-workforce.html"]');
+  if (!workforceLink) return;
+  const item = workforceLink.closest("li");
+  if (!item) return;
+  const currentPage = location.pathname.split("/").pop() || "index.html";
+  const pages = [
+    ["dashboard-workforce.html", "ภาพรวมความต้องการกำลังคน"],
+    ["dashboard-business.html", "สถานประกอบการที่ร่วมจัดการอาชีวศึกษา"],
+    ["dashboard-workforce-profile.html", "โปรไฟล์ผู้สนใจฝึกประสบการณ์"]
+  ];
+  const active = pages.some(([href]) => href === currentPage);
+  item.innerHTML = `
+    <button type="button" class="edu15-workforce-toggle flex items-center px-3 py-2 rounded-md hover:bg-slate-800 hover:text-white ${active ? "text-teal-400 bg-slate-800 border-l-2 border-teal-500" : ""}" aria-expanded="${active}" aria-controls="workforceSubmenu">
+      <i class="fas fa-users-gear w-7"></i>
+      <span class="sidebar-link-text flex-1 text-left">ความต้องการกำลังคน</span>
+      <i class="fas fa-chevron-down text-[10px] transition-transform ${active ? "rotate-180" : ""}" data-workforce-chevron></i>
+    </button>
+    <ul id="workforceSubmenu" class="edu15-workforce-submenu" ${active ? "" : "hidden"}>
+      ${pages.map(([href, label]) => `<li><a href="${href}" class="${href === currentPage ? "is-active" : ""}">${label}</a></li>`).join("")}
+    </ul>
+  `;
+  const toggle = item.querySelector(".edu15-workforce-toggle");
+  const submenu = item.querySelector(".edu15-workforce-submenu");
+  const chevron = item.querySelector("[data-workforce-chevron]");
+  toggle.addEventListener("click", event => {
+    event.stopPropagation();
+    submenu.hidden = !submenu.hidden;
+    toggle.setAttribute("aria-expanded", String(!submenu.hidden));
+    chevron.classList.toggle("rotate-180", !submenu.hidden);
+  });
 }
 
 function installLoader() {
@@ -256,6 +269,7 @@ function installLoader() {
 
   const updateProgress = percent => {
     const safe = Math.min(100, Math.max(0, Math.round(percent || 0)));
+    loader.dataset.progress = String(safe);
     document.getElementById("pageLoaderBar").style.width = `${Math.max(4, safe)}%`;
     document.getElementById("pageLoaderPercent").textContent = `${safe}%`;
     loader.querySelector('[role="progressbar"]').setAttribute("aria-valuenow", String(safe));
@@ -278,16 +292,17 @@ function installLoader() {
     updateActivity();
     activityTimer = setInterval(updateActivity, 1000);
     document.getElementById("pageLoaderText").textContent = message;
-    updateProgress(percent);
+    updateProgress(Math.max(4, percent));
     loader.hidden = false;
   };
   window.reportPageProgress = (key, loaded, total) => {
     progressItems.set(key, total > 0 ? Math.min(1, loaded / total) : 0);
     const values = [...progressItems.values()];
-    const networkPercent = values.length
+    const measuredPercent = values.length
       ? values.reduce((sum, value) => sum + value, 0) / values.length * 88
       : 0;
-    updateProgress(networkPercent);
+    const current = Number(loader.dataset.progress || 0);
+    updateProgress(Math.max(current, 4 + measuredPercent));
   };
   window.hidePageLoader = async () => {
     const version = loaderVersion;
@@ -310,8 +325,9 @@ function installLoader() {
   backgroundStatus.hidden = true;
   backgroundStatus.setAttribute("role", "status");
   backgroundStatus.setAttribute("aria-live", "polite");
-  backgroundStatus.innerHTML = '<div class="edu15-background-status-label"><i class="fas fa-cloud-arrow-down text-teal-400" aria-hidden="true"></i><span class="edu15-background-status-copy"><strong class="block text-xs font-medium text-slate-200">กำลังเตรียมข้อมูลเพิ่มเติม</strong><span data-background-detail>รอเริ่มดาวน์โหลด</span></span></div><div class="edu15-background-status-track"><div class="edu15-background-status-bar"></div></div>';
+  backgroundStatus.innerHTML = '<div class="edu15-background-status-label"><i class="fas fa-cloud-arrow-down text-teal-400" aria-hidden="true"></i><span class="edu15-background-status-copy"><strong class="block text-xs font-medium text-slate-200">กำลังเตรียมข้อมูลเพิ่มเติม</strong><span data-background-detail>รอเริ่มดาวน์โหลด</span></span></div><div class="edu15-background-status-track"><div class="edu15-background-status-bar"></div></div><button type="button" class="edu15-background-reload" hidden><i class="fas fa-rotate-right mr-1"></i>รีเฟรชหน้าเว็บไซต์</button>';
   sidebar?.appendChild(backgroundStatus);
+  backgroundStatus.querySelector(".edu15-background-reload").addEventListener("click", () => location.reload());
 
   const waitForIdle = () => new Promise(resolve => {
     if ("requestIdleCallback" in window) {
@@ -340,6 +356,10 @@ function installLoader() {
     const detail = backgroundStatus.querySelector("[data-background-detail]");
     const bar = backgroundStatus.querySelector(".edu15-background-status-bar");
     const icon = backgroundStatus.querySelector("i");
+    const reloadButton = backgroundStatus.querySelector(".edu15-background-reload");
+    backgroundStatus.classList.remove("is-error");
+    backgroundStatus.setAttribute("role", "status");
+    reloadButton.hidden = true;
     icon.className = "fas fa-cloud-arrow-down text-teal-400";
     bar.style.width = "0%";
     title.textContent = options.title || "กำลังเตรียมข้อมูลเพิ่มเติม";
@@ -362,16 +382,22 @@ function installLoader() {
     }
 
     if (version !== backgroundVersion) return;
-    title.textContent = failed ? "เตรียมข้อมูลเพิ่มเติมบางส่วนแล้ว" : "ข้อมูลเพิ่มเติมพร้อมใช้งาน";
+    title.textContent = failed ? "โหลดข้อมูลเพิ่มเติมไม่สำเร็จ" : "ข้อมูลเพิ่มเติมพร้อมใช้งาน";
     detail.textContent = failed
-      ? `สำเร็จ ${queue.length - failed} จาก ${queue.length} ชุด`
+      ? "กรุณารีเฟรชหน้าเว็บไซต์เพื่อโหลดข้อมูลอีกครั้ง"
       : "พร้อมสำหรับการดูรายละเอียดและตัวกรองถัดไป";
     icon.className = failed
-      ? "fas fa-circle-exclamation text-amber-400"
+      ? "fas fa-circle-exclamation text-rose-400"
       : "fas fa-circle-check text-emerald-400";
-    setTimeout(() => {
-      if (version === backgroundVersion) backgroundStatus.hidden = true;
-    }, 5000);
+    if (failed) {
+      backgroundStatus.classList.add("is-error");
+      backgroundStatus.setAttribute("role", "alert");
+      reloadButton.hidden = false;
+    } else {
+      setTimeout(() => {
+        if (version === backgroundVersion) backgroundStatus.hidden = true;
+      }, 5000);
+    }
   };
 }
 

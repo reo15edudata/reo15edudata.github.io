@@ -25,8 +25,7 @@ const SCHEMA_DICT = {
         ]
     },
 
-    // DB_2: ดัชนีการศึกษา (ระดับจังหวัด/คลัสเตอร์) — ยังไม่เปิดใช้ในหน้าอัปโหลดนี้
-    // ⚠️ การจัดกลุ่มนี้เป็นการเดาตามหัวข้อที่สอดคล้องกับเมนูใน dashboard.html รอคุณยืนยันก่อนเปิดใช้งานจริง
+    // DB_2: ดัชนีการศึกษา (ระดับจังหวัด/คลัสเตอร์)
     "DB_2": {
         "Population": [
             "YEAR", "REGIONAL", "PROV_CLUSTER_NAME", "PROV_NAME", "AGE_GROUP", "GENDER", "POPU_COUNT"
@@ -55,7 +54,7 @@ const SCHEMA_DICT = {
         ]
     },
 
-    // DB_3: ความต้องการกำลังคน (ตลาดแรงงาน) — ยังไม่เปิดใช้ในหน้าอัปโหลดนี้ (เดาการจัดกลุ่มเช่นกัน)
+    // DB_3: ความต้องการกำลังคน (ตลาดแรงงาน)
     "DB_3": {
         "Job_Vacancy_Career": [
             "YEAR", "MONTH", "PROV_NAME", "DATA_TYPE", "CAREER_TYPE", "VACANCY_COUNT"
@@ -69,6 +68,11 @@ const SCHEMA_DICT = {
         "Vocational_Busi_MOU": [
             "YEAR", "PROV_NAME", "BUSINESS_TYPE", "BUSINESS_NAME", "COORDI",
             "BUSINESS_DETAILS", "BUSINESS_PAY", "BUSINESS_WANTS", "BUSINESS_CONTACT"
+        ],
+        "Business_Student_Profile": [
+            "SUBMITED_TIME", "STUDENT_NAME", "GENDER", "SCHOOL_NAME",
+            "EDU_LEVEL", "DESCRIPTION_STUDENT", "TOP_SKILLS", "LOOKING_WORK",
+            "AVAILABLE_TIME", "PORTFOLIO_LINK", "STUDENT_CONTRACT"
         ]
     },
 
