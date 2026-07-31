@@ -13,35 +13,45 @@ let schoolMapInitialized = false;
 let pendingMapLocations = [];
 let mapRenderVersion = 0;
 let multiFilters = {};
+let dashboardLoadVersion = 0;
 const schoolCoordinateCache = new WeakMap();
 const MAP_CHUNK_SIZE = 250;
 
-async function fetchAllPages(dbKey, sheetName) {
-  return EDU15DataClient.fetchAllPages(GAS_WEB_APP_URL, dbKey, sheetName);
+async function fetchAllPages(dbKey, sheetName, filters = {}) {
+  return EDU15DataClient.fetchAllPages(GAS_WEB_APP_URL, dbKey, sheetName, { filters });
 }
 
 window.addEventListener("DOMContentLoaded", initDashboard);
 
 async function initDashboard() {
   try {
-    [studentRows, teacherRows, locationRows] = await Promise.all([
-      fetchAllPages("DB_1", "Student_Count"),
-      fetchAllPages("DB_1", "Teacher_Count"),
-      fetchAllPages("DB_1", "School_Location")
+    const [studentMetadata, locationMetadata] = await Promise.all([
+      EDU15DataClient.fetchMetadata(
+        GAS_WEB_APP_URL,
+        "DB_1",
+        "Student_Count",
+        ["ACAD_YEAR", "PROV_NAME", "DEPARTMENT_NAME", "EDU_LEVEL"]
+      ),
+      EDU15DataClient.fetchMetadata(
+        GAS_WEB_APP_URL,
+        "DB_1",
+        "School_Location",
+        ["PROV_NAME", "DEPARTMENT_NAME", "EDU_AREA_NAME"]
+      )
     ]);
-    populateFilters();
+    populateFilters(studentMetadata, locationMetadata);
     setupLazyMap();
-    renderDashboard(getFilters());
-    document.getElementById("filterForm").addEventListener("submit", event => {
+    await loadDashboardData(getFilters());
+    document.getElementById("filterForm").addEventListener("submit", async event => {
       event.preventDefault();
       currentPage = 1;
-      renderDashboard(getFilters());
+      await loadDashboardData(getFilters());
     });
     document.getElementById("filterForm").addEventListener("reset", () => {
-      setTimeout(() => {
+      setTimeout(async () => {
         Object.values(multiFilters).forEach(control => control.clear());
         currentPage = 1;
-        renderDashboard(getFilters());
+        await loadDashboardData(getFilters());
       }, 0);
     });
     document.getElementById("prevPage").addEventListener("click", () => {
@@ -76,18 +86,50 @@ async function initDashboard() {
   }
 }
 
-function populateFilters() {
-  const unique = (field) => [...new Set(studentRows.map(row => String(row[field] ?? "").trim()).filter(Boolean))];
-  const uniqueLocations = (field) => [...new Set(locationRows.map(row => String(row[field] ?? "").trim()).filter(Boolean))];
-  const years = unique("ACAD_YEAR").sort((a, b) => Number(b) - Number(a));
+async function loadDashboardData(filters) {
+  const version = ++dashboardLoadVersion;
+  window.showPageLoader?.("กำลังโหลดข้อมูลตามตัวกรอง", 0);
+  try {
+    const serverFilters = { year: filters.year, province: filters.provinces };
+    const [students, teachers, locations] = await Promise.all([
+      EDU15DataClient.fetchSummary(GAS_WEB_APP_URL, "DB_1", "Student_Count", {
+        groupBy: ["ACAD_YEAR", "DEPARTMENT_NAME", "SCHOOL_CODE", "SCHOOL_NAME", "EDU_LEVEL", "PROV_NAME"],
+        metrics: ["STUDENT_MALE", "STUDENT_FEMALE"],
+        filters: serverFilters
+      }),
+      EDU15DataClient.fetchSummary(GAS_WEB_APP_URL, "DB_1", "Teacher_Count", {
+        groupBy: ["ACAD_YEAR", "DEPARTMENT_NAME", "SCHOOL_CODE", "SCHOOL_NAME", "PROV_NAME"],
+        metrics: ["TEACHER_MALE", "TEACHER_FEMALE"],
+        filters: serverFilters
+      }),
+      fetchAllPages("DB_1", "School_Location", { province: filters.provinces })
+    ]);
+    if (version !== dashboardLoadVersion) return;
+    studentRows = students;
+    teacherRows = teachers;
+    locationRows = locations;
+    renderDashboard(filters);
+  } catch (error) {
+    console.error(error);
+    if (version === dashboardLoadVersion) {
+      document.getElementById("dataTableBody").innerHTML = `<tr><td colspan="5" class="px-5 py-10 text-center text-rose-600">โหลดข้อมูลไม่สำเร็จ: ${escapeHtml(error.message)}</td></tr>`;
+    }
+  } finally {
+    if (version === dashboardLoadVersion) window.hidePageLoader?.();
+  }
+}
+
+function populateFilters(studentMetadata, locationMetadata) {
+  const metadataValues = (metadata, field) => [...(metadata[field] || [])].map(String).filter(Boolean);
+  const years = metadataValues(studentMetadata, "ACAD_YEAR").sort((a, b) => Number(b) - Number(a));
   const yearSelect = document.getElementById("filterYear");
   yearSelect.innerHTML = "";
   years.forEach(value => yearSelect.add(new Option(value, value)));
   multiFilters = {
-    province: EDU15MultiSelect.create(document.getElementById("filterProvince"), unique("PROV_NAME").sort(), "ทุกจังหวัด"),
-    agency: EDU15MultiSelect.create(document.getElementById("filterAgency"), unique("DEPARTMENT_NAME").sort(), "ทุกสังกัด"),
-    area: EDU15MultiSelect.create(document.getElementById("filterEduArea"), uniqueLocations("EDU_AREA_NAME").sort(), "ทุกเขตพื้นที่"),
-    level: EDU15MultiSelect.create(document.getElementById("filterEduLevel"), unique("EDU_LEVEL").sort(), "ทุกระดับการศึกษา")
+    province: EDU15MultiSelect.create(document.getElementById("filterProvince"), metadataValues(studentMetadata, "PROV_NAME").sort(), "ทุกจังหวัด"),
+    agency: EDU15MultiSelect.create(document.getElementById("filterAgency"), metadataValues(studentMetadata, "DEPARTMENT_NAME").sort(), "ทุกสังกัด"),
+    area: EDU15MultiSelect.create(document.getElementById("filterEduArea"), metadataValues(locationMetadata, "EDU_AREA_NAME").sort(), "ทุกเขตพื้นที่"),
+    level: EDU15MultiSelect.create(document.getElementById("filterEduLevel"), metadataValues(studentMetadata, "EDU_LEVEL").sort(), "ทุกระดับการศึกษา")
   };
   if (years.length) document.getElementById("filterYear").value = years[0];
 }

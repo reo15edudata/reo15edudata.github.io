@@ -1,5 +1,10 @@
 const GAS_WEB_APP_URL = "https://script.google.com/macros/s/AKfycbxIaex-ZhKRkRFze1L8tyQF5UBQR4BQ2Is9L6nJMl9iGd9MTlg4ELJUqdzOZPO3w-OwDA/exec";
 const SHEETS = { career:"Job_Vacancy_Career", industry:"Job_Vacancy_Industry", eduLevel:"Job_Vacancy_EduLevel", mou:"Vocational_Busi_MOU" };
+const VACANCY_SUMMARIES = {
+  career: { groupBy:["YEAR","MONTH","PROV_NAME","CAREER_TYPE"], metrics:["VACANCY_COUNT"] },
+  industry: { groupBy:["YEAR","MONTH","PROV_NAME","INDUSTRY_TYPE"], metrics:["VACANCY_COUNT"] },
+  eduLevel: { groupBy:["YEAR","MONTH","PROV_NAME","EDU_LEVEL"], metrics:["VACANCY_COUNT"] }
+};
 const MONTHS = ["มกราคม","กุมภาพันธ์","มีนาคม","เมษายน","พฤษภาคม","มิถุนายน","กรกฎาคม","สิงหาคม","กันยายน","ตุลาคม","พฤศจิกายน","ธันวาคม"];
 const MONTH_SHORT = ["ม.ค.","ก.พ.","มี.ค.","เม.ย.","พ.ค.","มิ.ย.","ก.ค.","ส.ค.","ก.ย.","ต.ค.","พ.ย.","ธ.ค."];
 let data = {career:[],industry:[],eduLevel:[],mou:[]};
@@ -16,12 +21,29 @@ window.addEventListener("DOMContentLoaded", initDashboard);
 
 async function initDashboard(){
   try{
-    const results=await Promise.all(Object.entries(SHEETS).map(async([key,sheet])=>[key,await EDU15DataClient.fetchAllPages(GAS_WEB_APP_URL,"DB_3",sheet)]));
-    data=Object.fromEntries(results);
-    populateFilters();
+    const[vacancyMetadata,mouMetadata]=await Promise.all([
+      EDU15DataClient.fetchMetadata(GAS_WEB_APP_URL,"DB_3","Job_Vacancy_Career",["YEAR","MONTH","PROV_NAME"]),
+      EDU15DataClient.fetchMetadata(GAS_WEB_APP_URL,"DB_3","Vocational_Busi_MOU",["YEAR","PROV_NAME"])
+    ]);
+    populateFilters(vacancyMetadata,mouMetadata);
     setupLazyMap();
-    renderTrend();
-    renderTables();
+    const vacancyTask=Promise.all(["career","industry","eduLevel"].map(async key=>{
+      data[key]=await EDU15DataClient.fetchSummary(
+        GAS_WEB_APP_URL,
+        "DB_3",
+        SHEETS[key],
+        VACANCY_SUMMARIES[key]
+      );
+    })).then(()=>{
+      renderTrend();
+      renderTables();
+      window.hidePageLoader?.();
+    });
+    const mouTask=EDU15DataClient.fetchAllPages(GAS_WEB_APP_URL,"DB_3",SHEETS.mou).then(rows=>{
+      data.mou=rows;
+      renderTables();
+    });
+    await Promise.all([vacancyTask,mouTask]);
     document.getElementById("trendFilterForm").addEventListener("change",renderTrend);
     document.getElementById("tableFilterForm").addEventListener("submit",event=>{event.preventDefault();renderTables();});
     document.getElementById("tableFilterForm").addEventListener("reset",()=>setTimeout(()=>{
@@ -36,16 +58,21 @@ async function initDashboard(){
   }finally{window.hidePageLoader?.();}
 }
 
-function populateFilters(){
-  const vacancyRows=[...data.career,...data.industry,...data.eduLevel];
-  const years=[...new Set(vacancyRows.map(row=>String(row.YEAR)).filter(Boolean))].sort((a,b)=>Number(a)-Number(b));
-  const provinces=[...new Set([...vacancyRows,...data.mou].map(row=>String(row.PROV_NAME||"")).filter(Boolean))].sort();
+function populateFilters(vacancyMetadata,mouMetadata){
+  const years=[...new Set([
+    ...(vacancyMetadata.YEAR||[]),
+    ...(mouMetadata.YEAR||[])
+  ].map(String).filter(Boolean))].sort((a,b)=>Number(a)-Number(b));
+  const provinces=[...new Set([
+    ...(vacancyMetadata.PROV_NAME||[]),
+    ...(mouMetadata.PROV_NAME||[])
+  ].map(String).filter(Boolean))].sort();
   ["trendStartYear","trendEndYear","tableYear"].forEach(id=>years.forEach(year=>document.getElementById(id).add(new Option(year,year))));
   MONTHS.forEach((month,index)=>{
     document.getElementById("trendStartMonth").add(new Option(month,String(index+1)));
     document.getElementById("trendEndMonth").add(new Option(month,String(index+1)));
   });
-  const months=[...new Set(vacancyRows.map(row=>String(row.MONTH||"").trim()).filter(Boolean))].sort((a,b)=>monthNumber(a)-monthNumber(b));
+  const months=[...(vacancyMetadata.MONTH||[])].map(String).filter(Boolean).sort((a,b)=>monthNumber(a)-monthNumber(b));
   trendProvinceFilter=EDU15MultiSelect.create(document.getElementById("trendProvince"),provinces,"ทุกจังหวัด");
   tableProvinceFilter=EDU15MultiSelect.create(document.getElementById("tableProvince"),provinces,"ทุกจังหวัด");
   tableMonthFilter=EDU15MultiSelect.create(document.getElementById("tableMonth"),months,"ทุกเดือน");

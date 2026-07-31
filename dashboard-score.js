@@ -4,20 +4,26 @@ const SUBJECT_COLORS=["#3b82f6","#ec4899","#f59e0b","#14b8a6","#8b5cf6","#f97316
 const SUBJECT_BACKGROUNDS=["bg-blue-50","bg-pink-50","bg-amber-50","bg-teal-50","bg-violet-50","bg-orange-50","bg-cyan-50"];
 let scoreData={},charts={};
 let defaultScoreScope="";
+let scoreLoadVersion=0;
 
 window.addEventListener("DOMContentLoaded",initScoreDashboard);
 
 async function initScoreDashboard(){
   try{
-    const entries=await Promise.all(SCORE_SHEETS.map(async sheet=>[sheet,await EDU15DataClient.fetchAllPages(GAS_WEB_APP_URL,"DB_4",sheet)]));
-    scoreData=Object.fromEntries(entries);
-    populateFilters();
-    renderAll();
-    document.getElementById("scoreFilterForm").addEventListener("submit",event=>{event.preventDefault();renderAll();});
-    document.getElementById("scoreFilterForm").addEventListener("reset",()=>setTimeout(()=>{
+    scoreData=Object.fromEntries(SCORE_SHEETS.map(sheet=>[sheet,[]]));
+    const[onetMetadata,ntMetadata,bnetMetadata,nnetMetadata]=await Promise.all([
+      EDU15DataClient.fetchMetadata(GAS_WEB_APP_URL,"DB_4","ONET_Score",["YEAR","TEST_LEVEL","EDU_LEVEL"]),
+      EDU15DataClient.fetchMetadata(GAS_WEB_APP_URL,"DB_4","NT_LevelScore",["TEST_SUBJECT"]),
+      EDU15DataClient.fetchMetadata(GAS_WEB_APP_URL,"DB_4","BNET_Score",["TEST_LEVEL"]),
+      EDU15DataClient.fetchMetadata(GAS_WEB_APP_URL,"DB_4","NNET_Score",["PERIOD_NO","TEST_LEVEL"])
+    ]);
+    populateFilters(onetMetadata,ntMetadata,bnetMetadata,nnetMetadata);
+    await loadScoreYear();
+    document.getElementById("scoreFilterForm").addEventListener("submit",async event=>{event.preventDefault();await loadScoreYear();});
+    document.getElementById("scoreFilterForm").addEventListener("reset",()=>setTimeout(async()=>{
       document.getElementById("scoreYear").selectedIndex=0;
       document.getElementById("scoreScope").value=defaultScoreScope;
-      renderAll();
+      await loadScoreYear();
     },0));
     document.getElementById("onetGrade").addEventListener("change",renderOnet);
     document.getElementById("ntSubject").addEventListener("change",renderNtLevel);
@@ -29,22 +35,52 @@ async function initScoreDashboard(){
   }finally{window.hidePageLoader?.();}
 }
 
-function populateFilters(){
-  const all=Object.values(scoreData).flat();
-  fillSelect("scoreYear",unique(all,"YEAR").sort((a,b)=>Number(b)-Number(a)));
-  const scopes=unique([...scoreData.ONET_Score,...scoreData.NT_AVGScore,...scoreData.RT_Score],"TEST_LEVEL").filter(scope=>!/ประเทศ/.test(scope));
+function populateFilters(onetMetadata,ntMetadata,bnetMetadata,nnetMetadata){
+  fillSelect("scoreYear",(onetMetadata.YEAR||[]).map(String).sort((a,b)=>Number(b)-Number(a)));
+  const scopes=(onetMetadata.TEST_LEVEL||[]).map(String).filter(scope=>!/ประเทศ/.test(scope));
   fillSelect("scoreScope",scopes);
   const preferred=scopes.find(scope=>/ศธภ\.?\s*15/.test(scope));
   defaultScoreScope=preferred||scopes[0]||"";
   if(defaultScoreScope)document.getElementById("scoreScope").value=defaultScoreScope;
-  fillSelect("onetGrade",unique(scoreData.ONET_Score,"EDU_LEVEL"));
-  const ntSubjects=unique(scoreData.NT_LevelScore,"TEST_SUBJECT");
+  fillSelect("onetGrade",(onetMetadata.EDU_LEVEL||[]).map(String));
+  const ntSubjects=(ntMetadata.TEST_SUBJECT||[]).map(String);
   fillSelect("ntSubject",ntSubjects);
   const ntCombined=ntSubjects.find(subject=>/รวม\s*2\s*ด้าน/.test(subject));
   if(ntCombined)document.getElementById("ntSubject").value=ntCombined;
-  fillSelect("bnetLevel",unique(scoreData.BNET_Score,"TEST_LEVEL"));
-  fillSelect("nnetPeriod",unique(scoreData.NNET_Score,"PERIOD_NO").sort((a,b)=>Number(a)-Number(b)),value=>`ภาคเรียนที่ ${value}`);
-  fillSelect("nnetLevel",unique(scoreData.NNET_Score,"TEST_LEVEL"));
+  fillSelect("bnetLevel",(bnetMetadata.TEST_LEVEL||[]).map(String));
+  fillSelect("nnetPeriod",(nnetMetadata.PERIOD_NO||[]).map(String).sort((a,b)=>Number(a)-Number(b)),value=>`ภาคเรียนที่ ${value}`);
+  fillSelect("nnetLevel",(nnetMetadata.TEST_LEVEL||[]).map(String));
+}
+async function loadScoreYear(){
+  const version=++scoreLoadVersion;
+  const year=document.getElementById("scoreYear").value;
+  window.showPageLoader?.(`กำลังโหลดผลการทดสอบปี ${year}`,0);
+  let firstGroupRendered=false;
+  const load=async sheet=>{
+    const rows=await EDU15DataClient.fetchAllPages(GAS_WEB_APP_URL,"DB_4",sheet,{filters:{year}});
+    if(version===scoreLoadVersion)scoreData[sheet]=rows;
+  };
+  const group=async(sheets,renderer)=>{
+    await Promise.all(sheets.map(load));
+    if(version!==scoreLoadVersion)return;
+    renderer();
+    if(!firstGroupRendered){firstGroupRendered=true;window.hidePageLoader?.();}
+  };
+  try{
+    await Promise.all([
+      group(["ONET_Score","NT_AVGScore","NT_LevelScore","RT_Score"],renderCoreTests),
+      group(["VNET_Score"],renderVnet),
+      group(["BNET_Score"],renderBnet),
+      group(["NNET_Score"],renderNnet)
+    ]);
+  }catch(error){
+    console.error(error);
+    if(version===scoreLoadVersion){
+      document.getElementById("onetCards").innerHTML=`<div class="col-span-full rounded-xl bg-rose-50 p-5 text-rose-700">โหลดข้อมูลไม่สำเร็จ: ${escapeHtml(error.message)}</div>`;
+    }
+  }finally{
+    if(version===scoreLoadVersion)window.hidePageLoader?.();
+  }
 }
 function fillSelect(id,values,label=value=>value){const select=document.getElementById(id);select.innerHTML="";values.forEach(value=>select.add(new Option(label(value),value)));}
 function unique(rows,field){return[...new Set(rows.map(row=>String(row[field]??"").trim()).filter(Boolean))];}

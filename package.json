@@ -1,0 +1,13 @@
+{
+  "name": "edu15-dashboard",
+  "private": true,
+  "packageManager": "pnpm@11.9.0",
+  "scripts": {
+    "build": "tailwindcss -i ./tailwind.input.css -o ./tailwind.css --minify",
+    "build:css": "tailwindcss -i ./tailwind.input.css -o ./tailwind.css --minify",
+    "watch:css": "tailwindcss -i ./tailwind.input.css -o ./tailwind.css --watch"
+  },
+  "devDependencies": {
+    "tailwindcss": "3.4.17"
+  }
+}
