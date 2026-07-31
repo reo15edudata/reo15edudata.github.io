@@ -4,8 +4,10 @@ const SHEETS = {
   oosc: ["DB_2", "Out_of_School"], dropout: ["DB_2", "Dropout"],
   jobs: ["DB_2", "Get_a_Jobs"], studyYear: ["DB_2", "Study_YearAVG"],
   studyRatio: ["DB_2", "Ratio_StudyLevel"], students: ["DB_1", "Student_Count"],
+  earlyDevelopment: ["DB_2", "5YearsOld_Fertile"],
   onet: ["DB_4", "ONET_Score"], nt: ["DB_4", "NT_AVGScore"], rt: ["DB_4", "RT_Score"]
 };
+const OPTIONAL_SHEETS = new Set(["earlyDevelopment"]);
 const RETURNED_OOSC = new Set(["ศึกษาภายในประเทศ", "ศึกษาต่างประเทศ", "ไม่ตกหล่น-กำลังศึกษา", "อยู่ในการศึกษาทางเลือกตามมาตรา 12"]);
 let data = {};
 let provinceFilter;
@@ -17,9 +19,15 @@ window.addEventListener("DOMContentLoaded", initDashboard);
 
 async function initDashboard() {
   try {
-    const entries = await Promise.all(Object.entries(SHEETS).map(async ([key, [db, sheet]]) => [
-      key, await EDU15DataClient.fetchAllPages(GAS_WEB_APP_URL, db, sheet)
-    ]));
+    const entries = await Promise.all(Object.entries(SHEETS).map(async ([key, [db, sheet]]) => {
+      try {
+        return [key, await EDU15DataClient.fetchAllPages(GAS_WEB_APP_URL, db, sheet)];
+      } catch (error) {
+        if (!OPTIONAL_SHEETS.has(key)) throw error;
+        console.warn(`Optional dataset ${sheet} is not available yet`, error);
+        return [key, []];
+      }
+    }));
     data = Object.fromEntries(entries);
     populateFilters();
     render();
@@ -163,7 +171,7 @@ function render() {
   document.getElementById("dataReadiness").innerHTML = `<i class="fas fa-circle-info mr-2"></i>กำลังแสดงปี ${filters.year} ${filters.provinces.length ? `· ${filters.provinces.length} จังหวัด` : "· ภาพรวมพื้นที่ ศธภ.15"} · ส่วนที่ยังไม่มีข้อมูลจะแสดง “รอข้อมูลอัปเดต”`;
   renderAccess(rows, filters);
   renderEquity(rows);
-  renderQuality(filters);
+  renderQuality(filters, rows.earlyDevelopment);
   renderEfficiency(rows);
   renderRelevancy(rows);
 }
@@ -284,7 +292,8 @@ function scoreRows(key, filters, scope) {
   return rows.filter(row => Number(row.YEAR) === year);
 }
 
-function renderQuality(filters) {
+function renderQuality(filters, earlyDevelopmentRows) {
+  renderEarlyDevelopment(earlyDevelopmentRows);
   const scope = scoreScope(filters);
   const rtArea = scoreRows("rt", filters, scope), ntArea = scoreRows("nt", filters, scope), onetArea = scoreRows("onet", filters, scope);
   const rtNation = scoreRows("rt", filters, "ระดับประเทศ"), ntNation = scoreRows("nt", filters, "ระดับประเทศ"), onetNation = scoreRows("onet", filters, "ระดับประเทศ");
@@ -303,6 +312,81 @@ function renderQuality(filters) {
     type: "bar", data: { labels: comparison.map(item => item.label), datasets: [{ label: scope, data: comparison.map(item => item.area), backgroundColor:comparison.map(item=>item.color), borderRadius:5 },{ label:"ระดับประเทศ", data:comparison.map(item=>item.nation), backgroundColor:comparison.map(item=>`${item.color}55`), borderColor:comparison.map(item=>item.color), borderWidth:1, borderRadius:5 }] },
     options: comparisonChartOptions("คะแนนเฉลี่ย", scope)
   });
+}
+
+function renderEarlyDevelopment(rows) {
+  const value = document.getElementById("quality-early-development");
+  const note = document.getElementById("quality-early-development-note");
+  const summary = summarizeEarlyDevelopment(rows);
+
+  if (summary.rate === null) {
+    value.textContent = "รอข้อมูลอัปเดต";
+    note.textContent = rows.length
+      ? "ไม่พบคอลัมน์ร้อยละ หรือคู่ข้อมูล A/B ที่ใช้คำนวณ"
+      : "";
+    return;
+  }
+
+  value.textContent = `${summary.rate.toFixed(2)}%`;
+  note.textContent = summary.mode === "ratio"
+    ? `เด็กพัฒนาการสมวัย ${summary.numerator.toLocaleString("th-TH")} / เด็กที่ได้รับการคัดกรอง ${summary.denominator.toLocaleString("th-TH")} คน`
+    : `ค่าเฉลี่ยจากข้อมูล ${summary.count.toLocaleString("th-TH")} รายการ`;
+}
+
+function summarizeEarlyDevelopment(rows) {
+  if (!rows.length) return { rate: null };
+  const keys = [...new Set(rows.flatMap(row => Object.keys(row)))];
+  const normalized = new Map(keys.map(key => [
+    String(key).trim().toUpperCase().replace(/[\s%-]+/g, "_"),
+    key
+  ]));
+  const findExact = candidates => candidates
+    .map(candidate => normalized.get(candidate))
+    .find(Boolean);
+
+  const numeratorField = findExact([
+    "YOUTH_FERTILE_COUNT", "A", "FERTILE_COUNT", "DEVELOPED_COUNT", "CHILD_DEVELOPED_COUNT",
+    "CHILD_PASS_COUNT", "PASS_COUNT", "NORMAL_COUNT"
+  ]);
+  const denominatorField = findExact([
+    "POPU_5YSO_CANFOLLOW", "B", "SCREENED_COUNT", "CHILD_SCREENED_COUNT", "TOTAL_COUNT",
+    "CHILD_TOTAL", "TARGET_COUNT"
+  ]);
+
+  if (numeratorField && denominatorField) {
+    const numerator = rows.reduce((sum, row) => sum + n(row[numeratorField]), 0);
+    const denominator = rows.reduce((sum, row) => sum + n(row[denominatorField]), 0);
+    return {
+      rate: denominator ? numerator / denominator * 100 : null,
+      numerator,
+      denominator,
+      mode: "ratio"
+    };
+  }
+
+  const rateField = findExact([
+    "PERCENT", "PERCENTAGE", "RESULT", "PERFORMANCE", "RATE", "RATIO",
+    "YOUTH_FERTILE_RATIO", "FERTILE_PERCENT", "FERTILE_RATE", "DEVELOPMENT_PERCENT",
+    "DEVELOPMENT_RATE", "VALUE", "ร้อยละ", "ผลงาน"
+  ]) || keys.find(key => /PERCENT|PERCENTAGE|RATE|RATIO|RESULT|PERFORMANCE|ร้อยละ|ผลงาน/i.test(key));
+  const rates = rateField
+    ? rows.map(row => valueOrNull(row[rateField])).filter(value => value !== null)
+    : [];
+  if (!rates.length) return { rate: null };
+
+  const decimalScale = rates.every(rate => rate >= 0 && rate <= 1) ? 100 : 1;
+  return {
+    rate: rates.reduce((sum, rate) => sum + rate, 0) / rates.length * decimalScale,
+    count: rates.length,
+    mode: "average"
+  };
+}
+
+function valueOrNull(value) {
+  const cleaned = String(value ?? "").replace(/,/g, "").trim();
+  if (!cleaned) return null;
+  const parsed = Number(cleaned);
+  return Number.isFinite(parsed) ? parsed : null;
 }
 
 function renderAverageTestCard(id, rows, combinedLabel) {

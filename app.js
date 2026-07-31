@@ -48,6 +48,10 @@ const SCHEMA_DICT = {
         ],
         "Ratio_StudyLevel": [
             "YEAR", "PROV_NAME", "EDU_LEVEL", "RATIO_STUDY"
+        ],
+        "5YearsOld_Fertile": [
+            "YEAR", "PROV_NAME", "POPU_5YSO", "POPU_5YSO_CANFOLLOW",
+            "YOUTH_FERTILE_COUNT", "YOUTH_FERTILE_RATIO"
         ]
     },
 
