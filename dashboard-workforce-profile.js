@@ -11,7 +11,9 @@ window.addEventListener("DOMContentLoaded", initProfileDashboard);
 
 async function initProfileDashboard() {
   try {
-    profileRows = await EDU15DataClient.fetchAllPages(GAS_WEB_APP_URL, "DB_3", PROFILE_SHEET);
+    profileRows = await EDU15DataClient.fetchAllPages(GAS_WEB_APP_URL, "DB_3", PROFILE_SHEET, {
+      cacheScope: "submitted-time-v1"
+    });
     populateProfileFilters();
     renderProfileStats();
     applyProfileFilters();
@@ -210,11 +212,70 @@ function contactHtml(value) {
     : `<span class="font-medium text-slate-700">${escapeHtml(raw)}</span>`;
 }
 function formatSubmittedTime(value) {
-  if (!value) return "ไม่ได้ระบุ";
-  const date = new Date(value);
-  return Number.isNaN(date.getTime())
-    ? String(value)
-    : date.toLocaleString("th-TH", { dateStyle: "medium", timeStyle: "short" });
+  const rawValue = String(value ?? "").trim();
+  if (!rawValue) return "ไม่ได้ระบุ";
+
+  const date = parseSubmittedTime(value);
+  if (!date) return rawValue;
+
+  return new Intl.DateTimeFormat("th-TH", {
+    dateStyle: "medium",
+    timeStyle: "short",
+    timeZone: "Asia/Bangkok"
+  }).format(date);
+}
+
+function parseSubmittedTime(value) {
+  if (value instanceof Date) {
+    return Number.isNaN(value.getTime()) ? null : value;
+  }
+
+  if (typeof value === "number" && Number.isFinite(value)) {
+    // รองรับเลขลำดับวันที่ของ Google Sheets โดยยึดเวลาในประเทศไทย
+    if (value >= 1 && value < 100000) {
+      const sheetEpoch = Date.UTC(1899, 11, 30);
+      return new Date(sheetEpoch + value * 86400000 - 7 * 60 * 60 * 1000);
+    }
+    const numericDate = new Date(value);
+    return Number.isNaN(numericDate.getTime()) ? null : numericDate;
+  }
+
+  const rawValue = String(value ?? "").trim();
+  if (!rawValue) return null;
+
+  // รองรับข้อความวันที่แบบ วัน/เดือน/ปี ที่อาจใช้ปี พ.ศ. จาก Google Sheet
+  const localMatch = rawValue.match(
+    /^(\d{1,2})[\/-](\d{1,2})[\/-](\d{4})(?:[ T](\d{1,2}):(\d{2})(?::(\d{2}))?)?$/
+  );
+  if (localMatch) {
+    const day = Number(localMatch[1]);
+    const month = Number(localMatch[2]);
+    let year = Number(localMatch[3]);
+    const hour = Number(localMatch[4] || 0);
+    const minute = Number(localMatch[5] || 0);
+    const second = Number(localMatch[6] || 0);
+    if (year >= 2400) year -= 543;
+
+    const localDate = new Date(Date.UTC(year, month - 1, day, hour - 7, minute, second));
+    const localParts = new Intl.DateTimeFormat("en-CA", {
+      timeZone: "Asia/Bangkok",
+      year: "numeric",
+      month: "numeric",
+      day: "numeric",
+      hour: "numeric",
+      minute: "numeric",
+      second: "numeric",
+      hourCycle: "h23"
+    }).formatToParts(localDate);
+    const part = type => Number(localParts.find(item => item.type === type)?.value);
+    const isExactValue = part("year") === year && part("month") === month &&
+      part("day") === day && part("hour") === hour && part("minute") === minute &&
+      part("second") === second;
+    return isExactValue ? localDate : null;
+  }
+
+  const date = new Date(rawValue);
+  return Number.isNaN(date.getTime()) ? null : date;
 }
 function escapeHtml(value) {
   return String(value).replace(/[&<>'"]/g, char => ({

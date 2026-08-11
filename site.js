@@ -118,6 +118,14 @@ function setupSidebar() {
     item.innerHTML = `<a href="dashboard-score.html" class="flex items-center px-3 py-2 rounded-md ${isActive ? "text-teal-400 bg-slate-800 border-l-2 border-teal-500" : "hover:bg-slate-800 hover:text-white"}"><i class="fas fa-square-poll-vertical w-7"></i>ผลการทดสอบทางการศึกษา</a>`;
     workforceLink.closest("li")?.after(item);
   }
+  const scoreLink = sidebar.querySelector('a[href="dashboard-score.html"]');
+  if (scoreLink && !sidebar.querySelector('a[href="dashboard-tzd.html"]')) {
+    const item = document.createElement("li");
+    const isActive = location.pathname.endsWith("/dashboard-tzd.html") ||
+      location.pathname.endsWith("/tzd-upload.html");
+    item.innerHTML = `<a href="dashboard-tzd.html" class="flex items-center px-3 py-2 rounded-md ${isActive ? "text-teal-400 bg-slate-800 border-l-2 border-teal-500" : "hover:bg-slate-800 hover:text-white"}"><i class="fas fa-children w-7"></i>Thailand Zero Dropout</a>`;
+    scoreLink.closest("li")?.after(item);
+  }
   setupWorkforceNavigation(sidebar);
 
   sidebar.querySelectorAll("a, button.admin-nav").forEach(link => {

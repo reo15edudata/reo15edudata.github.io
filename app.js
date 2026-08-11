@@ -107,6 +107,27 @@ const SCHEMA_DICT = {
             "PROV_NAME", "STUDENT_CNT", "FULL_SCORE", "AVG_SCORE", "SD_SCORE",
             "MED_SCORE", "MOD_SCORE", "MIN_SCORE", "MAX_SCORE"
         ]
+    },
+
+    "DB_5": {
+        "TZD_Finding_Update": [
+            "SUBMITED_TIME", "PROV_NAME", "DISTRICT", "TARGET_COUNT",
+            "FIRSTSCREEN_FOUND_HAVEEVIDENCE", "FIRSTSCREEN_FOUND_HAVENTEVIDENCE"
+        ],
+        "TZD_Finding_Status": [
+            "SUBMITED_TIME", "PROV_NAME", "DISTRICT", "NEEDHELP_INFO_SURVEYED",
+            "NEEDHELP_INFO_NOTSURVEY", "BACKED_TO_EDU", "ALTER_EDU", "STUDY_ABROAD",
+            "GRADUTED_COMPLUSEEDU", "WORK_EMPLOY", "HAVE_FAMILY", "JUSTICE_SYS",
+            "WELFARE_CENTER", "DRUG_ADDICT", "RELOCATED", "CANT_FIND_HOUSE",
+            "DONT_NEED_HELP", "DECEASED"
+        ],
+        "TZD_CM_CarePlanning": [
+            "SUBMITED_TIME", "PROV_NAME", "DISTRICT", "CASE_PREPARE_COUNT"
+        ],
+        "TZD_CM_Follow": [
+            "SUBMITED_TIME", "PROV_NAME", "DISTRICT", "PLAN_STATUS",
+            "DO_CARE_PLAN", "FOLLOW_1ST", "FOLLOW_2ND"
+        ]
     }
 };
 

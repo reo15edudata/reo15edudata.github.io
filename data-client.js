@@ -171,6 +171,17 @@ const EDU15DataClient = (() => {
 
   async function fetchAllPages(baseUrl, dbKey, sheetName, options = {}) {
     const key = cacheKey("rows", dbKey, sheetName, options);
+    if (options.networkFirst) {
+      if (pendingRequests.has(key)) return pendingRequests.get(key);
+      const request = fetchRowsFromNetwork(baseUrl, dbKey, sheetName, options, key, true)
+        .then(value => {
+          writeCache(key, value).catch(error => console.warn("Dashboard cache write skipped", error));
+          return value;
+        })
+        .finally(() => pendingRequests.delete(key));
+      pendingRequests.set(key, request);
+      return request;
+    }
     return cachedRequest(
       key,
       () => fetchRowsFromNetwork(baseUrl, dbKey, sheetName, options, key, true),
