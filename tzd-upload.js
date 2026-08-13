@@ -44,7 +44,7 @@ async function initTzdForm() {
   document.getElementById("requestTzdOtp").addEventListener("click", requestTzdOtp);
   document.getElementById("tzdEmail").addEventListener("input", () => { if (normalizedTzdEmail() !== tzdOtpEmail) tzdOtpEmail = ""; });
   document.getElementById("tzdUploadForm").addEventListener("submit", submitTzdForm);
-  document.getElementById("tzdCurrentMonth").textContent = `รอบเดือน ${formatTzdMonth(currentTzdMonth())}`;
+  document.getElementById("tzdCurrentMonth").textContent = `รอบรายงาน ${formatTzdMonth(currentTzdMonth())}`;
   try {
     await refreshTzdRounds();
   } catch (error) {
@@ -311,10 +311,16 @@ function readTzdTableNumber(districtIndex, field, statusIndex = null) {
   return value;
 }
 
-function currentTzdMonth() {
-  const parts = new Intl.DateTimeFormat("en-CA", { year: "numeric", month: "2-digit", timeZone: "Asia/Bangkok" }).formatToParts(new Date());
+function currentTzdMonth(date = new Date()) {
+  const parts = new Intl.DateTimeFormat("en-CA", { year: "numeric", month: "2-digit", day: "2-digit", timeZone: "Asia/Bangkok" }).formatToParts(date);
   const values = Object.fromEntries(parts.map(part => [part.type, part.value]));
-  return `${values.year}-${values.month}`;
+  let year = Number(values.year);
+  let month = Number(values.month);
+  if (Number(values.day) <= 5) {
+    month--;
+    if (month === 0) { month = 12; year--; }
+  }
+  return `${year}-${String(month).padStart(2, "0")}`;
 }
 
 function tzdRowMonth(row) {
