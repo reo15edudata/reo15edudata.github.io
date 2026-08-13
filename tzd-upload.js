@@ -6,20 +6,20 @@ const TZD_PROVINCES = {
   "ลำพูน": ["เมืองลำพูน", "แม่ทา", "บ้านโฮ่ง", "ลี้", "ทุ่งหัวช้าง", "ป่าซาง", "บ้านธิ", "เวียงหนองล่อง"]
 };
 const TZD_FINDING_UPDATE_FIELDS = [
-  ["TARGET_COUNT", "จำนวนเป้าหมายหลักในการติดตาม"],
-  ["FIRSTSCREEN_FOUND_HAVEEVIDENCE", "First Screen และมีหลักฐานครบถ้วน"],
-  ["FIRSTSCREEN_FOUND_HAVENTEVIDENCE", "First Screen แล้ว แต่หลักฐานยังไม่ครบ"]
+  ["TARGET_COUNT", "เป้าหมาย"],
+  ["FIRSTSCREEN_FOUND_HAVEEVIDENCE", "ดำเนินการสำรวจและอัปเดตหลักฐานการสำรวจครบถ้วนแล้ว"],
+  ["FIRSTSCREEN_FOUND_HAVENTEVIDENCE", "ดำเนินการ First Screen แต่ยังอัปเดตหลักฐานไม่ครบถ้วน"]
 ];
 const TZD_NEED_HELP_FIELDS = [
-  ["NEEDHELP_INFO_SURVEYED", "ยินดีให้ข้อมูล และทำแบบสำรวจแล้ว"],
-  ["NEEDHELP_INFO_NOTSURVEY", "ยินดีให้ข้อมูล แต่ยังไม่ได้ทำแบบสำรวจ"]
+  ["NEEDHELP_INFO_SURVEYED", "ทำแบบสำรวจแล้ว"],
+  ["NEEDHELP_INFO_NOTSURVEY", "ยังไม่ได้ทำแบบสำรวจ"]
 ];
 const TZD_STATUS_FIELDS = [
-  ["BACKED_TO_EDU", "กลับเข้าศึกษาต่อแล้ว"], ["ALTER_EDU", "อยู่ในการศึกษาทางเลือกตามมาตรา 12"],
-  ["STUDY_ABROAD", "ย้ายไปศึกษาต่อต่างประเทศ"], ["GRADUTED_COMPLUSEEDU", "จบการศึกษาภาคบังคับแล้ว"],
-  ["WORK_EMPLOY", "มีงานทำ/ประกอบอาชีพแล้ว"], ["HAVE_FAMILY", "มีครอบครัวหรือมีบุตรแล้ว"],
-  ["JUSTICE_SYS", "อยู่ในกระบวนการยุติธรรม"], ["WELFARE_CENTER", "อยู่ในสถานสงเคราะห์"],
-  ["DRUG_ADDICT", "ติดสารเสพติด ต้องฟื้นฟูสุขภาพ"], ["RELOCATED", "ย้ายภูมิลำเนาหรือสถานศึกษา"],
+  ["BACKED_TO_EDU", "กลับเข้าศึกษาต่อแล้ว"], ["ALTER_EDU", "อยู่ในการศึกษาทางเลือกตามมาตรา 12 (เช่น บ้านเรียน ศูนย์การเรียน)"],
+  ["STUDY_ABROAD", "ย้ายไปศึกษาต่อต่างประเทศ"], ["GRADUTED_COMPLUSEEDU", "จบการศึกษาภาคบังคับแล้ว ไม่ต้องการความช่วยเหลือ"],
+  ["WORK_EMPLOY", "มีงานทำ/ประกอบอาชีพแล้ว ไม่ต้องการความช่วยเหลือ"], ["HAVE_FAMILY", "มีครอบครัวหรือมีบุตรแล้ว ดูแลตัวเองได้ ไม่ต้องการความช่วยเหลือ"],
+  ["JUSTICE_SYS", "อยู่ในกระบวนการยุติธรรม (เช่น อยู่ในความดูแลของสถานพินิจฯ หรือศูนย์ฝึกอบรมฯ)"], ["WELFARE_CENTER", "อยู่ในสถานสงเคราะห์"],
+  ["DRUG_ADDICT", "ติดสารเสพติด ต้องฟื้นฟูสุขภาพ ยังไม่พร้อมเข้าสู่การศึกษาหรือการเรียนรู้"], ["RELOCATED", "ย้ายภูมิลำเนาหรือย้ายสถานศึกษา"],
   ["CANT_FIND_HOUSE", "หาบ้านไม่พบ"], ["DONT_NEED_HELP", "ไม่ต้องการความช่วยเหลือ"],
   ["DECEASED", "เสียชีวิต"]
 ];
@@ -34,71 +34,77 @@ let tzdRounds = [];
 document.addEventListener("DOMContentLoaded", initTzdForm);
 
 async function initTzdForm() {
-  renderTzdNumberInputs();
   const province = document.getElementById("tzdProvince");
   Object.keys(TZD_PROVINCES).forEach(value => province.add(new Option(value, value)));
-  province.addEventListener("change", () => { populateTzdDistricts(); loadExistingTzdValues(); });
-  document.getElementById("tzdDistrict").addEventListener("change", loadExistingTzdValues);
-  document.getElementById("tzdTopic").addEventListener("change", () => { toggleTzdTopic(); loadExistingTzdValues(); });
+  province.addEventListener("change", renderTzdInputTable);
+  document.getElementById("tzdTopic").addEventListener("change", renderTzdInputTable);
   document.querySelectorAll('input[name="roundMode"]').forEach(input => input.addEventListener("change", toggleTzdRoundMode));
-  document.getElementById("tzdExistingRound").addEventListener("change", loadExistingTzdValues);
+  document.getElementById("tzdExistingRound").addEventListener("change", fillTzdTableFromExisting);
+  document.getElementById("copyPreviousRound").addEventListener("click", copyPreviousTzdRound);
   document.getElementById("requestTzdOtp").addEventListener("click", requestTzdOtp);
   document.getElementById("tzdEmail").addEventListener("input", () => { if (normalizedTzdEmail() !== tzdOtpEmail) tzdOtpEmail = ""; });
   document.getElementById("tzdUploadForm").addEventListener("submit", submitTzdForm);
-  toggleTzdTopic();
+  document.getElementById("tzdCurrentMonth").textContent = `รอบเดือน ${formatTzdMonth(currentTzdMonth())}`;
   try {
     await refreshTzdRounds();
   } catch (error) {
     console.warn(error);
-    showTzdUploadStatus("ยังโหลดรายการรอบเดิมไม่ได้ แต่ยังสามารถส่งข้อมูลเป็นรอบใหม่ได้", "info");
+    showTzdUploadStatus("ยังโหลดรายการเดือนเดิมไม่ได้ แต่ยังสามารถรายงานเดือนปัจจุบันได้", "info");
   }
 }
 
-function renderTzdNumberInputs() {
-  document.getElementById("findingUpdateInputs").innerHTML = TZD_FINDING_UPDATE_FIELDS.map(numberFieldHtml).join("");
-  document.getElementById("needHelpInputs").innerHTML = TZD_NEED_HELP_FIELDS.map(numberFieldHtml).join("");
-  document.getElementById("findingStatusInputs").innerHTML = TZD_STATUS_FIELDS.map(numberFieldHtml).join("");
-  document.getElementById("carePlanningInput").innerHTML = numberFieldHtml(["CASE_PREPARE_COUNT", "จำนวนเด็กที่ส่งต่อจัดทำแผนช่วยเหลือ"]);
-  document.getElementById("careStatusInputs").innerHTML = TZD_PLAN_STATUSES.map(status => `<tr class="border-t border-slate-100"><th class="p-3 text-left font-medium text-slate-700">${escapeTzdForm(status)}</th>${TZD_STAGE_FIELDS.map(([field, label]) => `<td class="p-3"><label class="sr-only">${escapeTzdForm(label)} — ${escapeTzdForm(status)}</label><input type="number" min="0" step="1" value="0" required data-care-status="${escapeTzdForm(status)}" data-care-stage="${field}" class="care-number"></td>`).join("")}</tr>`).join("");
+function renderTzdInputTable() {
+  const province = document.getElementById("tzdProvince").value;
+  const topic = document.getElementById("tzdTopic").value;
+  const districts = TZD_PROVINCES[province] || [];
+  document.getElementById("tzdTableEmpty").hidden = Boolean(districts.length);
+  document.getElementById("tzdTableWrap").hidden = !districts.length;
+  document.getElementById("tzdDistrictCount").textContent = districts.length ? `${province} · ${districts.length} อำเภอ` : "กรุณาเลือกจังหวัด";
+  document.getElementById("tzdTableTitle").textContent = topic === "survey" ? "สรุปผลการสำรวจเด็กที่หลุดออกจากระบบ" : "สถานะการจัดทำแผนช่วยเหลือ Care Plan";
+  updateCopyPreviousButton();
+  if (!districts.length) return;
+  if (topic === "survey") renderSurveyTable(districts);
+  else renderCareTable(districts);
+  fillTzdTableFromExisting();
 }
 
-function numberFieldHtml([field, label]) {
-  return `<div class="number-field"><label for="field-${field}">${escapeTzdForm(label)}</label><input id="field-${field}" data-tzd-field="${field}" type="number" min="0" step="1" value="0" required></div>`;
+function renderSurveyTable(districts) {
+  const fields = [...TZD_FINDING_UPDATE_FIELDS, ...TZD_NEED_HELP_FIELDS, ...TZD_STATUS_FIELDS];
+  document.getElementById("tzdTableHead").innerHTML = `<tr><th rowspan="2" class="district-cell">อำเภอ</th><th colspan="3">เป้าหมายและ First Screen</th><th colspan="2">ยินดีให้ข้อมูล</th><th colspan="13">สถานะผลการติดตามอื่น</th></tr><tr>${fields.map(([, label]) => `<th class="field-head">${escapeTzdForm(label)}</th>`).join("")}</tr>`;
+  document.getElementById("tzdTableBody").innerHTML = districts.map((district, districtIndex) => `<tr><td class="district-cell">${escapeTzdForm(district)}</td>${fields.map(([field, label]) => tableNumberInput(districtIndex, field, `${district} — ${label}`)).join("")}</tr>`).join("");
 }
 
-function populateTzdDistricts() {
-  const select = document.getElementById("tzdDistrict");
-  select.innerHTML = '<option value="">ทั้งจังหวัด</option>';
-  (TZD_PROVINCES[document.getElementById("tzdProvince").value] || []).forEach(value => select.add(new Option(value, value)));
+function renderCareTable(districts) {
+  document.getElementById("tzdTableHead").innerHTML = `<tr><th rowspan="2" class="district-cell">อำเภอ</th><th rowspan="2" class="field-head">ส่งต่อจัดทำแผน</th>${TZD_STAGE_FIELDS.map(([, label]) => `<th colspan="4">${escapeTzdForm(label)}</th>`).join("")}</tr><tr>${TZD_STAGE_FIELDS.flatMap(() => TZD_PLAN_STATUSES).map(status => `<th class="field-head">${escapeTzdForm(status)}</th>`).join("")}</tr>`;
+  document.getElementById("tzdTableBody").innerHTML = districts.map((district, districtIndex) => `<tr><td class="district-cell">${escapeTzdForm(district)}</td>${tableNumberInput(districtIndex, "CASE_PREPARE_COUNT", `${district} — ส่งต่อจัดทำแผน`)}${TZD_STAGE_FIELDS.map(([field, label]) => TZD_PLAN_STATUSES.map((status, statusIndex) => tableNumberInput(districtIndex, field, `${district} — ${label} — ${status}`, statusIndex)).join("")).join("")}</tr>`).join("");
 }
 
-function toggleTzdTopic() {
-  const survey = document.getElementById("tzdTopic").value === "survey";
-  document.getElementById("surveyFields").hidden = !survey;
-  document.getElementById("careFields").hidden = survey;
-  document.querySelectorAll("#surveyFields input").forEach(input => { input.disabled = !survey; });
-  document.querySelectorAll("#careFields input").forEach(input => { input.disabled = survey; });
+function tableNumberInput(districtIndex, field, label, statusIndex = "") {
+  return `<td><label class="sr-only">${escapeTzdForm(label)}</label><input type="number" min="0" step="1" value="0" required class="table-number" data-district-index="${districtIndex}" data-field="${field}"${statusIndex === "" ? "" : ` data-status-index="${statusIndex}"`}></td>`;
 }
 
 function toggleTzdRoundMode() {
   const edit = selectedRoundMode() === "edit";
   const select = document.getElementById("tzdExistingRound");
+  select.hidden = !edit;
   select.disabled = !edit;
   select.required = edit;
+  document.getElementById("tzdCurrentMonth").hidden = edit;
   if (!edit) select.value = "";
-  loadExistingTzdValues();
+  renderTzdInputTable();
+  updateCopyPreviousButton();
 }
 
 function selectedRoundMode() { return document.querySelector('input[name="roundMode"]:checked').value; }
-function selectedScopeDistrict() { return document.getElementById("tzdDistrict").value || "ทั้งจังหวัด"; }
 
 async function refreshTzdRounds() {
   const datasets = await Promise.all(TZD_PUBLIC_SHEETS.map(fetchTzdSheet));
   TZD_PUBLIC_SHEETS.forEach((sheet, index) => { tzdExistingRows[sheet] = datasets[index]; });
-  const timestamps = new Set(datasets.flat().map(row => parseTzdFormTimestamp(row.SUBMITED_TIME)).filter(value => value !== null));
-  tzdRounds = [...timestamps].sort((a, b) => a - b).map((timestamp, index) => ({ timestamp, round: index + 1 }));
+  const months = new Set(datasets.flat().map(tzdRowMonth).filter(Boolean));
+  tzdRounds = [...months].sort();
   const select = document.getElementById("tzdExistingRound");
-  select.innerHTML = '<option value="">-- เลือกรอบที่แก้ไข --</option>' + [...tzdRounds].reverse().map(item => `<option value="${item.timestamp}">รอบที่ ${item.round} · ${formatTzdFormDate(item.timestamp)}</option>`).join("");
+  select.innerHTML = '<option value="">-- เลือกรอบเดือนที่แก้ไข --</option>' + [...tzdRounds].reverse().map(month => `<option value="${month}">${formatTzdMonth(month)}</option>`).join("");
+  updateCopyPreviousButton();
 }
 
 async function fetchTzdSheet(sheetName) {
@@ -120,40 +126,100 @@ async function fetchTzdSheet(sheetName) {
   return rows;
 }
 
-function loadExistingTzdValues() {
-  resetTzdValues();
+function fillTzdTableFromExisting() {
+  document.querySelectorAll("#tzdTableBody .table-number").forEach(input => { input.value = 0; });
+  updateCopyPreviousButton();
   if (selectedRoundMode() !== "edit") return;
-  const timestamp = Number(document.getElementById("tzdExistingRound").value);
+  const roundMonth = document.getElementById("tzdExistingRound").value;
   const province = document.getElementById("tzdProvince").value;
-  if (!timestamp || !province) return;
-  const district = selectedScopeDistrict();
+  if (!roundMonth || !province) return;
   const topic = document.getElementById("tzdTopic").value;
-  const matching = sheet => tzdExistingRows[sheet].filter(row =>
-    parseTzdFormTimestamp(row.SUBMITED_TIME) === timestamp &&
-    String(row.PROV_NAME || "").trim() === province &&
-    String(row.DISTRICT || "").trim() === district
-  );
+  const districts = TZD_PROVINCES[province] || [];
+  const matching = sheet => latestTzdRowsForMonth(tzdExistingRows[sheet], roundMonth).filter(row => String(row.PROV_NAME || "").trim() === province);
   if (topic === "survey") {
-    fillAggregateFields(matching("TZD_Finding_Update"), TZD_FINDING_UPDATE_FIELDS.map(([field]) => field));
-    fillAggregateFields(matching("TZD_Finding_Status"), [...TZD_NEED_HELP_FIELDS, ...TZD_STATUS_FIELDS].map(([field]) => field));
+    fillTzdDistrictFields(matching("TZD_Finding_Update"), districts, TZD_FINDING_UPDATE_FIELDS.map(([field]) => field));
+    fillTzdDistrictFields(matching("TZD_Finding_Status"), districts, [...TZD_NEED_HELP_FIELDS, ...TZD_STATUS_FIELDS].map(([field]) => field));
   } else {
-    fillAggregateFields(matching("TZD_CM_CarePlanning"), ["CASE_PREPARE_COUNT"]);
-    const rows = matching("TZD_CM_Follow");
-    rows.forEach(row => TZD_STAGE_FIELDS.forEach(([field]) => {
-      const input = [...document.querySelectorAll("[data-care-status]")].find(element => element.dataset.careStatus === String(row.PLAN_STATUS || "").trim() && element.dataset.careStage === field);
-      if (input) input.value = numberTzdForm(row[field]);
-    }));
+    fillTzdDistrictFields(matching("TZD_CM_CarePlanning"), districts, ["CASE_PREPARE_COUNT"]);
+    matching("TZD_CM_Follow").forEach(row => {
+      const districtIndex = districts.indexOf(String(row.DISTRICT || "").trim());
+      const statusIndex = TZD_PLAN_STATUSES.indexOf(String(row.PLAN_STATUS || "").trim());
+      if (districtIndex < 0 || statusIndex < 0) return;
+      TZD_STAGE_FIELDS.forEach(([field]) => setTzdTableValue(districtIndex, field, row[field], statusIndex));
+    });
   }
 }
 
-function fillAggregateFields(rows, fields) {
-  fields.forEach(field => {
-    const input = document.querySelector(`[data-tzd-field="${field}"]`);
-    if (input) input.value = rows.reduce((sum, row) => sum + numberTzdForm(row[field]), 0);
+function copyPreviousTzdRound() {
+  const province = document.getElementById("tzdProvince").value;
+  const topic = document.getElementById("tzdTopic").value;
+  const targetMonth = targetTzdRoundMonth();
+  if (!province) return showTzdUploadStatus("กรุณาเลือกจังหวัดก่อนดึงข้อมูล", "error");
+  if (!targetMonth) return showTzdUploadStatus("กรุณาเลือกรอบเดือนที่ต้องการแก้ไข", "error");
+  const sourceMonth = previousTzdMonthWithData(targetMonth, province, topic);
+  if (!sourceMonth) return showTzdUploadStatus("ไม่พบข้อมูลรอบก่อนหน้าของจังหวัดและหัวข้อนี้", "error");
+  fillTzdTableForMonth(sourceMonth, province, topic);
+  showTzdUploadStatus(`ดึงข้อมูลรอบเดือน ${formatTzdMonth(sourceMonth)} มาใส่ในตารางแล้ว กรุณาตรวจสอบและแก้ไขก่อนบันทึก`, "info");
+}
+
+function fillTzdTableForMonth(roundMonth, province, topic) {
+  document.querySelectorAll("#tzdTableBody .table-number").forEach(input => { input.value = 0; });
+  const districts = TZD_PROVINCES[province] || [];
+  const matching = sheet => latestTzdRowsForMonth(tzdExistingRows[sheet], roundMonth).filter(row => String(row.PROV_NAME || "").trim() === province);
+  if (topic === "survey") {
+    fillTzdDistrictFields(matching("TZD_Finding_Update"), districts, TZD_FINDING_UPDATE_FIELDS.map(([field]) => field));
+    fillTzdDistrictFields(matching("TZD_Finding_Status"), districts, [...TZD_NEED_HELP_FIELDS, ...TZD_STATUS_FIELDS].map(([field]) => field));
+  } else {
+    fillTzdDistrictFields(matching("TZD_CM_CarePlanning"), districts, ["CASE_PREPARE_COUNT"]);
+    matching("TZD_CM_Follow").forEach(row => {
+      const districtIndex = districts.indexOf(String(row.DISTRICT || "").trim());
+      const statusIndex = TZD_PLAN_STATUSES.indexOf(String(row.PLAN_STATUS || "").trim());
+      if (districtIndex < 0 || statusIndex < 0) return;
+      TZD_STAGE_FIELDS.forEach(([field]) => setTzdTableValue(districtIndex, field, row[field], statusIndex));
+    });
+  }
+}
+
+function targetTzdRoundMonth() {
+  return selectedRoundMode() === "edit" ? document.getElementById("tzdExistingRound").value : currentTzdMonth();
+}
+
+function previousTzdMonthWithData(targetMonth, province, topic) {
+  const sheets = topic === "survey" ? ["TZD_Finding_Update", "TZD_Finding_Status"] : ["TZD_CM_CarePlanning", "TZD_CM_Follow"];
+  return [...tzdRounds].reverse().find(month => month < targetMonth && sheets.some(sheet => tzdExistingRows[sheet].some(row => tzdRowMonth(row) === month && String(row.PROV_NAME || "").trim() === province))) || "";
+}
+
+function updateCopyPreviousButton() {
+  const button = document.getElementById("copyPreviousRound");
+  if (!button) return;
+  const province = document.getElementById("tzdProvince").value;
+  const targetMonth = targetTzdRoundMonth();
+  button.disabled = !province || !targetMonth || !previousTzdMonthWithData(targetMonth, province, document.getElementById("tzdTopic").value);
+}
+
+function fillTzdDistrictFields(rows, districts, fields) {
+  rows.forEach(row => {
+    const districtIndex = districts.indexOf(String(row.DISTRICT || "").trim());
+    if (districtIndex < 0) return;
+    fields.forEach(field => setTzdTableValue(districtIndex, field, row[field]));
   });
 }
 
-function resetTzdValues() { document.querySelectorAll('[data-tzd-field], [data-care-status]').forEach(input => { input.value = 0; }); }
+function setTzdTableValue(districtIndex, field, value, statusIndex = null) {
+  const statusSelector = statusIndex === null ? ":not([data-status-index])" : `[data-status-index="${statusIndex}"]`;
+  const input = document.querySelector(`[data-district-index="${districtIndex}"][data-field="${field}"]${statusSelector}`);
+  if (input) input.value = numberTzdForm(value);
+}
+
+function latestTzdRowsForMonth(rows, month) {
+  const latest = new Map();
+  rows.filter(row => tzdRowMonth(row) === month).forEach(row => {
+    const key = [row.PROV_NAME, row.DISTRICT, row.PLAN_STATUS || ""].map(value => String(value || "").trim()).join("|");
+    const timestamp = parseTzdFormTimestamp(row.SUBMITED_TIME) || 0;
+    if (!latest.has(key) || timestamp >= latest.get(key).timestamp) latest.set(key, { row, timestamp });
+  });
+  return [...latest.values()].map(item => item.row);
+}
 
 async function requestTzdOtp() {
   const email = normalizedTzdEmail();
@@ -189,23 +255,23 @@ async function submitTzdForm(event) {
   if (!form.reportValidity()) return;
   const email = normalizedTzdEmail();
   const otp = document.getElementById("tzdOtp").value.trim();
+  const province = document.getElementById("tzdProvince").value;
+  if (!province || !TZD_PROVINCES[province]) return showTzdUploadStatus("กรุณาเลือกจังหวัด", "error");
   if (email !== tzdOtpEmail) return showTzdUploadStatus("กรุณาขอรหัส OTP สำหรับอีเมลนี้ก่อน", "error");
   if (!/^\d{6}$/.test(otp)) return showTzdUploadStatus("กรุณากรอกรหัส OTP 6 หลัก", "error");
   if (!document.getElementById("tzdConfirm").checked) return showTzdUploadStatus("กรุณายืนยันความถูกต้องของข้อมูล", "error");
   const mode = selectedRoundMode();
-  const roundTimestamp = document.getElementById("tzdExistingRound").value;
-  if (mode === "edit" && !roundTimestamp) return showTzdUploadStatus("กรุณาเลือกรอบที่ต้องการแก้ไข", "error");
+  const roundMonth = mode === "edit" ? document.getElementById("tzdExistingRound").value : currentTzdMonth();
+  if (!roundMonth) return showTzdUploadStatus("กรุณาเลือกรอบเดือนที่ต้องการแก้ไข", "error");
   const button = document.getElementById("submitTzdUpload");
   button.disabled = true;
-  showTzdUploadStatus("กำลังตรวจสอบและบันทึกข้อมูล…", "info");
+  showTzdUploadStatus(`กำลังตรวจสอบและบันทึกข้อมูล ${TZD_PROVINCES[province].length} อำเภอ…`, "info");
   try {
     const payload = {
       action: "submitTzdForm", dbKey: "DB_5", email, emailOtp: otp, consent: true,
       website: document.getElementById("tzdWebsite").value,
-      mode, roundTimestamp: mode === "edit" ? Number(roundTimestamp) : null,
-      province: document.getElementById("tzdProvince").value,
-      district: selectedScopeDistrict(), topic: document.getElementById("tzdTopic").value,
-      values: collectTzdFormValues()
+      mode, roundMonth, province, topic: document.getElementById("tzdTopic").value,
+      rows: collectTzdTableRows(province)
     };
     const result = await postTzdForm(payload);
     if (!result.success) throw new Error(result.message || "บันทึกข้อมูลไม่สำเร็จ");
@@ -217,30 +283,59 @@ async function submitTzdForm(event) {
   finally { button.disabled = false; }
 }
 
-function collectTzdFormValues() {
+function collectTzdTableRows(province) {
   const topic = document.getElementById("tzdTopic").value;
-  if (topic === "survey") {
-    return Object.fromEntries([...TZD_FINDING_UPDATE_FIELDS, ...TZD_NEED_HELP_FIELDS, ...TZD_STATUS_FIELDS].map(([field]) => [field, readTzdNumber(`[data-tzd-field="${field}"]`)]));
-  }
-  return {
-    CASE_PREPARE_COUNT: readTzdNumber('[data-tzd-field="CASE_PREPARE_COUNT"]'),
-    careStatuses: TZD_PLAN_STATUSES.map(status => ({
-      PLAN_STATUS: status,
-      ...Object.fromEntries(TZD_STAGE_FIELDS.map(([field]) => [field, readTzdNumber(`[data-care-status="${status}"][data-care-stage="${field}"]`)]))
-    }))
-  };
+  return TZD_PROVINCES[province].map((district, districtIndex) => {
+    if (topic === "survey") {
+      const fields = [...TZD_FINDING_UPDATE_FIELDS, ...TZD_NEED_HELP_FIELDS, ...TZD_STATUS_FIELDS];
+      return { district, values: Object.fromEntries(fields.map(([field]) => [field, readTzdTableNumber(districtIndex, field)])) };
+    }
+    return {
+      district,
+      values: {
+        CASE_PREPARE_COUNT: readTzdTableNumber(districtIndex, "CASE_PREPARE_COUNT"),
+        careStatuses: TZD_PLAN_STATUSES.map((status, statusIndex) => ({
+          PLAN_STATUS: status,
+          ...Object.fromEntries(TZD_STAGE_FIELDS.map(([field]) => [field, readTzdTableNumber(districtIndex, field, statusIndex)]))
+        }))
+      }
+    };
+  });
 }
 
-function readTzdNumber(selector) {
-  const value = Number(document.querySelector(selector)?.value);
+function readTzdTableNumber(districtIndex, field, statusIndex = null) {
+  const statusSelector = statusIndex === null ? ":not([data-status-index])" : `[data-status-index="${statusIndex}"]`;
+  const input = document.querySelector(`[data-district-index="${districtIndex}"][data-field="${field}"]${statusSelector}`);
+  const value = Number(input?.value);
   if (!Number.isFinite(value) || value < 0) throw new Error("ทุกช่องต้องเป็นตัวเลขตั้งแต่ 0 ขึ้นไป");
   return value;
+}
+
+function currentTzdMonth() {
+  const parts = new Intl.DateTimeFormat("en-CA", { year: "numeric", month: "2-digit", timeZone: "Asia/Bangkok" }).formatToParts(new Date());
+  const values = Object.fromEntries(parts.map(part => [part.type, part.value]));
+  return `${values.year}-${values.month}`;
+}
+
+function tzdRowMonth(row) {
+  const explicit = String(row?.ROUND_MONTH || "").trim();
+  if (/^\d{4}-(0[1-9]|1[0-2])$/.test(explicit)) return explicit;
+  const timestamp = parseTzdFormTimestamp(row?.SUBMITED_TIME);
+  if (timestamp === null) return "";
+  const parts = new Intl.DateTimeFormat("en-CA", { year: "numeric", month: "2-digit", timeZone: "Asia/Bangkok" }).formatToParts(new Date(timestamp));
+  const values = Object.fromEntries(parts.map(part => [part.type, part.value]));
+  return `${values.year}-${values.month}`;
+}
+
+function formatTzdMonth(month) {
+  const match = String(month).match(/^(\d{4})-(\d{2})$/);
+  if (!match) return month;
+  return new Intl.DateTimeFormat("th-TH", { month: "long", year: "numeric", timeZone: "Asia/Bangkok" }).format(new Date(Date.UTC(Number(match[1]), Number(match[2]) - 1, 15)));
 }
 
 function normalizedTzdEmail() { return document.getElementById("tzdEmail").value.trim().toLowerCase(); }
 async function postTzdForm(payload) { const response = await fetch(TZD_UPLOAD_URL, { method: "POST", body: JSON.stringify(payload) }); if (!response.ok) throw new Error(`ระบบตอบกลับ HTTP ${response.status}`); return response.json(); }
 function numberTzdForm(value) { const number = Number(String(value ?? 0).replace(/,/g, "").trim()); return Number.isFinite(number) ? number : 0; }
 function parseTzdFormTimestamp(value) { if (typeof value === "number" && value < 100000) return Date.UTC(1899, 11, 30) + value * 86400000 - 7 * 3600000; const timestamp = new Date(value).getTime(); return Number.isNaN(timestamp) ? null : timestamp; }
-function formatTzdFormDate(timestamp) { return new Intl.DateTimeFormat("th-TH", { dateStyle: "medium", timeStyle: "short", timeZone: "Asia/Bangkok" }).format(new Date(timestamp)); }
 function showTzdUploadStatus(message, type) { const status = document.getElementById("tzdUploadStatus"); status.hidden = false; status.textContent = message; status.className = `rounded-lg border px-4 py-3 text-sm lg:col-span-2 ${type === "success" ? "border-emerald-200 bg-emerald-50 text-emerald-800" : type === "error" ? "border-rose-200 bg-rose-50 text-rose-800" : "border-blue-200 bg-blue-50 text-blue-800"}`; }
 function escapeTzdForm(value) { return String(value).replace(/[&<>'"]/g, character => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", "'": "&#039;", '"': "&quot;" })[character]); }

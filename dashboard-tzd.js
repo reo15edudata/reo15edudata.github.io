@@ -48,17 +48,29 @@ function parseTzdTimestamp(value) {
 
 function buildTzdBatches(rows) {
   const groups = new Map();
-  rows.forEach(row => { const timestamp = parseTzdTimestamp(row.SUBMITED_TIME); if (timestamp === null) return; if (!groups.has(timestamp)) groups.set(timestamp, []); groups.get(timestamp).push(row); });
-  return [...groups].map(([timestamp, batchRows]) => ({ timestamp, rows: batchRows })).sort((a, b) => a.timestamp - b.timestamp);
+  rows.forEach(row => {
+    const roundMonth = tzdRowRoundMonth(row);
+    if (!roundMonth) return;
+    if (!groups.has(roundMonth)) groups.set(roundMonth, new Map());
+    const key = [row.PROV_NAME, row.DISTRICT, row.PLAN_STATUS || ""].map(value => String(value || "").trim()).join("|");
+    const timestamp = parseTzdTimestamp(row.SUBMITED_TIME) || 0;
+    const current = groups.get(roundMonth).get(key);
+    if (!current || timestamp >= current.timestamp) groups.get(roundMonth).set(key, { row, timestamp });
+  });
+  return [...groups].map(([roundMonth, keyedRows]) => {
+    const rows = [...keyedRows.values()].map(item => item.row);
+    const provincesWithDistrictRows = new Set(rows.filter(row => String(row.DISTRICT || "").trim() !== "ทั้งจังหวัด").map(row => String(row.PROV_NAME || "").trim()));
+    return { roundMonth, rows: rows.filter(row => String(row.DISTRICT || "").trim() !== "ทั้งจังหวัด" || !provincesWithDistrictRows.has(String(row.PROV_NAME || "").trim())) };
+  }).sort((a, b) => a.roundMonth.localeCompare(b.roundMonth));
 }
 
 function buildTzdRounds() {
-  const timestamps = new Set(TZD_SHEETS.flatMap(sheet => tzdBatches[sheet].map(batch => batch.timestamp)));
-  tzdRounds = [...timestamps].sort((a, b) => a - b).map((timestamp, index) => ({ timestamp, round: index + 1 }));
+  const months = new Set(TZD_SHEETS.flatMap(sheet => tzdBatches[sheet].map(batch => batch.roundMonth)));
+  tzdRounds = [...months].sort().map((roundMonth, index) => ({ roundMonth, round: index + 1 }));
 }
 
 function populateTzdFilters() {
-  document.getElementById("tzdRound").innerHTML = '<option value="latest">รอบล่าสุด</option>' + [...tzdRounds].reverse().map(item => `<option value="${item.timestamp}">รอบที่ ${item.round} · ${formatTzdDate(item.timestamp)}</option>`).join("");
+  document.getElementById("tzdRound").innerHTML = '<option value="latest">รอบเดือนล่าสุด</option>' + [...tzdRounds].reverse().map(item => `<option value="${item.roundMonth}">${formatTzdMonth(item.roundMonth)}</option>`).join("");
   const allRows = TZD_SHEETS.flatMap(sheet => tzdData[sheet]);
   tzdProvinceMulti = EDU15MultiSelect.create(document.getElementById("tzdProvince"), uniqueTzdValues(allRows, "PROV_NAME"), "ทุกจังหวัด");
   tzdDistrictMulti = EDU15MultiSelect.create(document.getElementById("tzdDistrict"), uniqueTzdValues(allRows, "DISTRICT"), "ทุกอำเภอ");
@@ -75,9 +87,9 @@ function setupTzdEvents() {
 }
 
 function uniqueTzdValues(rows, field) { return [...new Set(rows.map(row => String(row[field] || "").trim()).filter(Boolean))].sort((a, b) => a.localeCompare(b, "th")); }
-function selectedTzdCutoff() { const value = document.getElementById("tzdRound").value; return value === "latest" ? Number.POSITIVE_INFINITY : Number(value); }
-function selectedTzdBatch(sheet, cutoff = selectedTzdCutoff()) { return [...tzdBatches[sheet]].reverse().find(batch => batch.timestamp <= cutoff) || null; }
-function previousTzdBatch(sheet, currentBatch) { return currentBatch ? [...tzdBatches[sheet]].reverse().find(batch => batch.timestamp < currentBatch.timestamp) || null : null; }
+function selectedTzdMonth() { const value = document.getElementById("tzdRound").value; return value === "latest" ? (tzdRounds.at(-1)?.roundMonth || "") : value; }
+function selectedTzdBatch(sheet, roundMonth = selectedTzdMonth()) { return tzdBatches[sheet].find(batch => batch.roundMonth === roundMonth) || null; }
+function previousTzdBatch(sheet, currentBatch) { return currentBatch ? [...tzdBatches[sheet]].reverse().find(batch => batch.roundMonth < currentBatch.roundMonth) || null : null; }
 
 function filterTzdRows(rows, options = {}) {
   const provinces = options.provinces || tzdProvinceMulti?.getValues() || [];
@@ -89,19 +101,19 @@ function nTzd(value) { const number = Number(String(value ?? 0).replace(/,/g, ""
 function sumTzd(rows, field) { return rows.reduce((sum, row) => sum + nTzd(row[field]), 0); }
 
 function renderTzdDashboard() {
-  const cutoff = selectedTzdCutoff();
-  const round = cutoff === Number.POSITIVE_INFINITY ? tzdRounds.at(-1) : tzdRounds.find(item => item.timestamp === cutoff);
-  document.getElementById("tzdCurrentRound").textContent = round ? `รอบที่ ${round.round} · ${formatTzdDate(round.timestamp)}` : "ยังไม่มีข้อมูลรอบอัปโหลด";
-  const findingBatch = selectedTzdBatch("TZD_Finding_Update", cutoff);
-  const statusBatch = selectedTzdBatch("TZD_Finding_Status", cutoff);
-  const careBatch = selectedTzdBatch("TZD_CM_CarePlanning", cutoff);
-  const followBatch = selectedTzdBatch("TZD_CM_Follow", cutoff);
+  const roundMonth = selectedTzdMonth();
+  const round = tzdRounds.find(item => item.roundMonth === roundMonth);
+  document.getElementById("tzdCurrentRound").textContent = round ? `รอบเดือน ${formatTzdMonth(round.roundMonth)}` : "ยังไม่มีข้อมูลรอบอัปโหลด";
+  const findingBatch = selectedTzdBatch("TZD_Finding_Update", roundMonth);
+  const statusBatch = selectedTzdBatch("TZD_Finding_Status", roundMonth);
+  const careBatch = selectedTzdBatch("TZD_CM_CarePlanning", roundMonth);
+  const followBatch = selectedTzdBatch("TZD_CM_Follow", roundMonth);
   const findingRows = filterTzdRows(findingBatch?.rows);
   const statusRows = filterTzdRows(statusBatch?.rows);
   const careRows = filterTzdRows(careBatch?.rows);
   const followRows = filterTzdRows(followBatch?.rows);
   renderFindingSummary(findingBatch, findingRows, statusRows);
-  renderFindingProgress(cutoff);
+  renderFindingProgress(roundMonth);
   renderFindingStatuses(statusRows);
   renderCareSummary(careBatch, followBatch, careRows, followRows);
 }
@@ -140,15 +152,15 @@ function renderFindingSummary(batch, rows, statusRows) {
   document.getElementById("metricNotSurveyedRate").textContent = needHelp ? `${(notSurveyed / needHelp * 100).toFixed(1)}% ของผู้ต้องการความช่วยเหลือ` : "ยังไม่มีข้อมูล";
 }
 
-function renderFindingProgress(cutoff) {
-  const history = tzdBatches.TZD_Finding_Update.filter(batch => batch.timestamp <= cutoff);
+function renderFindingProgress(roundMonth) {
+  const history = tzdBatches.TZD_Finding_Update.filter(batch => batch.roundMonth <= roundMonth);
   const selectedProvinces = tzdProvinceMulti?.getValues() || [];
   const provinces = selectedProvinces.length ? selectedProvinces : uniqueTzdValues(history.flatMap(batch => batch.rows), "PROV_NAME");
   const colors = ["#2563eb", "#e11d48", "#d97706", "#059669", "#7c3aed", "#0891b2"];
   replaceTzdChart("findingProgress", "findingProgressChart", {
     type: "line",
     data: {
-      labels: history.map(batch => `รอบ ${roundNumberForTimestamp(batch.timestamp)}`),
+      labels: history.map(batch => formatTzdMonthShort(batch.roundMonth)),
       datasets: provinces.map((province, index) => ({
         label: province,
         data: history.map(batch => { const rows = filterTzdRows(batch.rows, { provinces: [province] }); return sumTzd(rows, "FIRSTSCREEN_FOUND_HAVEEVIDENCE") + sumTzd(rows, "FIRSTSCREEN_FOUND_HAVENTEVIDENCE"); }),
@@ -200,8 +212,17 @@ function renderTzdChange(id, current, previous, hasPrevious) {
 
 function replaceTzdChart(key, canvasId, config) { tzdCharts[key]?.destroy(); tzdCharts[key] = new Chart(document.getElementById(canvasId), config); }
 function tzdChartOptions(yTitle) { return { maintainAspectRatio: false, interaction: { mode: "index", intersect: false }, plugins: { legend: { position: "bottom", labels: { boxWidth: 12 } }, datalabels: { display: false } }, scales: { y: { beginAtZero: true, title: { display: true, text: yTitle } } } }; }
-function roundNumberForTimestamp(timestamp) { return tzdRounds.find(item => item.timestamp === timestamp)?.round || "–"; }
-function formatTzdDate(timestamp) { return new Intl.DateTimeFormat("th-TH", { dateStyle: "medium", timeStyle: "short", timeZone: "Asia/Bangkok" }).format(new Date(timestamp)); }
+function tzdRowRoundMonth(row) {
+  const explicit = String(row?.ROUND_MONTH || "").trim();
+  if (/^\d{4}-(0[1-9]|1[0-2])$/.test(explicit)) return explicit;
+  const timestamp = parseTzdTimestamp(row?.SUBMITED_TIME);
+  if (timestamp === null) return "";
+  const parts = new Intl.DateTimeFormat("en-CA", { year: "numeric", month: "2-digit", timeZone: "Asia/Bangkok" }).formatToParts(new Date(timestamp));
+  const values = Object.fromEntries(parts.map(part => [part.type, part.value]));
+  return `${values.year}-${values.month}`;
+}
+function formatTzdMonth(roundMonth, style = "long") { const [year, month] = String(roundMonth).split("-").map(Number); if (!year || !month) return roundMonth; return new Intl.DateTimeFormat("th-TH", { month: style, year: "numeric", timeZone: "Asia/Bangkok" }).format(new Date(Date.UTC(year, month - 1, 15))); }
+function formatTzdMonthShort(roundMonth) { return formatTzdMonth(roundMonth, "short"); }
 function formatTzdNumber(value) { return Number(value || 0).toLocaleString("th-TH"); }
 function emptyTzdRow(colspan) { return `<tr><td colspan="${colspan}" class="p-8 text-center text-slate-400">ยังไม่มีข้อมูลในรอบหรือตัวกรองที่เลือก</td></tr>`; }
 function escapeTzd(value) { return String(value).replace(/[&<>'"]/g, character => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", "'": "&#039;", '"': "&quot;" })[character]); }
