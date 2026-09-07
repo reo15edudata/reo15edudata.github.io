@@ -10,6 +10,7 @@ let schoolMap;
 let mapLayer;
 let schoolPopup;
 let schoolMapInitialized = false;
+let schoolMapLoading = false;
 let pendingMapLocations = [];
 let mapRenderVersion = 0;
 let multiFilters = {};
@@ -17,6 +18,7 @@ let dashboardLoadVersion = 0;
 let availableAcademicYears = [];
 const schoolCoordinateCache = new WeakMap();
 const MAP_CHUNK_SIZE = 250;
+const dashboardThemeColor = (name, fallback) => window.EDU15Theme?.color(name, fallback) || fallback;
 
 async function fetchAllPages(dbKey, sheetName, filters = {}) {
   return EDU15DataClient.fetchAllPages(GAS_WEB_APP_URL, dbKey, sheetName, { filters });
@@ -278,7 +280,7 @@ function renderGenderChart(students) {
   genderChart?.destroy();
   genderChart = new Chart(document.getElementById("genderChart"), {
     type: "bar",
-    data: { labels: ["นักเรียนชาย", "นักเรียนหญิง"], datasets: [{ data: [male, female], backgroundColor: ["#3b82f6", "#ec4899"], borderRadius: 8 }] },
+    data: { labels: ["นักเรียนชาย", "นักเรียนหญิง"], datasets: [{ data: [male, female], backgroundColor: [dashboardThemeColor("data-blue", "#2563eb"), dashboardThemeColor("data-rose", "#e11d48")], borderRadius: 8 }] },
     options: { maintainAspectRatio: false, plugins: { legend: { display: false } }, scales: { y: { beginAtZero: true, ticks: { callback: value => Number(value).toLocaleString("th-TH") } } } }
   });
 }
@@ -303,7 +305,22 @@ function updateMapToggle(isOpen) {
     : "fas fa-map mr-2";
 }
 
-function initMap() {
+async function initMap() {
+  if (schoolMapInitialized || schoolMapLoading) return;
+  schoolMapLoading = true;
+  const toggleButton = document.getElementById("toggleSchoolMapButton");
+  toggleButton.disabled = true;
+  document.getElementById("mapSummary").textContent = "กำลังโหลดระบบแผนที่…";
+  try {
+    await window.EDU15Libraries.loadLeaflet();
+  } catch (error) {
+    console.error(error);
+    document.getElementById("mapSummary").textContent = "โหลดระบบแผนที่ไม่สำเร็จ กรุณาลองอีกครั้ง";
+    return;
+  } finally {
+    schoolMapLoading = false;
+    toggleButton.disabled = false;
+  }
   if (schoolMapInitialized) return;
   const isMobile = window.matchMedia("(max-width: 767px)").matches;
   document.getElementById("schoolMapPlaceholder").classList.add("edu15-map-hidden");
@@ -401,8 +418,8 @@ function renderMap(locations, version) {
       bounds.extend(coordinate);
       L.circleMarker(coordinate, {
         radius: 5,
-        color: "#0f766e",
-        fillColor: "#14b8a6",
+        color: dashboardThemeColor("action", "#0f766e"),
+        fillColor: dashboardThemeColor("data-teal", "#0f766e"),
         fillOpacity: .75,
         weight: 1,
         edu15PopupHtml: `<strong>${escapeHtml(row.SCHOOL_NAME || "สถานศึกษา")}</strong><br>${escapeHtml(row.DEPARTMENT_NAME || "")}`

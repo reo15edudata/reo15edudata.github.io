@@ -7,6 +7,7 @@ let businessMap;
 let businessLayer;
 let businessPopup;
 let businessMapInitialized = false;
+let businessMapLoading = false;
 let pendingBusinessRows = [];
 let businessMapRenderVersion = 0;
 let currentMouRows = [];
@@ -14,14 +15,34 @@ let selectedBusinessRow = null;
 let businessMarkerByRow = new WeakMap();
 const businessCoordinateCache = new WeakMap();
 const BUSINESS_MAP_CHUNK_SIZE = 200;
+const businessThemeColor = (name, fallback) => window.EDU15Theme?.color(name, fallback) || fallback;
 
 window.addEventListener("DOMContentLoaded", initBusinessDashboard);
 
 async function initBusinessDashboard() {
   try {
-    const metadata = await EDU15DataClient.fetchMetadata(
-      GAS_WEB_APP_URL, "DB_3", BUSINESS_SHEET, ["YEAR", "PROV_NAME"]
-    );
+    ensureCurrentBusinessYearOption();
+    let metadata = {
+      YEAR: [],
+      PROV_NAME: ["เชียงใหม่", "แม่ฮ่องสอน", "ลำพูน", "ลำปาง"],
+      BUSINESS_TYPE: []
+    };
+    try {
+      const remoteMetadata = await EDU15DataClient.fetchMetadata(
+        GAS_WEB_APP_URL,
+        "DB_3",
+        BUSINESS_SHEET,
+        ["YEAR", "PROV_NAME", "BUSINESS_TYPE"],
+        { networkFirst: true }
+      );
+      metadata = {
+        YEAR: remoteMetadata.YEAR || [],
+        PROV_NAME: remoteMetadata.PROV_NAME?.length ? remoteMetadata.PROV_NAME : metadata.PROV_NAME,
+        BUSINESS_TYPE: remoteMetadata.BUSINESS_TYPE || []
+      };
+    } catch (metadataError) {
+      console.warn("Business metadata unavailable; using fallback filters", metadataError);
+    }
     populateBusinessFilters(metadata);
     setupBusinessDetails();
     setupLazyMap();
@@ -33,8 +54,12 @@ async function initBusinessDashboard() {
     document.getElementById("businessFilterForm").addEventListener("reset", () => setTimeout(async () => {
       businessProvinceFilter.clear();
       document.getElementById("businessYear").value = defaultBusinessYear;
+      document.getElementById("businessTypeFilter").value = "";
+      document.getElementById("businessNameSearch").value = "";
       await loadBusinessData();
     }, 0));
+    document.getElementById("businessTypeFilter").addEventListener("change", renderFilteredBusinessData);
+    document.getElementById("businessNameSearch").addEventListener("input", renderFilteredBusinessData);
   } catch (error) {
     console.error(error);
     showBusinessError(error);
@@ -43,17 +68,31 @@ async function initBusinessDashboard() {
   }
 }
 
+function ensureCurrentBusinessYearOption() {
+  const yearSelect = document.getElementById("businessYear");
+  const currentThaiYear = String(new Date().getFullYear() + 543);
+  yearSelect.replaceChildren(new Option(currentThaiYear, currentThaiYear));
+  yearSelect.value = currentThaiYear;
+}
+
 function populateBusinessFilters(metadata) {
-  const years = [...new Set((metadata.YEAR || []).map(String).filter(Boolean))]
+  const currentThaiYear = String(new Date().getFullYear() + 543);
+  const years = [...new Set([currentThaiYear, ...(metadata.YEAR || []).map(String).filter(Boolean)])]
     .sort((a, b) => Number(b) - Number(a));
   const provinces = [...new Set((metadata.PROV_NAME || []).map(String).filter(Boolean))].sort();
+  const businessTypes = [...new Set((metadata.BUSINESS_TYPE || []).map(String).filter(Boolean))]
+    .sort((a, b) => a.localeCompare(b, "th"));
   const yearSelect = document.getElementById("businessYear");
+  yearSelect.replaceChildren();
   years.forEach(year => yearSelect.add(new Option(year, year)));
   defaultBusinessYear = years[0] || "";
   yearSelect.value = defaultBusinessYear;
   businessProvinceFilter = EDU15MultiSelect.create(
     document.getElementById("businessProvince"), provinces, "ทุกจังหวัด"
   );
+  const typeSelect = document.getElementById("businessTypeFilter");
+  typeSelect.replaceChildren(new Option("ทุกประเภท", ""));
+  businessTypes.forEach(type => typeSelect.add(new Option(type, type)));
 }
 
 async function loadBusinessData() {
@@ -65,16 +104,29 @@ async function loadBusinessData() {
       GAS_WEB_APP_URL,
       "DB_3",
       BUSINESS_SHEET,
-      { filters: { year, province: provinces } }
+      { filters: { year, province: provinces }, networkFirst: true }
     );
-    renderMou(businessRows);
-    queueBusinessMapRender(businessRows);
+    renderFilteredBusinessData();
   } catch (error) {
     console.error(error);
     showBusinessError(error);
   } finally {
     await window.hidePageLoader?.();
   }
+}
+
+function renderFilteredBusinessData() {
+  const selectedType = document.getElementById("businessTypeFilter").value.trim();
+  const nameQuery = document.getElementById("businessNameSearch").value.trim().toLocaleLowerCase("th");
+  const filteredRows = businessRows.filter(row => {
+    const typeMatches = !selectedType || String(row.BUSINESS_TYPE || "").trim() === selectedType;
+    const nameMatches = !nameQuery || String(row.BUSINESS_NAME || "")
+      .toLocaleLowerCase("th")
+      .includes(nameQuery);
+    return typeMatches && nameMatches;
+  });
+  renderMou(filteredRows);
+  queueBusinessMapRender(filteredRows);
 }
 
 function showBusinessError(error) {
@@ -118,8 +170,8 @@ function showBusinessDetails(row, { focusMap = true, scrollToDetails = true } = 
   document.getElementById("businessDetailMeta").textContent = [row.BUSINESS_TYPE, row.PROV_NAME]
     .map(value => String(value || "").trim()).filter(Boolean).join(" · ") || "ไม่ระบุประเภทและจังหวัด";
   document.getElementById("businessDetailText").textContent = String(row.BUSINESS_DETAILS || "").trim() || "ไม่มีรายละเอียดเพิ่มเติม";
-  document.getElementById("businessDetailPay").textContent = String(row.BUSINESS_PAY || "").trim() || "ไม่ระบุค่าตอบแทน";
-  const keywords = [...new Set(String(row.BUSINESS_WANTS || "").split(",").map(value => value.trim()).filter(Boolean))];
+  document.getElementById("businessDetailPay").textContent = formatBusinessPay(row.BUSINESS_PAY);
+  const keywords = [...new Set(String(row.BUSINESS_WANTS || "").split(/\s*[|,]\s*/).map(value => value.trim()).filter(Boolean))];
   document.getElementById("businessDetailWants").innerHTML = keywords.length
     ? keywords.map(keyword => `<span class="rounded-full border border-violet-200 bg-violet-50 px-2.5 py-1 text-xs font-medium text-violet-700">${escapeHtml(keyword)}</span>`).join("")
     : '<span class="text-sm text-slate-400">ไม่ระบุทักษะที่ต้องการ</span>';
@@ -131,10 +183,17 @@ function showBusinessDetails(row, { focusMap = true, scrollToDetails = true } = 
     button.closest("tr")?.classList.toggle("bg-teal-50", active);
   });
   if (focusMap) {
-    if (!businessMapInitialized) initMap();
-    focusBusinessOnMap(row);
+    if (!businessMapInitialized) initMap().then(() => focusBusinessOnMap(row));
+    else focusBusinessOnMap(row);
   }
   if (scrollToDetails) scrollToBusinessDetails();
+}
+function formatBusinessPay(value) {
+  const text = String(value ?? "").trim();
+  if (!text || text === "ไม่ได้ระบุ") return "ไม่ได้ระบุ";
+  const numericValue = Number(text.replace(/,/g, ""));
+  if (!Number.isFinite(numericValue)) return text;
+  return `${numericValue.toLocaleString("th-TH", { maximumFractionDigits: 2 })} บาท/ชั่วโมง`;
 }
 function scrollToBusinessDetails() {
   const panel = document.getElementById("businessDetailPanel");
@@ -165,7 +224,22 @@ function updateMapToggle(isOpen) {
   toggleButton.querySelector("[data-map-toggle-label]").textContent = isOpen ? "ปิดแผนที่" : "เปิดแผนที่";
   toggleButton.querySelector("[data-map-toggle-icon]").className = isOpen ? "fas fa-map-location-dot mr-2" : "fas fa-map mr-2";
 }
-function initMap() {
+async function initMap() {
+  if (businessMapInitialized || businessMapLoading) return;
+  businessMapLoading = true;
+  const toggleButton = document.getElementById("toggleBusinessMapButton");
+  toggleButton.disabled = true;
+  document.getElementById("businessMapSummary").textContent = "กำลังโหลดระบบแผนที่…";
+  try {
+    await window.EDU15Libraries.loadLeaflet();
+  } catch (error) {
+    console.error(error);
+    document.getElementById("businessMapSummary").textContent = "โหลดระบบแผนที่ไม่สำเร็จ กรุณาลองอีกครั้ง";
+    return;
+  } finally {
+    businessMapLoading = false;
+    toggleButton.disabled = false;
+  }
   if (businessMapInitialized) return;
   const isMobile = window.matchMedia("(max-width: 767px)").matches;
   document.getElementById("businessMapPlaceholder").classList.add("edu15-map-hidden");
@@ -265,7 +339,7 @@ function renderMap(rows, version) {
       valid++;
       bounds.extend(coordinate);
       const marker = L.circleMarker(coordinate, {
-        radius: 6, color: "#6d28d9", fillColor: "#8b5cf6", fillOpacity: .75, weight: 1,
+        radius: 6, color: businessThemeColor("data-violet", "#7c3aed"), fillColor: businessThemeColor("data-violet", "#7c3aed"), fillOpacity: .78, weight: 1,
         edu15BusinessRow: row,
         edu15PopupHtml: `<strong>${escapeHtml(row.BUSINESS_NAME || "สถานประกอบการ")}</strong><br>${escapeHtml(row.BUSINESS_TYPE || "")}`
       }).on("click", openBusinessPopup).addTo(businessLayer);

@@ -1,6 +1,7 @@
 const GAS_WEB_APP_URL="https://script.google.com/macros/s/AKfycbxIaex-ZhKRkRFze1L8tyQF5UBQR4BQ2Is9L6nJMl9iGd9MTlg4ELJUqdzOZPO3w-OwDA/exec";
 const SCORE_SHEETS=["ONET_Score","NT_AVGScore","NT_LevelScore","RT_Score","VNET_Score","BNET_Score","NNET_Score"];
-const SUBJECT_COLORS=["#3b82f6","#ec4899","#f59e0b","#14b8a6","#8b5cf6","#f97316","#06b6d4"];
+const scoreThemeColor=(name,fallback)=>window.EDU15Theme?.color(name,fallback)||fallback;
+const SUBJECT_COLORS=window.EDU15Theme?.dataPalette().slice(0,7)||["#2563eb","#e11d48","#b45309","#0f766e","#7c3aed","#c2410c","#0e7490"];
 const SUBJECT_BACKGROUNDS=["bg-blue-50","bg-pink-50","bg-amber-50","bg-teal-50","bg-violet-50","bg-orange-50","bg-cyan-50"];
 let scoreData={},charts={};
 let defaultScoreScope="";
@@ -196,7 +197,7 @@ function renderNtAverage(){
 function renderNtLevel(){
   const subject=document.getElementById("ntSubject").value;
   const rows=coreRows("NT_LevelScore").filter(row=>String(row.TEST_SUBJECT)===subject);
-  replaceChart("ntLevel","ntLevelChart",{type:"doughnut",data:{labels:rows.map(row=>row.QUALITY_LEVEL),datasets:[{data:rows.map(row=>n(row.AVG_SCORE)),backgroundColor:["#16a34a","#22c55e","#f59e0b","#ef4444"]}]},options:{maintainAspectRatio:false,plugins:{legend:{position:"bottom"},tooltip:{callbacks:{label:context=>`${context.label}: ${Number(context.raw).toFixed(2)}%`}}}}});
+  replaceChart("ntLevel","ntLevelChart",{type:"doughnut",data:{labels:rows.map(row=>row.QUALITY_LEVEL),datasets:[{data:rows.map(row=>n(row.AVG_SCORE)),backgroundColor:[scoreThemeColor("data-green","#15803d"),scoreThemeColor("data-teal","#0f766e"),scoreThemeColor("data-amber","#b45309"),scoreThemeColor("data-rose","#e11d48")]}]},options:{maintainAspectRatio:false,plugins:{legend:{position:"bottom"},tooltip:{callbacks:{label:context=>`${context.label}: ${Number(context.raw).toFixed(2)}%`}}}}});
   document.getElementById("ntLevelTable").innerHTML=rows.length?rows.map(row=>`<tr><td>${escapeHtml(row.QUALITY_LEVEL)}</td><td>${n(row.STUDENT_TEST_COUNT).toLocaleString("th-TH")}</td><td>${n(row.AVG_SCORE).toFixed(2)}%</td></tr>`).join(""):'<tr><td colspan="3" class="text-center text-slate-400">รอข้อมูลอัปเดต</td></tr>';
 }
 function renderRt(){
@@ -204,8 +205,8 @@ function renderRt(){
   const national=nationalRows("RT_Score");
   document.getElementById("rtCombined").textContent=combined?n(combined.AVG_SCORE).toFixed(2):"รอข้อมูลอัปเดต";
   const subjects=rows.filter(row=>!/รวม/.test(String(row.TEST_SUBJECT)));
-  const averageColors=subjects.map((_,index)=>["#f43f5e","#fb7185"][index%2]);
-  const passColors=subjects.map((_,index)=>["#0d9488","#2dd4bf"][index%2]);
+  const averageColors=subjects.map((_,index)=>[scoreThemeColor("data-rose","#e11d48"),scoreThemeColor("data-pink","#be185d")][index%2]);
+  const passColors=subjects.map((_,index)=>[scoreThemeColor("data-teal","#0f766e"),scoreThemeColor("data-cyan","#0e7490")][index%2]);
   replaceChart("rtAvg","rtAverageChart",{type:"bar",data:{labels:subjects.map(row=>row.TEST_SUBJECT),datasets:[{label:document.getElementById("scoreScope").value,data:subjects.map(row=>n(row.AVG_SCORE)),backgroundColor:averageColors,borderRadius:6},{label:"ระดับประเทศ",data:subjects.map(row=>n(national.find(item=>item.TEST_SUBJECT===row.TEST_SUBJECT)?.AVG_SCORE)),backgroundColor:averageColors.map(transparentColor),borderColor:averageColors,borderWidth:1,borderRadius:6}]},options:comparisonChartOptions("คะแนนเฉลี่ย")});
   replaceChart("rtPass","rtPassChart",{type:"bar",data:{labels:subjects.map(row=>row.TEST_SUBJECT),datasets:[{label:document.getElementById("scoreScope").value,data:subjects.map(row=>n(row.STUDENT_TEST_COUNT)?n(row.STUDENT_MOREHALFTEST_COUNT)/n(row.STUDENT_TEST_COUNT)*100:0),backgroundColor:passColors,borderRadius:6},{label:"ระดับประเทศ",data:subjects.map(row=>{const item=national.find(nation=>nation.TEST_SUBJECT===row.TEST_SUBJECT);return item&&n(item.STUDENT_TEST_COUNT)?n(item.STUDENT_MOREHALFTEST_COUNT)/n(item.STUDENT_TEST_COUNT)*100:0;}),backgroundColor:passColors.map(transparentColor),borderColor:passColors,borderWidth:1,borderRadius:6}]},options:comparisonChartOptions("ร้อยละ")});
 }
@@ -244,7 +245,7 @@ function renderBnet(){
     : waitText();
   const container=document.getElementById("bnetSections");
   container.innerHTML=subjectGroups.length?subjectGroups.map(group=>
-    `<article class="chart-card border-l-4" style="border-left-color:${group.color}"><div class="mb-4"><span class="inline-flex rounded-lg px-3 py-1 text-sm font-semibold text-white" style="background:${group.color}">${escapeHtml(group.subject)}</span></div><div class="h-64"><canvas id="bnetSectionChart${group.index}"></canvas></div><div class="overflow-auto max-h-64 mt-4"><table class="score-table"><thead><tr><th>มาตรฐาน</th><th>คะแนนเฉลี่ย</th></tr></thead><tbody>${group.details.map(row=>`<tr><td>${escapeHtml(row.STANDARD_NAME)}</td><td>${n(row.AVG_SCORE).toFixed(2)}</td></tr>`).join("")}</tbody></table></div></article>`
+    `<article class="chart-card border-l-4" style="border-left-color:${group.color}"><div class="mb-4"><span class="inline-flex rounded-lg px-3 py-1 text-sm font-semibold text-white" style="background:${group.color}">${escapeHtml(group.subject)}</span></div><div class="h-64"><canvas id="bnetSectionChart${group.index}" role="img" aria-label="กราฟคะแนนเฉลี่ย B-NET วิชา ${escapeHtml(group.subject)}" aria-busy="true"></canvas></div><div class="overflow-auto max-h-64 mt-4"><table class="score-table"><thead><tr><th>มาตรฐาน</th><th>คะแนนเฉลี่ย</th></tr></thead><tbody>${group.details.map(row=>`<tr><td>${escapeHtml(row.STANDARD_NAME)}</td><td>${n(row.AVG_SCORE).toFixed(2)}</td></tr>`).join("")}</tbody></table></div></article>`
   ).join(""):waitText();
   subjectGroups.forEach(group=>{
     replaceChart(`bnetSection${group.index}`,`bnetSectionChart${group.index}`,{type:"bar",data:{labels:group.details.map(row=>row.STANDARD_NAME),datasets:[{label:document.getElementById("scoreScope").value,data:group.details.map(row=>n(row.AVG_SCORE)),backgroundColor:group.color,borderRadius:5},{label:"ระดับประเทศ",data:group.details.map(row=>valueOrNull(national.find(item=>String(item.TEST_SUBJECT)===group.subject&&String(item.STANDARD_NAME)===String(row.STANDARD_NAME))?.AVG_SCORE)),backgroundColor:transparentColor(group.color),borderColor:group.color,borderWidth:1,borderRadius:5}]},options:{...comparisonChartOptions("คะแนน"),indexAxis:"y"}});
@@ -282,8 +283,8 @@ function comparisonChartOptions(title){
   const options=chartOptions(title);
   const primaryLabel=document.getElementById("scoreScope").value;
   options.plugins.legend.labels={generateLabels:chart=>[
-    {text:`${primaryLabel} — สีทึบ`,fillStyle:"rgba(71,85,105,1)",strokeStyle:"#475569",lineWidth:1,hidden:!chart.isDatasetVisible(0),datasetIndex:0},
-    {text:"ระดับประเทศ — สีโปร่งใส",fillStyle:"rgba(71,85,105,.25)",strokeStyle:"#475569",lineWidth:1,hidden:!chart.isDatasetVisible(1),datasetIndex:1}
+    {text:`${primaryLabel} — สีทึบ`,fillStyle:scoreThemeColor("ink-muted","#475569"),strokeStyle:scoreThemeColor("ink-muted","#475569"),lineWidth:1,hidden:!chart.isDatasetVisible(0),datasetIndex:0},
+    {text:"ระดับประเทศ — สีโปร่งใส",fillStyle:"rgba(71,85,105,.25)",strokeStyle:scoreThemeColor("ink-muted","#475569"),lineWidth:1,hidden:!chart.isDatasetVisible(1),datasetIndex:1}
   ]};
   return options;
 }

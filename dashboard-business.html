@@ -6,11 +6,10 @@
   <title>สถานประกอบการที่ร่วมจัดการอาชีวศึกษา - ศธภ.15</title>
   <link rel="icon" type="image/png" href="reo15-icon.png">
   <link rel="apple-touch-icon" href="reo15-icon.png">
-  <link href="tailwind.css?v=20260801-3" rel="stylesheet">
+  <link href="tailwind.css?v=20260901-1" rel="stylesheet">
   <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
-  <link href="responsive.css?v=20260731-2" rel="stylesheet">
-  <link href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" rel="stylesheet">
-  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+  <link href="responsive.css?v=20260903-3" rel="stylesheet">
+  <link href="dashboard-business.css?v=20260907-1" rel="stylesheet">
 </head>
 <body data-dashboard="true" class="bg-slate-50 font-sans text-slate-800 h-screen flex overflow-hidden">
   <aside class="w-64 bg-[#1e293b] text-slate-300 flex flex-col h-full shrink-0">
@@ -32,12 +31,18 @@
       <div class="flex items-center space-x-4"><a href="login.html" class="flex items-center text-teal-700 border border-teal-200 bg-teal-50 px-4 py-1.5 rounded-full text-sm font-medium"><i class="fas fa-right-to-bracket mr-2"></i>สำหรับเจ้าหน้าที่</a></div>
     </header>
     <main class="flex-1 overflow-y-auto p-4 md:p-6">
+      <section class="mb-6 flex flex-col gap-4 rounded-xl border border-amber-200 bg-amber-50 p-5 sm:flex-row sm:items-center sm:justify-between">
+        <div><h2 class="text-lg font-semibold text-slate-800">เปิดรับผู้เรียนเข้าฝึกประสบการณ์</h2><p class="mt-1 text-sm leading-6 text-slate-600">เจ้าของสถานประกอบการสามารถส่งข้อมูล โอกาสฝึกงาน ค่าตอบแทน และทักษะที่ต้องการได้ ข้อมูลจะเผยแพร่หลังผ่านการตรวจสอบ</p></div>
+        <a href="business-submission-form.html" class="business-submit-cta"><i class="fas fa-building-circle-arrow-right mr-2"></i>เพิ่มข้อมูลสถานประกอบการ</a>
+      </section>
       <section class="bg-white rounded-xl border border-slate-200 shadow-sm p-5 mb-6">
-        <div class="flex items-center gap-2 mb-4"><i class="fas fa-filter text-violet-500"></i><h2 class="font-semibold text-slate-700">ตัวกรองสถานประกอบการ</h2></div>
-        <form id="businessFilterForm" class="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-4 items-end">
-          <div><label class="filter-label">ปีข้อมูล</label><select id="businessYear" class="filter-control"></select></div>
-          <div><label class="filter-label">จังหวัด</label><div id="businessProvince"></div></div>
-          <div class="flex gap-2"><button type="reset" class="flex-1 rounded-lg bg-slate-200 py-2.5 text-slate-700">ล้างตัวกรอง</button><button type="submit" class="flex-1 rounded-lg bg-violet-600 py-2.5 text-white">แสดงผล</button></div>
+        <div class="flex items-center gap-2 mb-4"><i class="fas fa-filter text-teal-600"></i><h2 class="font-semibold text-slate-700">ตัวกรองสถานประกอบการ</h2></div>
+        <form id="businessFilterForm" class="business-filter-grid">
+          <div><label for="businessYear" class="filter-label">ปีข้อมูล</label><select id="businessYear" class="filter-control"></select></div>
+          <div><span class="filter-label">จังหวัด</span><div id="businessProvince"></div></div>
+          <div><label for="businessTypeFilter" class="filter-label">ประเภทสถานประกอบการ</label><select id="businessTypeFilter" class="filter-control"><option value="">ทุกประเภท</option></select></div>
+          <div><label for="businessNameSearch" class="filter-label">ค้นหาชื่อสถานประกอบการ</label><div class="business-name-search"><i class="fas fa-magnifying-glass" aria-hidden="true"></i><input id="businessNameSearch" type="search" class="filter-control" placeholder="พิมพ์ชื่อสถานประกอบการ"></div></div>
+          <div class="business-filter-actions"><button type="reset">ล้างตัวกรอง</button><button type="submit">แสดงผล</button></div>
         </form>
       </section>
       <div class="mb-6 rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-900">
@@ -46,12 +51,12 @@
       </div>
       <section class="grid grid-cols-1 xl:grid-cols-2 gap-6">
         <article class="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden">
-          <div class="p-5 border-b"><div class="flex items-center justify-between gap-4"><div><h2 class="font-semibold">สถานประกอบการที่ร่วมจัดการศึกษา</h2><p id="mouTableSummary" class="text-xs text-slate-400 mt-1"></p></div><div class="shrink-0 rounded-xl bg-teal-50 px-4 py-3 text-right"><span class="block text-xs text-slate-500">สถานประกอบการ MOU</span><strong id="stat-mou" class="text-2xl text-teal-700">0</strong></div></div><div class="mt-3 rounded-lg border border-blue-200 bg-blue-50 px-3 py-2 text-xs text-blue-800"><i class="fas fa-circle-info mr-1"></i>คลิกชื่อสถานประกอบการเพื่อดูรายละเอียด ค่าตอบแทน ทักษะที่ต้องการ และตำแหน่งบนแผนที่</div></div>
+          <div class="p-5 border-b"><div class="flex items-center justify-between gap-4"><div><h2 class="font-semibold">สถานประกอบการที่ร่วมจัดการศึกษา</h2><p id="mouTableSummary" class="text-xs text-slate-500 mt-1"></p></div><div class="shrink-0 rounded-xl bg-teal-50 px-4 py-3 text-right"><span class="block text-xs text-teal-800">สถานประกอบการ MOU</span><strong id="stat-mou" class="text-2xl text-teal-700">0</strong></div></div><div class="mt-3 rounded-lg border border-blue-200 bg-blue-50 px-3 py-2 text-xs text-blue-800"><i class="fas fa-circle-info mr-1"></i>คลิกชื่อสถานประกอบการเพื่อดูรายละเอียด ค่าตอบแทน ทักษะที่ต้องการ และตำแหน่งบนแผนที่</div></div>
           <div class="overflow-auto max-h-[28rem]"><table class="w-full text-sm"><thead class="bg-slate-50 sticky top-0"><tr><th class="p-3 text-left">สถานประกอบการ</th><th class="p-3 text-left">ประเภท</th></tr></thead><tbody id="mouTableBody"></tbody></table></div>
         </article>
         <article class="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden">
-          <div class="p-5 border-b flex flex-wrap sm:flex-nowrap items-center justify-between gap-4"><div><h2 class="font-semibold">แผนที่สถานประกอบการ</h2><p id="businessMapSummary" class="text-xs text-slate-400 mt-1">พร้อมแสดงพิกัดเมื่อเปิดแผนที่</p></div><button id="toggleBusinessMapButton" type="button" class="shrink-0 rounded-lg border border-violet-200 bg-violet-50 px-3 py-2 text-sm font-medium text-violet-700 hover:bg-violet-100" aria-controls="businessMap" aria-expanded="false"><i class="fas fa-map mr-2" data-map-toggle-icon></i><span data-map-toggle-label>เปิดแผนที่</span></button></div>
-          <div id="businessMapPlaceholder" class="h-[28rem] flex items-center justify-center bg-gradient-to-br from-slate-50 to-violet-50 p-6 text-center"><div><div class="mx-auto flex h-12 w-12 items-center justify-center rounded-full bg-white text-violet-600 shadow-sm"><i class="fas fa-map-location-dot text-xl"></i></div><p class="mt-3 text-sm font-medium text-slate-700">คลิกปุ่ม “เปิดแผนที่” เพื่อดูพิกัดสถานประกอบการ</p><p class="mt-1 text-xs text-slate-500">แผนที่จะแสดงสถานประกอบการตามข้อมูลที่คุณเลือก</p></div></div>
+          <div class="p-5 border-b flex flex-wrap sm:flex-nowrap items-center justify-between gap-4"><div><h2 class="font-semibold">แผนที่สถานประกอบการ</h2><p id="businessMapSummary" class="text-xs text-slate-500 mt-1">พร้อมแสดงพิกัดเมื่อเปิดแผนที่</p></div><button id="toggleBusinessMapButton" type="button" class="shrink-0 rounded-lg border border-teal-200 bg-teal-50 px-3 py-2 text-sm font-medium text-teal-800 hover:bg-teal-100" aria-controls="businessMap" aria-expanded="false"><i class="fas fa-map mr-2" data-map-toggle-icon></i><span data-map-toggle-label>เปิดแผนที่</span></button></div>
+          <div id="businessMapPlaceholder" class="h-[28rem] flex items-center justify-center bg-slate-50 p-6 text-center"><div><div class="mx-auto flex h-12 w-12 items-center justify-center rounded-full bg-white text-teal-700 shadow-sm"><i class="fas fa-map-location-dot text-xl"></i></div><p class="mt-3 text-sm font-medium text-slate-700">คลิกปุ่ม “เปิดแผนที่” เพื่อดูพิกัดสถานประกอบการ</p><p class="mt-1 text-xs text-slate-500">แผนที่จะแสดงสถานประกอบการตามข้อมูลที่คุณเลือก</p></div></div>
           <div id="businessMap" class="h-[28rem] hidden edu15-map-hidden" aria-label="แผนที่พิกัดสถานประกอบการ"></div>
           <div id="businessDetailPanel" class="scroll-mt-4 border-t border-slate-200 bg-slate-50 p-5" hidden aria-live="polite" tabindex="-1">
             <div class="flex items-start justify-between gap-4"><div><p class="text-xs font-semibold uppercase tracking-wide text-teal-700">รายละเอียดสถานประกอบการ</p><h3 id="businessDetailName" class="mt-1 text-lg font-semibold text-slate-800"></h3><p id="businessDetailMeta" class="mt-1 text-xs text-slate-500"></p></div><button id="closeBusinessDetail" type="button" class="rounded-lg border border-slate-300 bg-white px-2.5 py-1.5 text-xs text-slate-500 hover:bg-slate-100" aria-label="ปิดรายละเอียด"><i class="fas fa-xmark"></i></button></div>
@@ -68,10 +73,9 @@
   </div>
   <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
   <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-auth.js"></script>
-  <script src="site.js?v=20260811-2"></script>
-  <script src="data-client.js?v=20260731-5"></script>
-  <script src="dashboard-business.js?v=20260801-2"></script>
-  <style>.filter-label{display:block;font-size:.75rem;font-weight:600;color:#64748b;margin-bottom:.25rem}.filter-control{width:100%;border:1px solid #cbd5e1;background:#f8fafc;border-radius:.5rem;padding:.625rem}</style>
-  <script src="footer.js?v=20260731-2"></script>
+  <script src="site.js?v=20260907-1"></script>
+  <script src="data-client.js?v=20260907-2"></script>
+  <script src="dashboard-business.js?v=20260908-1"></script>
+  <script src="footer.js?v=20260903-1"></script>
 </body>
 </html>

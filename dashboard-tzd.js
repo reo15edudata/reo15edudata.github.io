@@ -9,9 +9,11 @@ const TZD_STATUS_LABELS = {
   DRUG_ADDICT: "ต้องฟื้นฟูจากสารเสพติด", RELOCATED: "ย้ายภูมิลำเนาหรือสถานศึกษา",
   CANT_FIND_HOUSE: "หาบ้านไม่พบ", DONT_NEED_HELP: "ไม่ต้องการความช่วยเหลือ", DECEASED: "เสียชีวิต"
 };
-const TZD_STATUS_COLORS = ["#0f766e", "#2563eb", "#7c3aed", "#0891b2", "#16a34a", "#65a30d", "#d97706", "#ea580c", "#e11d48", "#475569", "#94a3b8", "#64748b", "#1e293b"];
+const tzdThemeColor = (name, fallback) => window.EDU15Theme?.color(name, fallback) || fallback;
+const TZD_STATUS_COLORS = ["teal", "blue", "violet", "cyan", "green", "lime", "amber", "orange", "rose", "neutral", "pink", "data-neutral", "ink"]
+  .map(name => tzdThemeColor(name.startsWith("data-") || name === "ink" ? name : `data-${name}`, "#475569"));
 const TZD_PLAN_STATUSES = ["ยังไม่ได้ดำเนินการ", "รอ CMS ยืนยัน", "CMS ยืนยันแล้ว", "ยุติการดูแล"];
-const TZD_CARE_STATUS_COLORS = ["#94a3b8", "#f59e0b", "#14b8a6", "#475569"];
+const TZD_CARE_STATUS_COLORS = ["neutral", "amber", "teal", "rose"].map(name => tzdThemeColor(`data-${name}`, "#475569"));
 const tzdData = Object.fromEntries(TZD_SHEETS.map(sheet => [sheet, []]));
 const tzdBatches = Object.fromEntries(TZD_SHEETS.map(sheet => [sheet, []]));
 const tzdCharts = {};
@@ -156,7 +158,7 @@ function renderFindingProgress(roundMonth) {
   const history = tzdBatches.TZD_Finding_Update.filter(batch => batch.roundMonth <= roundMonth);
   const selectedProvinces = tzdProvinceMulti?.getValues() || [];
   const provinces = selectedProvinces.length ? selectedProvinces : uniqueTzdValues(history.flatMap(batch => batch.rows), "PROV_NAME");
-  const colors = ["#2563eb", "#e11d48", "#d97706", "#059669", "#7c3aed", "#0891b2"];
+  const colors = ["blue", "rose", "amber", "green", "violet", "cyan"].map(name => tzdThemeColor(`data-${name}`, "#475569"));
   replaceTzdChart("findingProgress", "findingProgressChart", {
     type: "line",
     data: {
@@ -173,7 +175,7 @@ function renderFindingProgress(roundMonth) {
 function renderFindingStatuses(statusRows) {
   const fields = Object.keys(TZD_STATUS_LABELS);
   const values = fields.map(field => sumTzd(statusRows, field));
-  replaceTzdChart("findingStatus", "findingStatusChart", { type: "doughnut", data: { labels: Object.values(TZD_STATUS_LABELS), datasets: [{ data: values, backgroundColor: TZD_STATUS_COLORS }] }, options: { maintainAspectRatio: false, cutout: "52%", plugins: { legend: { display: false }, datalabels: { display: context => context.dataset.data[context.dataIndex] > 0, formatter: value => formatTzdNumber(value), color: "#fff", font: { size: 11, weight: "bold" }, textStrokeColor: "rgba(15,23,42,.55)", textStrokeWidth: 2, clamp: true } } } });
+  replaceTzdChart("findingStatus", "findingStatusChart", { type: "doughnut", data: { labels: Object.values(TZD_STATUS_LABELS), datasets: [{ data: values, backgroundColor: TZD_STATUS_COLORS }] }, options: { maintainAspectRatio: false, cutout: "52%", plugins: { legend: { display: false }, datalabels: { display: context => context.dataset.data[context.dataIndex] > 0, formatter: value => formatTzdNumber(value), color: tzdThemeColor("surface", "#fff"), font: { size: 12, weight: "bold" }, textStrokeColor: tzdThemeColor("chart-label-bg", "rgba(15,23,42,.76)"), textStrokeWidth: 2, clamp: true } } } });
   const total = values.reduce((sum, value) => sum + value, 0);
   document.getElementById("findingStatusTable").innerHTML = fields.map((field, index) => ({ label: TZD_STATUS_LABELS[field], value: values[index], color: TZD_STATUS_COLORS[index] })).sort((a, b) => b.value - a.value).map(item => `<tr class="border-t border-slate-100"><td class="p-3"><span class="mr-2 inline-block h-2.5 w-2.5 rounded-full" style="background:${item.color}"></span>${escapeTzd(item.label)}</td><td class="p-3 text-right font-semibold">${formatTzdNumber(item.value)}</td><td class="p-3 text-right text-slate-500">${total ? (item.value / total * 100).toFixed(1) : "0.0"}%</td></tr>`).join("") || emptyTzdRow(3);
 }

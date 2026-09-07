@@ -8,6 +8,7 @@ const SHEETS = {
   onet: ["DB_4", "ONET_Score"], nt: ["DB_4", "NT_AVGScore"], rt: ["DB_4", "RT_Score"]
 };
 const OPTIONAL_SHEETS = new Set(["earlyDevelopment"]);
+const indexThemeColor = (name, fallback) => window.EDU15Theme?.color(name, fallback) || fallback;
 const INDEX_SUMMARIES = {
   students: {
     groupBy: ["ACAD_YEAR", "DEPARTMENT_NAME", "EDU_LEVEL", "PROV_NAME"],
@@ -47,6 +48,27 @@ const INDEX_SUMMARIES = {
   }
 };
 const RETURNED_OOSC = new Set(["ศึกษาภายในประเทศ", "ศึกษาต่างประเทศ", "ไม่ตกหล่น-กำลังศึกษา", "อยู่ในการศึกษาทางเลือกตามมาตรา 12"]);
+const NO_DATA_LABEL = "ไม่มีข้อมูลในปี/พื้นที่ที่เลือก";
+const CALCULATION_UNAVAILABLE_LABEL = "คำนวณไม่ได้";
+const INDICATOR_CONTEXT = {
+  "access-early": { unit: "ร้อยละ", method: "method-access" },
+  "access-primary": { unit: "ร้อยละ", method: "method-access" },
+  "access-lower": { unit: "ร้อยละ", method: "method-access" },
+  "access-upper": { unit: "ร้อยละ", method: "method-access" },
+  "access-higher-voc": { unit: "ร้อยละ", method: "method-access" },
+  studyYearAverage: { unit: "ปี", method: "method-access" },
+  "equity-special": { unit: "ร้อยละ", method: "method-equity" },
+  "equity-returned": { unit: "ร้อยละ", method: "method-equity" },
+  "quality-early-development": { unit: "ร้อยละ", method: "method-quality" },
+  "quality-rt": { unit: "คะแนน", method: "method-quality" },
+  "quality-nt": { unit: "คะแนน", method: "method-quality" },
+  "quality-onet-m3-subjects": { unit: "ร้อยละของผู้เข้าสอบ", method: "method-quality" },
+  "quality-onet-m6-subjects": { unit: "ร้อยละของผู้เข้าสอบ", method: "method-quality" },
+  "eff-compulsory": { unit: "ร้อยละ", method: "method-efficiency" },
+  "eff-voc": { unit: "ร้อยละ", method: "method-efficiency" },
+  "eff-higher-voc": { unit: "ร้อยละ", method: "method-efficiency" },
+  "rel-vocational": { unit: "สัดส่วนร้อยละ", method: "method-relevancy" }
+};
 let data = {};
 let provinceFilter;
 let charts = {};
@@ -57,6 +79,7 @@ let indexLoadVersion = 0;
 window.addEventListener("DOMContentLoaded", initDashboard);
 
 async function initDashboard() {
+  installIndicatorContext();
   try {
     data = Object.fromEntries(Object.keys(SHEETS).map(key => [key, []]));
     const metadataEntries = await Promise.all([
@@ -147,6 +170,9 @@ async function fetchIndexDataset(key, filters) {
 async function loadIndexData(filters) {
   const version = ++indexLoadVersion;
   window.cancelBackgroundTasks?.();
+  Object.keys(data).forEach(key => { data[key] = []; });
+  updateIndicatorContext(filters);
+  setIndicatorsLoading();
   window.showPageLoader?.("กำลังโหลดข้อมูลหลักของดัชนี", 0);
   document.getElementById("dataReadiness").className = "mb-6 rounded-xl border border-blue-200 bg-blue-50 px-5 py-4 text-sm text-blue-800";
   document.getElementById("dataReadiness").innerHTML = `<i class="fas fa-circle-info mr-2"></i>กำลังเตรียมข้อมูลปี ${filters.year} ${filters.provinces.length ? `· ${filters.provinces.length} จังหวัด` : "· ภาพรวมพื้นที่ ศธภ.15"}`;
@@ -167,6 +193,9 @@ async function loadIndexData(filters) {
       studyYear: [],
       studyRatio: []
     }, filters);
+    setIndicatorLoading("studyYearAverage");
+    document.getElementById("studyYearSummary").textContent = "กำลังโหลดข้อมูลแนวโน้ม…";
+    document.getElementById("studyRatioSummary").textContent = "กำลังโหลดข้อมูลสัดส่วน…";
     document.getElementById("dataReadiness").innerHTML = `<i class="fas fa-circle-check mr-2"></i>ข้อมูลหลักปี ${filters.year} พร้อมใช้งาน · กำลังเตรียมตัวชี้วัดส่วนอื่นในเบื้องหลัง`;
     await window.hidePageLoader?.();
 
@@ -189,11 +218,19 @@ async function loadIndexData(filters) {
       students: filteredDataset("students", filters),
       jobs: filteredDataset("jobs", filters)
     });
+    let remainingBackgroundTasks = 10;
     const task = (key, label, renderer) => ({
       label,
       run: async () => {
-        if (!await store(key) || version !== indexLoadVersion) return;
-        renderer();
+        try {
+          if (!await store(key) || version !== indexLoadVersion) return;
+          renderer();
+        } finally {
+          remainingBackgroundTasks--;
+          if (remainingBackgroundTasks === 0 && version === indexLoadVersion) {
+            document.getElementById("dataReadiness").innerHTML = `<i class="fas fa-circle-check mr-2"></i>กำลังแสดงข้อมูลปี ${filters.year} ${filters.provinces.length ? `· ${filters.provinces.length} จังหวัด` : "· ภาพรวมพื้นที่ ศธภ.15"} · ตัวชี้วัดที่ขาดองค์ประกอบจะแสดง “${CALCULATION_UNAVAILABLE_LABEL}”`;
+          }
+        }
       }
     });
 
@@ -221,6 +258,66 @@ async function loadIndexData(filters) {
 
 function getFilters() {
   return { year: document.getElementById("filterYear").value, provinces: provinceFilter.getValues() };
+}
+
+function installIndicatorContext() {
+  const dialog = document.getElementById("indicatorMethodology");
+  const openMethodology = targetId => {
+    if (!dialog) return;
+    if (typeof dialog.showModal === "function" && !dialog.open) dialog.showModal();
+    else dialog.setAttribute("open", "");
+    requestAnimationFrame(() => {
+      if (targetId) dialog.querySelector(`#${targetId}`)?.scrollIntoView({ block: "start" });
+      else dialog.querySelector(".indicator-methodology-body")?.scrollTo({ top: 0 });
+    });
+  };
+
+  document.getElementById("openIndicatorMethodology")?.addEventListener("click", () => openMethodology());
+  dialog?.querySelector("[data-close-methodology]")?.addEventListener("click", () => dialog.close());
+  dialog?.addEventListener("click", event => {
+    if (event.target === dialog) dialog.close();
+  });
+
+  Object.entries(INDICATOR_CONTEXT).forEach(([id, meta]) => {
+    const value = document.getElementById(id);
+    const card = value?.closest(".indicator-card, .chart-card");
+    if (!card || card.querySelector(`[data-indicator-meta="${id}"]`)) return;
+    const context = document.createElement("div");
+    context.className = "indicator-meta";
+    context.dataset.indicatorMeta = id;
+    context.innerHTML = `<span><strong>หน่วย ${escapeHtml(meta.unit)}</strong><span class="indicator-scope block"></span></span><button type="button" aria-label="ดูวิธีคำนวณของ ${escapeHtml(card.querySelector("h3")?.textContent || "ตัวชี้วัด")}">ดูวิธีคำนวณ</button>`;
+    context.querySelector("button").addEventListener("click", () => openMethodology(meta.method));
+    card.appendChild(context);
+  });
+}
+
+function updateIndicatorContext(filters) {
+  const area = filters.provinces.length
+    ? filters.provinces.join(", ")
+    : "ภาพรวม ศธภ.15 (4 จังหวัด)";
+  document.getElementById("indicatorContextYear").textContent = filters.year || "ไม่ระบุ";
+  document.getElementById("indicatorContextArea").textContent = area;
+  document.querySelectorAll(".indicator-scope").forEach(element => {
+    element.textContent = `ปี ${filters.year || "ไม่ระบุ"} · ${area}`;
+  });
+}
+
+function setIndicatorsLoading() {
+  Object.keys(INDICATOR_CONTEXT).forEach(setIndicatorLoading);
+}
+
+function setIndicatorLoading(id) {
+  const element = document.getElementById(id);
+  if (!element) return;
+  element.classList.toggle("indicator-loading", element.tagName === "STRONG");
+  element.textContent = "กำลังโหลด…";
+}
+
+function setIndicatorValue(id, text) {
+  const element = document.getElementById(id);
+  if (!element) return;
+  element.classList.remove("indicator-loading");
+  element.textContent = text;
 }
 
 function filteredDataset(key, filters = getFilters(), yearField) {
@@ -331,7 +428,8 @@ function ageGroup(value, from, to) {
 function render() {
   const filters = getFilters();
   const rows = Object.fromEntries(Object.keys(data).map(key => [key, filteredDataset(key, filters)]));
-  document.getElementById("dataReadiness").innerHTML = `<i class="fas fa-circle-info mr-2"></i>กำลังแสดงปี ${filters.year} ${filters.provinces.length ? `· ${filters.provinces.length} จังหวัด` : "· ภาพรวมพื้นที่ ศธภ.15"} · ส่วนที่ยังไม่มีข้อมูลจะแสดง “รอข้อมูลอัปเดต”`;
+  updateIndicatorContext(filters);
+  document.getElementById("dataReadiness").innerHTML = `<i class="fas fa-circle-info mr-2"></i>กำลังแสดงปี ${filters.year} ${filters.provinces.length ? `· ${filters.provinces.length} จังหวัด` : "· ภาพรวมพื้นที่ ศธภ.15"} · ส่วนที่ไม่พบรายการตรงกับตัวกรองจะแสดง “${NO_DATA_LABEL}”`;
   renderAccess(rows, filters);
   renderEquity(rows);
   renderQuality(filters, rows.earlyDevelopment);
@@ -340,9 +438,11 @@ function render() {
 }
 
 function ratioCard(id, numerator, denominator, labels) {
-  document.getElementById(id).textContent = denominator ? `${(numerator / denominator * 100).toFixed(2)}%` : "รอข้อมูลอัปเดต";
+  setIndicatorValue(id, denominator ? `${(numerator / denominator * 100).toFixed(2)}%` : CALCULATION_UNAVAILABLE_LABEL);
   const note = document.getElementById(`${id}-note`);
-  if (note) note.textContent = denominator ? `${labels[0]} ${numerator.toLocaleString("th-TH")} / ${labels[1]} ${denominator.toLocaleString("th-TH")}` : "";
+  if (note) note.textContent = denominator
+    ? `${labels[0]} ${numerator.toLocaleString("th-TH")} / ${labels[1]} ${denominator.toLocaleString("th-TH")}`
+    : `ไม่พบข้อมูล ${labels[0]} หรือ ${labels[1]} ที่ใช้เป็นตัวหาร`;
 }
 
 function renderAccess(rows, filters) {
@@ -359,7 +459,7 @@ function renderAccess(rows, filters) {
   studyRows.forEach(row => provinceValues.set(String(row.PROV_NAME), n(row.STUDY_YEARAVG)));
   const values = [...provinceValues.values()];
   const average = values.length ? values.reduce((sum, value) => sum + value, 0) / values.length : null;
-  document.getElementById("studyYearAverage").textContent = average === null ? "รอข้อมูลอัปเดต" : `${average.toFixed(2)} ปี`;
+  setIndicatorValue("studyYearAverage", average === null ? NO_DATA_LABEL : `${average.toFixed(2)} ปี`);
   document.getElementById("studyYearAverageNote").textContent = values.length
     ? `ค่าเฉลี่ย ${values.length} จังหวัด${filters.provinces.length ? "ที่เลือก" : ""}`
     : "";
@@ -372,9 +472,9 @@ function renderAccess(rows, filters) {
   document.getElementById("studyYearProvinceCards").innerHTML = provinceValues.size
     ? [...provinceValues].sort((a,b) => a[0].localeCompare(b[0], "th")).map(([province, value], index) => {
         const [background, text] = provinceCardStyles[index % provinceCardStyles.length];
-        return `<div class="rounded-lg ${background} p-2"><span class="block text-[11px] text-slate-500">${escapeHtml(province)}</span><strong class="${text}">${value.toFixed(2)} ปี</strong></div>`;
+        return `<div class="rounded-lg ${background} p-2"><span class="block text-xs text-slate-500">${escapeHtml(province)}</span><strong class="${text}">${value.toFixed(2)} ปี</strong></div>`;
       }).join("")
-    : '<p class="col-span-2 py-2 text-xs text-slate-400">รอข้อมูลอัปเดต</p>';
+    : `<p class="col-span-2 py-2 text-xs text-slate-500">${NO_DATA_LABEL}</p>`;
   renderStudyCharts(filters);
 }
 
@@ -382,7 +482,7 @@ function renderStudyCharts(filters) {
   let trendRows = data.studyYear.filter(row => !filters.provinces.length || filters.provinces.includes(String(row.PROV_NAME)));
   const years = [...new Set(trendRows.map(row => String(row.YEAR)))].sort((a,b) => Number(a)-Number(b));
   const provinces = [...new Set(trendRows.map(row => String(row.PROV_NAME)))].sort();
-  const colors = ["#0d9488","#2563eb","#f59e0b","#e11d48","#7c3aed"];
+  const colors = ["teal","blue","amber","rose","violet"].map(name => indexThemeColor(`data-${name}`, "#475569"));
   replaceChart("studyYear", "studyYearChart", {
     type: "line",
     data: { labels: years, datasets: provinces.map((province,index) => ({ label: province, data: years.map(year => n(trendRows.find(row => String(row.YEAR) === year && String(row.PROV_NAME) === province)?.STUDY_YEARAVG) || null), borderColor: colors[index % colors.length], backgroundColor: colors[index % colors.length], tension: .3, spanGaps: true })) },
@@ -396,17 +496,17 @@ function renderStudyCharts(filters) {
     color: colors[index % colors.length]
   })).filter(item => item.value !== undefined && item.value !== null && item.value !== "");
   document.getElementById("studyYearTrendCards").innerHTML = currentProvinceValues.length
-    ? currentProvinceValues.map(item => `<div class="rounded-lg border bg-slate-50 p-2.5" style="border-color:${item.color}55"><span class="block truncate text-[11px] text-slate-500">${escapeHtml(item.province)}</span><strong class="mt-1 block text-base" style="color:${item.color}">${n(item.value).toFixed(2)} ปี</strong><span class="text-[10px] text-slate-400">ปี ${escapeHtml(selectedYear)}</span></div>`).join("")
-    : '<p class="col-span-full py-2 text-xs text-slate-400">รอข้อมูลอัปเดตสำหรับปีที่เลือก</p>';
+    ? currentProvinceValues.map(item => `<div class="rounded-lg border bg-slate-50 p-2.5" style="border-color:${item.color}55"><span class="block truncate text-xs text-slate-500">${escapeHtml(item.province)}</span><strong class="mt-1 block text-base" style="color:${item.color}">${n(item.value).toFixed(2)} ปี</strong><span class="text-xs text-slate-400">ปี ${escapeHtml(selectedYear)}</span></div>`).join("")
+    : `<p class="col-span-full py-2 text-xs text-slate-500">${NO_DATA_LABEL}</p>`;
 
   const ratioRows = filteredDataset("studyRatio", filters);
   const grouped = groupSum(ratioRows, "EDU_LEVEL", "RATIO_STUDY");
-  const ratioColors = ["#2563eb","#14b8a6","#f59e0b","#ec4899","#8b5cf6","#f97316","#06b6d4","#84cc16","#e11d48","#64748b"];
+  const ratioColors = window.EDU15Theme?.dataPalette() || ["#2563eb","#e11d48","#b45309","#0f766e","#7c3aed","#c2410c","#0e7490","#4d7c0f","#be185d","#475569"];
   replaceChart("studyRatio", "studyRatioChart", {
     type: "bar", data: { labels: grouped.map(item => item.label), datasets: [{ data: grouped.map(item => item.value / Math.max(1, new Set(ratioRows.map(row => row.PROV_NAME)).size)), backgroundColor: grouped.map((_, index) => ratioColors[index % ratioColors.length]), borderRadius: 6 }] },
     options: { ...baseChartOptions({ legend: false, yTitle: "ร้อยละ" }), indexAxis: "y" }
   });
-  document.getElementById("studyRatioSummary").textContent = ratioRows.length ? `${ratioRows.length} รายการตามตัวกรอง` : "รอข้อมูลอัปเดต";
+  document.getElementById("studyRatioSummary").textContent = ratioRows.length ? `${ratioRows.length} รายการตามตัวกรอง` : NO_DATA_LABEL;
 }
 
 function renderEquity(rows) {
@@ -425,22 +525,22 @@ function renderEquity(rows) {
   const renderSpecialTypes = (id, values) => {
     document.getElementById(id).innerHTML = values.size
       ? [...values].sort((a,b) => b[1]-a[1]).map(([type,value]) => `<tr class="border-t"><td class="p-2">${escapeHtml(type)}</td><td class="p-2 text-right">${value.toLocaleString("th-TH")}</td></tr>`).join("")
-      : '<tr><td colspan="2" class="p-6 text-center text-slate-400">รอข้อมูลอัปเดต</td></tr>';
+      : `<tr><td colspan="2" class="p-6 text-center text-slate-500">${NO_DATA_LABEL}</td></tr>`;
   };
   renderSpecialTypes("disabilityTypeTable", disabilityTypes);
   renderSpecialTypes("disadvantageTypeTable", disadvantageTypes);
-  replaceChart("special", "specialNeedsChart", doughnutConfig(["ผู้เรียนที่มีความต้องการพิเศษ","ผู้เรียนทั่วไป"], [special, Math.max(0, students-special)], ["#ec4899","#e2e8f0"]));
+  replaceChart("special", "specialNeedsChart", doughnutConfig(["ผู้เรียนที่มีความต้องการพิเศษ","ผู้เรียนทั่วไป"], [special, Math.max(0, students-special)], [indexThemeColor("data-rose","#e11d48"),indexThemeColor("border","#e2e8f0")]));
 
   const total = rows.oosc.reduce((sum,row) => sum + n(row.OOSC_COUNT), 0);
   const untracked = rows.oosc.filter(row => String(row.OOSC_RESULT).trim() === "ยังไม่ได้ติดตาม").reduce((sum,row) => sum+n(row.OOSC_COUNT),0);
   const tracked = Math.max(0, total-untracked);
   const returned = rows.oosc.filter(row => RETURNED_OOSC.has(String(row.OOSC_RESULT).trim())).reduce((sum,row) => sum+n(row.OOSC_COUNT),0);
   const notFound = rows.oosc.filter(row => /หาบ้านไม่พบ-ไม่มีข้อมูล-ไม่ยินดีให้ข้อมูล-ไม่พบตัว/.test(String(row.OOSC_RESULT))).reduce((sum,row) => sum+n(row.OOSC_COUNT),0);
-  document.getElementById("equity-returned").textContent = tracked ? `${(returned/tracked*100).toFixed(2)}%` : "รอข้อมูลอัปเดต";
+  setIndicatorValue("equity-returned", tracked ? `${(returned/tracked*100).toFixed(2)}%` : CALCULATION_UNAVAILABLE_LABEL);
   document.getElementById("oosc-followup-rate").textContent = total ? `${(tracked/total*100).toFixed(2)}%` : "—";
   document.getElementById("oosc-found-rate").textContent = tracked ? `${((tracked-notFound)/tracked*100).toFixed(2)}%` : "—";
-  replaceChart("ooscFollowup", "ooscFollowupChart", doughnutConfig(["ติดตามแล้ว","ยังไม่ได้ติดตาม"], [tracked,untracked], ["#3b82f6","#cbd5e1"]));
-  replaceChart("ooscIdentity", "ooscIdentityChart", doughnutConfig(["พบตัวตน","ไม่พบตัวตน"], [Math.max(0,tracked-notFound),notFound], ["#14b8a6","#fb7185"]));
+  replaceChart("ooscFollowup", "ooscFollowupChart", doughnutConfig(["ติดตามแล้ว","ยังไม่ได้ติดตาม"], [tracked,untracked], [indexThemeColor("data-blue","#2563eb"),indexThemeColor("border-control","#7c8da3")]));
+  replaceChart("ooscIdentity", "ooscIdentityChart", doughnutConfig(["พบตัวตน","ไม่พบตัวตน"], [Math.max(0,tracked-notFound),notFound], [indexThemeColor("data-teal","#0f766e"),indexThemeColor("data-rose","#e11d48")]));
   const causes = groupSum(rows.oosc.filter(row => String(row.OOSC_RESULT).trim() !== "ยังไม่ได้ติดตาม"), "OOSC_RESULT", "OOSC_COUNT");
   document.getElementById("ooscCauseTable").innerHTML = causes.map(item => `<tr class="border-t"><td class="p-2">${escapeHtml(item.label)}</td><td class="p-2 text-right">${item.value.toLocaleString("th-TH")}</td><td class="p-2 text-right">${tracked ? (item.value/tracked*100).toFixed(2) : "0.00"}%</td></tr>`).join("");
 }
@@ -483,14 +583,14 @@ function renderEarlyDevelopment(rows) {
   const summary = summarizeEarlyDevelopment(rows);
 
   if (summary.rate === null) {
-    value.textContent = "รอข้อมูลอัปเดต";
+    setIndicatorValue("quality-early-development", rows.length ? CALCULATION_UNAVAILABLE_LABEL : NO_DATA_LABEL);
     note.textContent = rows.length
-      ? "ไม่พบคอลัมน์ร้อยละ หรือคู่ข้อมูล A/B ที่ใช้คำนวณ"
-      : "";
+      ? "มีรายการข้อมูล แต่ไม่พบค่าร้อยละหรือคู่ตัวตั้งและตัวหารที่ใช้คำนวณ"
+      : "ไม่พบรายการที่ตรงกับปีและพื้นที่ที่เลือก";
     return;
   }
 
-  value.textContent = `${summary.rate.toFixed(2)}%`;
+  setIndicatorValue("quality-early-development", `${summary.rate.toFixed(2)}%`);
   note.textContent = summary.mode === "ratio"
     ? `เด็กพัฒนาการสมวัย ${summary.numerator.toLocaleString("th-TH")} / เด็กที่ได้รับการคัดกรอง ${summary.denominator.toLocaleString("th-TH")} คน`
     : `ค่าเฉลี่ยจากข้อมูล ${summary.count.toLocaleString("th-TH")} รายการ`;
@@ -554,13 +654,17 @@ function valueOrNull(value) {
 
 function renderAverageTestCard(id, rows, combinedLabel) {
   const combined = rows.find(row => String(row.TEST_SUBJECT).includes(combinedLabel));
-  document.getElementById(id).textContent = combined ? n(combined.AVG_SCORE).toFixed(2) : "รอข้อมูลอัปเดต";
+  setIndicatorValue(id, combined ? n(combined.AVG_SCORE).toFixed(2) : (rows.length ? CALCULATION_UNAVAILABLE_LABEL : NO_DATA_LABEL));
   const subjects = rows.filter(row => !String(row.TEST_SUBJECT).includes(combinedLabel));
-  document.getElementById(`${id}-subjects`).innerHTML = subjects.length ? subjects.map(row => `<div class="subject-row"><span>${escapeHtml(row.TEST_SUBJECT)}</span><strong>${n(row.AVG_SCORE).toFixed(2)}</strong></div>`).join("") : '<p class="text-slate-400">รอข้อมูลอัปเดต</p>';
+  document.getElementById(`${id}-subjects`).innerHTML = subjects.length
+    ? subjects.map(row => `<div class="subject-row"><span>${escapeHtml(row.TEST_SUBJECT)}</span><strong>${n(row.AVG_SCORE).toFixed(2)}</strong></div>`).join("")
+    : `<p class="text-slate-500">${rows.length ? "ไม่พบคะแนนรายด้าน" : NO_DATA_LABEL}</p>`;
 }
 
 function renderOnetCard(id, rows) {
-  document.getElementById(`${id}-subjects`).innerHTML = rows.length ? rows.map(row => `<div class="subject-row"><span>${escapeHtml(row.TEST_SUBJECT)}</span><strong>${n(row.STUDENT_TEST_COUNT) ? (n(row.STUDENT_MOREHALFTEST_COUNT)/n(row.STUDENT_TEST_COUNT)*100).toFixed(2) : "0.00"}%</strong></div>`).join("") : '<p class="text-slate-400">รอข้อมูลอัปเดต</p>';
+  document.getElementById(`${id}-subjects`).innerHTML = rows.length
+    ? rows.map(row => `<div class="subject-row"><span>${escapeHtml(row.TEST_SUBJECT)}</span><strong>${n(row.STUDENT_TEST_COUNT) ? (n(row.STUDENT_MOREHALFTEST_COUNT)/n(row.STUDENT_TEST_COUNT)*100).toFixed(2) : CALCULATION_UNAVAILABLE_LABEL}${n(row.STUDENT_TEST_COUNT) ? "%" : ""}</strong></div>`).join("")
+    : `<p class="text-slate-500">${NO_DATA_LABEL}</p>`;
 }
 
 function addComparison(target, prefix, areaRows, nationRows) {
@@ -571,13 +675,13 @@ function addComparison(target, prefix, areaRows, nationRows) {
 }
 
 function comparisonColor(prefix, subject) {
-  if (prefix === "RT") return /อ่านรู้เรื่อง/.test(subject) ? "#fb7185" : "#f43f5e";
-  if (prefix === "NT") return /คณิต/.test(subject) ? "#8b5cf6" : "#6366f1";
-  if (/คณิต/.test(subject)) return "#0ea5e9";
-  if (/วิทย/.test(subject)) return "#14b8a6";
-  if (/อังกฤษ/.test(subject)) return "#f59e0b";
-  if (/ไทย/.test(subject)) return "#ec4899";
-  return "#64748b";
+  if (prefix === "RT") return /อ่านรู้เรื่อง/.test(subject) ? indexThemeColor("data-pink","#be185d") : indexThemeColor("data-rose","#e11d48");
+  if (prefix === "NT") return /คณิต/.test(subject) ? indexThemeColor("data-violet","#7c3aed") : indexThemeColor("data-blue","#2563eb");
+  if (/คณิต/.test(subject)) return indexThemeColor("data-blue","#2563eb");
+  if (/วิทย/.test(subject)) return indexThemeColor("data-teal","#0f766e");
+  if (/อังกฤษ/.test(subject)) return indexThemeColor("data-amber","#b45309");
+  if (/ไทย/.test(subject)) return indexThemeColor("data-rose","#e11d48");
+  return indexThemeColor("data-neutral","#475569");
 }
 
 function renderEfficiency(rows) {
@@ -590,8 +694,10 @@ function renderEfficiency(rows) {
     const dropout = dropoutRows.reduce((sum,row) => sum+n(row.DROPOUT_COUNT),0);
     const students = totalStudents(studentRows);
     const ready = dropoutRows.length && studentRows.length && students;
-    document.getElementById(id).textContent = ready ? `${(dropout/students*100).toFixed(2)}%` : "รอข้อมูลอัปเดต";
-    document.getElementById(`${id}-note`).textContent = ready ? `ออกกลางคัน ${dropout.toLocaleString("th-TH")} / ผู้เรียน ${students.toLocaleString("th-TH")} คน` : "";
+    setIndicatorValue(id, ready ? `${(dropout/students*100).toFixed(2)}%` : CALCULATION_UNAVAILABLE_LABEL);
+    document.getElementById(`${id}-note`).textContent = ready
+      ? `ออกกลางคัน ${dropout.toLocaleString("th-TH")} / ผู้เรียน ${students.toLocaleString("th-TH")} คน`
+      : "ไม่พบข้อมูลผู้เรียนหรือข้อมูลออกกลางคันที่ใช้คำนวณ";
   };
   renderRate("eff-compulsory", EFFICIENCY_LEVELS.compulsoryStudents, EFFICIENCY_LEVELS.compulsoryDropout);
   renderRate("eff-voc", EFFICIENCY_LEVELS.vocationalStudents, EFFICIENCY_LEVELS.vocationalDropout, VOCATIONAL_DEPARTMENT);
@@ -605,7 +711,7 @@ function renderRelevancy(rows) {
   const combined = vocational + general;
   const vocationalPercent = combined ? vocational / combined * 100 : 0;
   const generalPercent = combined ? general / combined * 100 : 0;
-  document.getElementById("rel-vocational").textContent = combined ? `${vocationalPercent.toFixed(2)} : ${generalPercent.toFixed(2)}` : "รอข้อมูลอัปเดต";
+  setIndicatorValue("rel-vocational", combined ? `${vocationalPercent.toFixed(2)} : ${generalPercent.toFixed(2)}` : CALCULATION_UNAVAILABLE_LABEL);
   document.getElementById("rel-vocational-note").textContent = combined ? `สายอาชีพ ${vocational.toLocaleString("th-TH")} คน ต่อ สายสามัญ ${general.toLocaleString("th-TH")} คน` : "";
   document.getElementById("rel-vocational-legend").innerHTML = combined
     ? `<div class="rounded-xl border border-amber-200 bg-amber-50 px-3 py-2"><span class="block text-xs font-medium text-amber-700"><i class="fas fa-circle mr-1"></i>สายอาชีพ</span><strong class="mt-1 block text-xl text-amber-700">${vocationalPercent.toFixed(2)}%</strong></div><div class="rounded-xl border border-blue-200 bg-blue-50 px-3 py-2"><span class="block text-xs font-medium text-blue-700"><i class="fas fa-circle mr-1"></i>สายสามัญ</span><strong class="mt-1 block text-xl text-blue-700">${generalPercent.toFixed(2)}%</strong></div>`
@@ -613,12 +719,12 @@ function renderRelevancy(rows) {
   const vocationalIcons = combined ? Math.round(vocationalPercent / 5) : 0;
   document.getElementById("rel-vocational-people").innerHTML = combined
     ? Array.from({length:20}, (_, index) => `<i class="fas fa-person ${index < vocationalIcons ? "text-amber-500" : "text-blue-500"}" aria-hidden="true"></i>`).join("")
-    : '<span class="col-span-10 py-4 text-sm text-slate-400">รอข้อมูลอัปเดต</span>';
+    : `<span class="col-span-10 py-4 text-sm text-slate-500">${NO_DATA_LABEL}</span>`;
 
   const jobRows = rows.jobs.filter(row => LEVEL.voc(levelText(row)) || LEVEL.higherVoc(levelText(row)) || /มัธยมศึกษาตอนปลาย/.test(levelText(row)));
   currentJobRows = jobRows;
   const status = groupSum(jobRows, "EMPLOY_STATUS", "STUDENT_COUNT");
-  const employmentColors = ["#14b8a6","#3b82f6","#f59e0b","#fb7185","#8b5cf6","#94a3b8"];
+  const employmentColors = ["teal","blue","amber","rose","violet","neutral"].map(name => indexThemeColor(`data-${name}`, "#475569"));
   employmentColorMap = new Map(status.map((item,index) => [item.label, employmentColors[index % employmentColors.length]]));
   replaceChart("employment", "employmentChart", doughnutConfig(status.map(item=>item.label), status.map(item=>item.value), status.map(item=>employmentColorMap.get(item.label))));
   const levelSelect = document.getElementById("employmentLevelFilter");
@@ -635,10 +741,10 @@ function renderEmploymentTable() {
   const details = groupSum(currentJobRows.filter(row => String(row.EDU_LEVEL) === level), "EMPLOY_STATUS", "STUDENT_COUNT");
   document.getElementById("employmentTable").innerHTML = details.length
     ? details.map(item => {
-        const color = employmentColorMap.get(item.label) || "#94a3b8";
+        const color = employmentColorMap.get(item.label) || indexThemeColor("data-neutral","#475569");
         return `<tr class="border-t" style="border-left:4px solid ${color};background:${color}0d"><td class="p-2"><span class="mr-2 inline-block h-2.5 w-2.5 rounded-full" style="background:${color}"></span>${escapeHtml(item.label)}</td><td class="p-2 text-right font-semibold" style="color:${color}">${item.value.toLocaleString("th-TH")}</td></tr>`;
       }).join("")
-    : '<tr><td colspan="2" class="p-6 text-center text-slate-400">รอข้อมูลอัปเดต</td></tr>';
+    : `<tr><td colspan="2" class="p-6 text-center text-slate-500">${NO_DATA_LABEL}</td></tr>`;
 }
 
 function groupSum(rows, field, metric) {
@@ -658,8 +764,8 @@ function comparisonChartOptions(yTitle, primaryLabel) {
   const options = baseChartOptions({ yTitle });
   options.plugins.legend.labels = {
     generateLabels: chart => [
-      { text:`${primaryLabel} — สีทึบ`, fillStyle:"rgba(71,85,105,1)", strokeStyle:"#475569", lineWidth:1, hidden:!chart.isDatasetVisible(0), datasetIndex:0 },
-      { text:"ระดับประเทศ — สีโปร่งใส", fillStyle:"rgba(71,85,105,.25)", strokeStyle:"#475569", lineWidth:1, hidden:!chart.isDatasetVisible(1), datasetIndex:1 }
+      { text:`${primaryLabel} — สีทึบ`, fillStyle:indexThemeColor("ink-muted","#475569"), strokeStyle:indexThemeColor("ink-muted","#475569"), lineWidth:1, hidden:!chart.isDatasetVisible(0), datasetIndex:0 },
+      { text:"ระดับประเทศ — สีโปร่งใส", fillStyle:"rgba(71,85,105,.25)", strokeStyle:indexThemeColor("ink-muted","#475569"), lineWidth:1, hidden:!chart.isDatasetVisible(1), datasetIndex:1 }
     ]
   };
   return options;

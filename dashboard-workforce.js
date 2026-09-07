@@ -154,7 +154,7 @@ function renderTrend() {
   const details = [...new Set(rows.map(row => String(row[detailField] || "ไม่ระบุ")))]
     .sort((a, b) => a.localeCompare(b, "th"));
   const provinces = [...new Set(rows.map(row => String(row.PROV_NAME || "ไม่ระบุจังหวัด")))].sort();
-  const colors = ["#0d9488", "#2563eb", "#f59e0b", "#e11d48", "#7c3aed", "#0891b2", "#ea580c", "#65a30d", "#db2777", "#475569"];
+  const colors = window.EDU15Theme?.dataPalette() || ["#2563eb", "#e11d48", "#b45309", "#0f766e", "#7c3aed", "#c2410c", "#0e7490", "#4d7c0f", "#be185d", "#475569"];
   trendChart?.destroy();
   trendChart = new Chart(document.getElementById("workforceTrendChart"), {
     type: "line",

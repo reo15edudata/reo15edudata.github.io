@@ -6,6 +6,11 @@ const EDU15DataClient = (() => {
   const CACHE_VERSION = "schema-2026-07-31-v4";
   const pendingRequests = new Map();
 
+  function reportDataStatus(status, detail = {}) {
+    window.dispatchEvent(new CustomEvent("edu15:data-status", { detail: { status, ...detail } }));
+    if (status === "error") window.reportDataError?.(detail.message || "ไม่สามารถโหลดข้อมูลบางส่วนได้");
+  }
+
   function openDatabase() {
     return new Promise((resolve, reject) => {
       if (!("indexedDB" in window)) return reject(new Error("IndexedDB unavailable"));
@@ -32,7 +37,8 @@ const EDU15DataClient = (() => {
         }
         resolve({
           value: record.value ?? record.rows,
-          fresh: Date.now() - record.savedAt < CACHE_TTL
+          fresh: Date.now() - record.savedAt < CACHE_TTL,
+          savedAt: record.savedAt
         });
       };
       request.onerror = () => reject(request.error);
@@ -74,7 +80,17 @@ const EDU15DataClient = (() => {
 
   async function requestJson(url, progressKey = "") {
     if (progressKey) window.reportPageProgress?.(progressKey, 8, 100);
-    const response = await fetch(url);
+    const controller = new AbortController();
+    const timeout = setTimeout(() => controller.abort(), 30000);
+    let response;
+    try {
+      response = await fetch(url, { signal: controller.signal });
+    } catch (error) {
+      if (error?.name === "AbortError") throw new Error("แหล่งข้อมูลไม่ตอบกลับภายใน 30 วินาที");
+      throw error;
+    } finally {
+      clearTimeout(timeout);
+    }
     if (!response.ok) throw new Error(`HTTP ${response.status}`);
     if (progressKey) window.reportPageProgress?.(progressKey, 42, 100);
     let responseText;
@@ -137,9 +153,14 @@ const EDU15DataClient = (() => {
   function refreshInBackground(key, loader) {
     loader()
       .then(value => writeCache(key, value).then(() => {
-        window.dispatchEvent(new CustomEvent("edu15:data-updated", { detail: { key } }));
+        const checkedAt = Date.now();
+        window.dispatchEvent(new CustomEvent("edu15:data-updated", { detail: { key, checkedAt } }));
+        reportDataStatus("ready", { key, source: "network", checkedAt, background: true });
       }))
-      .catch(error => console.warn("Dashboard background refresh skipped", error));
+      .catch(error => {
+        reportDataStatus("stale", { key, source: "cache", message: error.message });
+        console.warn("Dashboard background refresh skipped", error);
+      });
   }
 
   async function cachedRequest(key, loader, backgroundLoader = loader) {
@@ -150,6 +171,11 @@ const EDU15DataClient = (() => {
       const cached = await readCache(key);
       if (cached) {
         window.reportPageProgress?.(key, 1, 1);
+        reportDataStatus(cached.fresh ? "ready" : "stale", {
+          key,
+          source: "cache",
+          checkedAt: cached.savedAt
+        });
         if (!cached.fresh) refreshInBackground(key, backgroundLoader);
         return cached.value;
       }
@@ -161,8 +187,13 @@ const EDU15DataClient = (() => {
     const request = loader()
       .then(value => {
         window.reportPageProgress?.(key, 1, 1);
+        reportDataStatus("ready", { key, source: "network", checkedAt: Date.now() });
         writeCache(key, value).catch(error => console.warn("Dashboard cache write skipped", error));
         return value;
+      })
+      .catch(error => {
+        reportDataStatus("error", { key, source: "network", message: error.message });
+        throw error;
       })
       .finally(() => pendingRequests.delete(key));
     pendingRequests.set(key, request);
@@ -175,8 +206,13 @@ const EDU15DataClient = (() => {
       if (pendingRequests.has(key)) return pendingRequests.get(key);
       const request = fetchRowsFromNetwork(baseUrl, dbKey, sheetName, options, key, true)
         .then(value => {
+          reportDataStatus("ready", { key, source: "network", checkedAt: Date.now() });
           writeCache(key, value).catch(error => console.warn("Dashboard cache write skipped", error));
           return value;
+        })
+        .catch(error => {
+          reportDataStatus("error", { key, source: "network", message: error.message });
+          throw error;
         })
         .finally(() => pendingRequests.delete(key));
       pendingRequests.set(key, request);
@@ -189,10 +225,10 @@ const EDU15DataClient = (() => {
     );
   }
 
-  async function fetchMetadata(baseUrl, dbKey, sheetName, fields) {
+  async function fetchMetadata(baseUrl, dbKey, sheetName, fields, requestOptions = {}) {
     const options = { fields: [...fields].sort() };
     const key = cacheKey("metadata", dbKey, sheetName, options);
-    return cachedRequest(key, async () => {
+    const loadMetadata = async () => {
       try {
         const result = await requestJson(buildUrl(baseUrl, {
           action: "metadata",
@@ -205,12 +241,36 @@ const EDU15DataClient = (() => {
         console.warn(`Metadata endpoint fallback for ${sheetName}`, error);
       }
 
-      const rows = await fetchAllPages(baseUrl, dbKey, sheetName);
+      const rows = await fetchAllPages(
+        baseUrl,
+        dbKey,
+        sheetName,
+        requestOptions.networkFirst ? { networkFirst: true } : {}
+      );
       return Object.fromEntries(fields.map(field => [
         field,
         [...new Set(rows.map(row => String(row[field] ?? "").trim()).filter(Boolean))]
       ]));
-    });
+    };
+
+    if (requestOptions.networkFirst) {
+      if (pendingRequests.has(key)) return pendingRequests.get(key);
+      const request = loadMetadata()
+        .then(value => {
+          reportDataStatus("ready", { key, source: "network", checkedAt: Date.now() });
+          writeCache(key, value).catch(error => console.warn("Dashboard cache write skipped", error));
+          return value;
+        })
+        .catch(error => {
+          reportDataStatus("error", { key, source: "network", message: error.message });
+          throw error;
+        })
+        .finally(() => pendingRequests.delete(key));
+      pendingRequests.set(key, request);
+      return request;
+    }
+
+    return cachedRequest(key, loadMetadata);
   }
 
   async function fetchSummary(baseUrl, dbKey, sheetName, { groupBy = [], metrics = [], filters = {} } = {}) {
@@ -252,6 +312,62 @@ const EDU15DataClient = (() => {
     });
   }
 
+  async function fetchHomeProvinceSummary(baseUrl, year = "", provinces = []) {
+    const options = { year: String(year || ""), provinces: [...provinces] };
+    const key = cacheKey("home-summary", "DB_1", "home", options);
+    return cachedRequest(key, async () => {
+      try {
+        const result = await requestJson(buildUrl(baseUrl, {
+          action: "home-summary",
+          year: options.year
+        }), key);
+        if (result.mode === "home-summary" && Array.isArray(result.data)) return result;
+      } catch (error) {
+        console.warn("Home summary endpoint fallback", error);
+      }
+
+      const metadata = await fetchMetadata(baseUrl, "DB_1", "Student_Count", ["ACAD_YEAR"]);
+      const years = [...new Set((metadata.ACAD_YEAR || []).map(String).filter(Boolean))]
+        .sort((left, right) => Number(right) - Number(left));
+      const selectedYear = options.year && years.includes(options.year) ? options.year : (years[0] || "");
+      const filters = { year: selectedYear, province: provinces };
+      const [students, teachers] = await Promise.all([
+        fetchSummary(baseUrl, "DB_1", "Student_Count", {
+          groupBy: ["PROV_NAME", "SCHOOL_CODE"],
+          metrics: ["STUDENT_MALE", "STUDENT_FEMALE"],
+          filters
+        }),
+        fetchSummary(baseUrl, "DB_1", "Teacher_Count", {
+          groupBy: ["PROV_NAME", "SCHOOL_CODE"],
+          metrics: ["TEACHER_MALE", "TEACHER_FEMALE"],
+          filters
+        })
+      ]);
+      const number = value => {
+        const parsed = Number(String(value ?? 0).replace(/,/g, ""));
+        return Number.isFinite(parsed) ? parsed : 0;
+      };
+      return {
+        success: true,
+        mode: "home-summary-fallback",
+        year: selectedYear,
+        years,
+        data: provinces.map(province => {
+          const provinceStudents = students.filter(row => String(row.PROV_NAME).trim() === province);
+          const provinceTeachers = teachers.filter(row => String(row.PROV_NAME).trim() === province);
+          const schools = new Set([...provinceStudents, ...provinceTeachers]
+            .map(row => String(row.SCHOOL_CODE || "").trim()).filter(Boolean));
+          return {
+            PROV_NAME: province,
+            students: provinceStudents.reduce((sum, row) => sum + number(row.STUDENT_MALE) + number(row.STUDENT_FEMALE), 0),
+            teachers: provinceTeachers.reduce((sum, row) => sum + number(row.TEACHER_MALE) + number(row.TEACHER_FEMALE), 0),
+            schools: schools.size
+          };
+        })
+      };
+    });
+  }
+
   async function clear() {
     try {
       const database = await openDatabase();
@@ -267,7 +383,7 @@ const EDU15DataClient = (() => {
     }
   }
 
-  return { fetchAllPages, fetchMetadata, fetchSummary, clear };
+  return { fetchAllPages, fetchMetadata, fetchSummary, fetchHomeProvinceSummary, clear };
 })();
 
 window.EDU15DataClient = EDU15DataClient;

@@ -1,0 +1,280 @@
+.province-comparison-section {
+  padding: 2rem 1.5rem 0;
+}
+
+.province-comparison-heading {
+  display: flex;
+  align-items: end;
+  justify-content: space-between;
+  gap: 1.5rem;
+  max-width: 82rem;
+  margin: 0 auto 1rem;
+}
+
+.province-comparison-heading h2 {
+  color: var(--edu-ink-strong);
+  font-size: var(--edu-type-display-sm);
+  font-weight: 700;
+  line-height: 1.4;
+}
+
+.province-comparison-heading p {
+  margin-top: .25rem;
+  color: var(--edu-ink-subtle);
+  font-size: var(--edu-type-label);
+  line-height: var(--edu-leading-label);
+}
+
+.province-year-control {
+  display: grid;
+  flex: 0 0 auto;
+  gap: .35rem;
+  color: var(--edu-ink-muted);
+  font-size: var(--edu-type-metadata);
+  font-weight: 600;
+}
+
+.province-year-control select {
+  min-width: 9rem;
+  min-height: 2.75rem;
+  border: 1px solid var(--edu-border-control);
+  border-radius: .5rem;
+  background: var(--edu-surface);
+  padding: .55rem 2.25rem .55rem .75rem;
+  color: var(--edu-ink);
+  font-size: var(--edu-type-label);
+}
+
+.province-year-control select:focus-visible {
+  border-color: var(--edu-focus);
+  outline: 3px solid var(--edu-focus-ring);
+  outline-offset: 1px;
+}
+
+.province-comparison-surface {
+  max-width: 82rem;
+  margin: 0 auto;
+  overflow: hidden;
+  border: 1px solid var(--edu-border);
+  border-radius: .75rem;
+  background: var(--edu-surface);
+  box-shadow: var(--edu-shadow-card);
+}
+
+.province-comparison-guide,
+.province-comparison-row {
+  display: grid;
+  grid-template-columns: minmax(8rem, 1.15fr) repeat(3, minmax(9rem, 1fr));
+  column-gap: 1.5rem;
+  align-items: center;
+}
+
+.province-comparison-guide {
+  padding: .75rem 1.5rem;
+  background: var(--edu-canvas);
+  border-bottom: 1px solid var(--edu-border);
+  color: var(--edu-ink-subtle);
+  font-size: var(--edu-type-metadata);
+  font-weight: 600;
+}
+
+.province-comparison-row {
+  padding: 1.15rem 1.5rem;
+}
+
+.province-comparison-row + .province-comparison-row {
+  border-top: 1px solid var(--edu-surface-subtle);
+}
+
+.province-name {
+  display: flex;
+  align-items: center;
+  gap: .75rem;
+  min-width: 0;
+  color: var(--edu-ink-strong);
+  font-weight: 700;
+}
+
+.province-marker {
+  display: inline-flex;
+  width: 2.25rem;
+  height: 2.25rem;
+  flex: 0 0 auto;
+  align-items: center;
+  justify-content: center;
+  border-radius: .5rem;
+  background: var(--edu-action-soft);
+  color: var(--edu-action);
+  font-size: var(--edu-type-metadata);
+  font-weight: 700;
+}
+
+.province-metric {
+  min-width: 0;
+}
+
+.province-metric-label {
+  display: none;
+  color: var(--edu-ink-subtle);
+  font-size: var(--edu-type-metadata);
+  font-weight: 600;
+}
+
+.province-metric-value {
+  color: var(--edu-ink-strong);
+  font-size: var(--edu-type-body);
+  font-variant-numeric: tabular-nums;
+  font-weight: 700;
+}
+
+.province-bar-track {
+  height: .4rem;
+  margin-top: .45rem;
+  overflow: hidden;
+  border-radius: 999px;
+  background: var(--edu-border);
+}
+
+.province-bar {
+  width: var(--province-bar-width, 0%);
+  height: 100%;
+  border-radius: inherit;
+  background: var(--edu-action);
+  transform-origin: left center;
+  animation: province-bar-enter .55s cubic-bezier(.16, 1, .3, 1) both;
+}
+
+.province-comparison-footer {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  padding: .9rem 1.5rem;
+  border-top: 1px solid var(--edu-border);
+  background: var(--edu-canvas);
+  color: var(--edu-ink-subtle);
+  font-size: var(--edu-type-metadata);
+  line-height: var(--edu-leading-metadata);
+}
+
+.province-comparison-footer a {
+  flex: 0 0 auto;
+  color: var(--edu-action);
+  font-size: var(--edu-type-metadata);
+  font-weight: 600;
+  text-underline-offset: .2rem;
+}
+
+.province-comparison-footer a:hover {
+  text-decoration: underline;
+}
+
+.province-comparison-footer a:focus-visible {
+  border-radius: .25rem;
+  outline: 3px solid var(--edu-focus-ring);
+  outline-offset: 3px;
+}
+
+.province-comparison-loading,
+.province-comparison-error {
+  display: flex;
+  min-height: 10rem;
+  align-items: center;
+  justify-content: center;
+  gap: .75rem;
+  padding: 2rem;
+  color: var(--edu-ink-subtle);
+  text-align: center;
+}
+
+.province-loading-mark {
+  width: 1.25rem;
+  height: 1.25rem;
+  border: 2px solid var(--edu-action-border);
+  border-top-color: var(--edu-action);
+  border-radius: 50%;
+  animation: province-loading-spin .7s linear infinite;
+}
+
+.province-comparison-error {
+  flex-direction: column;
+  color: var(--edu-danger);
+}
+
+.province-comparison-error button {
+  min-height: 2.75rem;
+  border: 1px solid var(--edu-danger-border);
+  border-radius: .5rem;
+  background: var(--edu-danger-soft);
+  padding: .55rem 1rem;
+  color: var(--edu-danger);
+  font-weight: 600;
+}
+
+.province-comparison-error button:hover {
+  background: var(--edu-danger-soft-hover);
+}
+
+@keyframes province-bar-enter {
+  from { transform: scaleX(0); }
+  to { transform: scaleX(1); }
+}
+
+@keyframes province-loading-spin {
+  to { transform: rotate(360deg); }
+}
+
+@media (max-width: 900px) {
+  .province-comparison-guide {
+    display: none;
+  }
+
+  .province-comparison-row {
+    grid-template-columns: 1fr;
+    gap: 1rem;
+    padding: 1.25rem;
+  }
+
+  .province-name {
+    padding-bottom: .15rem;
+  }
+
+  .province-metric-label {
+    display: block;
+  }
+
+  .province-metric-heading {
+    display: flex;
+    align-items: baseline;
+    justify-content: space-between;
+    gap: 1rem;
+  }
+}
+
+@media (max-width: 640px) {
+  .province-comparison-section {
+    padding: 1.5rem .75rem 0;
+  }
+
+  .province-comparison-heading {
+    align-items: stretch;
+    flex-direction: column;
+    gap: 1rem;
+  }
+
+  .province-year-control select {
+    width: 100%;
+  }
+
+  .province-comparison-footer {
+    align-items: flex-start;
+    flex-direction: column;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .province-bar,
+  .province-loading-mark {
+    animation: none;
+  }
+}

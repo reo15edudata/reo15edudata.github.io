@@ -7,65 +7,88 @@
     <title>เข้าสู่ระบบ - ศธภ.15</title>
     <link rel="icon" type="image/png" href="reo15-icon.png">
     <link rel="apple-touch-icon" href="reo15-icon.png">
+    <link href="responsive.css?v=20260903-3" rel="stylesheet">
 
     <!-- นำเข้า Firebase SDK จาก CDN -->
     <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
     <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-auth.js"></script>
 
     <style>
+        * { box-sizing: border-box; }
         body {
-            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-            background-color: #F8FAFC;
+            font-family: var(--edu-font-family);
+            background: var(--edu-surface-subtle);
             display: flex;
+            flex-direction: column;
             justify-content: center;
             align-items: center;
             min-height: 100vh;
             min-height: 100dvh;
             margin: 0;
             padding: 20px;
-            box-sizing: border-box;
+            color: var(--edu-ink);
         }
 
         .login-container {
-            background: white;
-            padding: 40px;
-            border-radius: 8px;
-            box-shadow: 0 4px 10px rgba(0, 0, 0, 0.1);
+            background: var(--edu-surface);
+            padding: 32px;
+            border: 1px solid var(--edu-border-control);
+            border-radius: 14px;
+            box-shadow: 0 14px 36px rgba(15, 23, 42, 0.10);
             width: 100%;
-            max-width: 400px;
-            text-align: center;
-            box-sizing: border-box;
+            max-width: 420px;
         }
+
+        .brand { display: flex; align-items: center; gap: 12px; margin-bottom: 24px; }
+        .brand-mark { display: grid; place-items: center; width: 44px; height: 44px; border-radius: 12px; background: var(--edu-action); color: var(--edu-surface); font-weight: 800; }
+        .brand h1 { margin: 0; color: var(--edu-ink-strong); font-size: var(--edu-type-page-title); line-height: 1.5; }
+        .brand p { margin: 2px 0 0; color: var(--edu-ink-subtle); font-size: var(--edu-type-metadata); line-height: var(--edu-leading-metadata); }
+        .login-intro { margin: 0 0 22px; max-width: var(--edu-reading-measure); color: var(--edu-ink-muted); font-size: var(--edu-type-body); line-height: var(--edu-leading-body); }
+        label { display: block; color: var(--edu-ink); font-size: var(--edu-type-label); font-weight: 600; line-height: var(--edu-leading-label); }
 
         input {
             width: 100%;
-            padding: 10px;
-            margin: 10px 0 20px 0;
-            border: 1px solid #ccc;
-            border-radius: 4px;
-            box-sizing: border-box;
+            padding: 11px 12px;
+            margin: 7px 0 18px;
+            border: 1px solid var(--edu-border-control);
+            border-radius: 8px;
+            background: var(--edu-canvas);
             min-height: 44px;
             font-size: 16px;
         }
+
+        input:focus { border-color: var(--edu-focus); outline: 3px solid var(--edu-focus-ring); }
 
         button {
             width: 100%;
             padding: 12px;
-            background-color: #1E3A8A;
-            color: white;
+            background-color: var(--edu-action);
+            color: var(--edu-surface);
             border: none;
-            border-radius: 4px;
+            border-radius: 8px;
             font-size: 16px;
+            font-weight: 700;
             cursor: pointer;
             min-height: 44px;
         }
 
-        button:hover {
-            background-color: #172554;
-        }
+        button:hover { background-color: var(--edu-action-hover); }
+        button:disabled { cursor: wait; opacity: .65; }
+        button:focus-visible, a:focus-visible { outline: 3px solid var(--edu-focus-ring); outline-offset: 3px; }
+
+        .login-actions { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin-top: 14px; }
+        .text-button { width: auto; min-height: 0; padding: 3px 0; background: transparent; color: var(--edu-action); font-size: var(--edu-type-label); font-weight: 600; }
+        .text-button:hover { background: transparent; color: var(--edu-action-hover); text-decoration: underline; }
+        .back-link { color: var(--edu-ink-muted); font-size: var(--edu-type-label); text-decoration: none; }
+        .back-link:hover { color: var(--edu-action); text-decoration: underline; }
+        .access-note { margin-top: 22px; border-top: 1px solid var(--edu-border); padding-top: 16px; color: var(--edu-ink-subtle); font-size: var(--edu-type-metadata); line-height: var(--edu-leading-metadata); }
 
         #errorMessage {
-            color: red;
+            border: 1px solid var(--edu-danger-border);
+            border-radius: 8px;
+            background: var(--edu-danger-soft);
+            padding: 10px 12px;
+            color: var(--edu-danger);
             margin-top: 15px;
             font-size: 14px;
             display: none;
@@ -79,12 +102,8 @@
 
             .login-container {
                 margin: auto 0;
-                padding: 28px 20px;
+                padding: 24px 20px;
                 border-radius: 12px;
-            }
-
-            .login-container h2 {
-                font-size: 1.5rem;
             }
         }
     </style>
@@ -92,23 +111,25 @@
 
 <body>
 
-    <div class="login-container">
-        <h2 style="color: #1E3A8A; margin-bottom: 5px;">ศธภ.15</h2>
-        <p style="color: #64748B; margin-top: 0;">ระบบจัดการข้อมูลสารสนเทศ</p>
+    <main class="login-container">
+        <div class="brand"><span class="brand-mark" aria-hidden="true">15</span><div><h1>สำนักงานศึกษาธิการภาค 15</h1><p>ระบบฐานข้อมูลด้านการศึกษา</p></div></div>
+        <p class="login-intro">เข้าสู่ระบบสำหรับเจ้าหน้าที่ผู้รับผิดชอบการตรวจสอบ แก้ไข และอัปโหลดข้อมูล หากต้องการดูข้อมูลสาธารณะไม่จำเป็นต้องเข้าสู่ระบบ</p>
 
         <form id="loginForm">
-            <div style="text-align: left;">
-                <label for="email">อีเมล (Email):</label>
-                <input type="email" id="email" required placeholder="admin@example.com">
+            <div>
+                <label for="email">อีเมลเจ้าหน้าที่</label>
+                <input type="email" id="email" required autocomplete="email" placeholder="name@example.com">
 
-                <label for="password">รหัสผ่าน (Password):</label>
-                <input type="password" id="password" required placeholder="********">
+                <label for="password">รหัสผ่าน</label>
+                <input type="password" id="password" required autocomplete="current-password" placeholder="กรอกรหัสผ่าน">
             </div>
-            <button type="submit">เข้าสู่ระบบ</button>
+            <button id="loginButton" type="submit">เข้าสู่ระบบสำหรับเจ้าหน้าที่</button>
         </form>
 
-        <div id="errorMessage"></div>
-    </div>
+        <div class="login-actions"><a class="back-link" href="index.html">← กลับไปดูข้อมูลสาธารณะ</a><button id="resetPasswordButton" class="text-button" type="button">ลืมรหัสผ่าน</button></div>
+        <div id="errorMessage" role="alert" aria-live="assertive"></div>
+        <p class="access-note">บัญชีต้องได้รับอนุญาตจากสำนักงานศึกษาธิการภาค 15 และยืนยันอีเมลแล้ว หากไม่สามารถเข้าสู่ระบบได้ กรุณาติดต่อผู้ดูแลระบบ</p>
+    </main>
 
     <script>
         // ⚠️ [เช็คตัวแปร]: นำค่า Config ของคุณจาก Firebase มาวางแทนที่ตรงนี้
@@ -133,8 +154,11 @@
             const email = document.getElementById('email').value;
             const password = document.getElementById('password').value;
             const errorDiv = document.getElementById('errorMessage');
+            const loginButton = document.getElementById('loginButton');
 
             errorDiv.style.display = "none";
+            loginButton.disabled = true;
+            loginButton.textContent = "กำลังตรวจสอบบัญชี…";
 
             // ใช้ firebase.auth() โดยตรง
             firebase.auth().signInWithEmailAndPassword(email, password)
@@ -148,19 +172,46 @@
                         errorDiv.style.display = "block";
                         errorDiv.innerText =
                             "เราได้ส่งอีเมลยืนยันไปยังบัญชีของคุณแล้ว กรุณายืนยันอีเมลก่อนเข้าสู่ระบบอีกครั้ง";
+                        loginButton.disabled = false;
+                        loginButton.textContent = "เข้าสู่ระบบสำหรับเจ้าหน้าที่";
                         return;
                     }
 
-                    window.location.href = "index.html";
+                    const requested = new URLSearchParams(location.search).get("next");
+                    const safeDestination = requested && /^[a-z0-9-]+\.html$/i.test(requested) ? requested : "index.html";
+                    window.location.href = safeDestination;
                 })
                 .catch((error) => {
                     errorDiv.style.display = "block";
                     errorDiv.innerText = "อีเมลหรือรหัสผ่านไม่ถูกต้อง กรุณาลองใหม่";
+                    loginButton.disabled = false;
+                    loginButton.textContent = "เข้าสู่ระบบสำหรับเจ้าหน้าที่";
                     console.error("Login Error:", error);
                 });
         });
+
+        document.getElementById('resetPasswordButton').addEventListener('click', async () => {
+            const email = document.getElementById('email').value.trim();
+            const errorDiv = document.getElementById('errorMessage');
+            errorDiv.style.display = "block";
+            if (!email) {
+                errorDiv.innerText = "กรุณากรอกอีเมลเจ้าหน้าที่ก่อนขอลิงก์ตั้งรหัสผ่านใหม่";
+                document.getElementById('email').focus();
+                return;
+            }
+            try {
+                await firebase.auth().sendPasswordResetEmail(email);
+                errorDiv.style.borderColor = "var(--edu-success)";
+                errorDiv.style.background = "var(--edu-success-soft)";
+                errorDiv.style.color = "var(--edu-success)";
+                errorDiv.innerText = "ส่งลิงก์ตั้งรหัสผ่านใหม่แล้ว กรุณาตรวจสอบอีเมลของคุณ";
+            } catch (error) {
+                errorDiv.innerText = "ยังไม่สามารถส่งลิงก์ได้ กรุณาตรวจสอบอีเมลหรือติดต่อผู้ดูแลระบบ";
+                console.error("Password reset error:", error);
+            }
+        });
     </script>
-    <script src="footer.js?v=20260731-2"></script>
+    <script src="footer.js?v=20260903-1"></script>
 </body>
 
 </html>

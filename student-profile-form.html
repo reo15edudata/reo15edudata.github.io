@@ -6,9 +6,9 @@
   <title>เพิ่มข้อมูลความสนใจงานของฉัน - ศธภ.15</title>
   <link rel="icon" type="image/png" href="reo15-icon.png">
   <link rel="apple-touch-icon" href="reo15-icon.png">
-  <link href="tailwind.css?v=20260801-2" rel="stylesheet">
+  <link href="tailwind.css?v=20260901-1" rel="stylesheet">
   <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
-  <link href="responsive.css?v=20260731-2" rel="stylesheet">
+  <link href="responsive.css?v=20260903-3" rel="stylesheet">
 </head>
 <body class="bg-slate-50 font-sans text-slate-800 h-screen flex overflow-hidden">
   <aside class="w-64 bg-[#1e293b] text-slate-300 flex flex-col h-full shrink-0">
@@ -27,7 +27,7 @@
   <div class="flex-1 flex flex-col h-full overflow-hidden">
     <header class="h-16 bg-white border-b border-slate-200 flex items-center justify-between px-4 md:px-6 shrink-0">
       <div class="flex items-center"><button type="button" class="mr-4 text-slate-500" aria-label="ย่อหรือขยายเมนู"><i class="fas fa-bars"></i></button><div><h1 class="font-semibold">เพิ่มข้อมูลความสนใจงานของฉัน</h1><p class="text-xs text-slate-400 hidden sm:block">สร้างโปรไฟล์สำหรับโอกาสฝึกประสบการณ์</p></div></div>
-      <a href="dashboard-workforce-profile.html" class="rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm text-slate-600 hover:bg-slate-50"><i class="fas fa-arrow-left mr-1"></i><span class="hidden sm:inline">กลับไป Dashboard</span></a>
+      <a href="dashboard-workforce-profile.html" class="rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm text-slate-600 hover:bg-slate-50" aria-label="กลับไปหน้าข้อมูลความสนใจงานของนักเรียน"><i class="fas fa-arrow-left mr-1"></i><span class="hidden sm:inline">กลับไป Dashboard</span></a>
     </header>
     <main class="flex-1 overflow-y-auto p-4 md:p-6">
       <div class="mx-auto max-w-4xl">
@@ -51,10 +51,23 @@
             <div class="md:col-span-2"><label class="form-label" for="descriptionStudent">แนะนำตัวและความสนใจ <span class="required-mark">*</span></label><textarea id="descriptionStudent" name="DESCRIPTION_STUDENT" required maxlength="2000" rows="5" class="form-control" placeholder="แนะนำตัว ประสบการณ์ และเป้าหมายที่สนใจ"></textarea></div>
             <fieldset class="md:col-span-2 rounded-xl border border-slate-200 bg-slate-50 p-4">
               <legend class="px-2 text-sm font-semibold text-slate-700">ทักษะเด่นตาม WEF Skills Taxonomy <span class="required-mark">*</span></legend>
-              <div class="mb-3 flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between"><p class="text-xs leading-5 text-slate-500">เลือกทักษะระดับที่ 4 ที่โดดเด่นที่สุดจำนวน 3–4 ทักษะ จาก <a href="https://www1.reskillingrevolution2030.org/skills-taxonomy/index.html" target="_blank" rel="noopener noreferrer" class="font-medium text-teal-700 hover:underline">WEF Global Skills Taxonomy <i class="fas fa-arrow-up-right-from-square ml-1"></i></a></p><span id="skillSelectionCount" class="shrink-0 rounded-full bg-white px-3 py-1 text-xs font-semibold text-slate-600">เลือกแล้ว 0 / 4</span></div>
-              <label class="relative mb-3 block"><span class="sr-only">ค้นหาทักษะ</span><i class="skill-search-icon fas fa-magnifying-glass" aria-hidden="true"></i><input id="skillSearch" type="search" class="form-control skill-search-control" placeholder="ค้นหาได้ทั้งภาษาไทยและภาษาอังกฤษ"></label>
-              <div id="selectedSkillsPreview" class="mb-3 flex min-h-10 flex-wrap items-center gap-2 rounded-lg border border-dashed border-teal-200 bg-teal-50/50 px-3 py-2 text-xs text-slate-400">ยังไม่ได้เลือกทักษะ</div>
-              <div id="skillOptions" class="max-h-[36rem] space-y-5 overflow-y-auto rounded-lg border border-slate-200 bg-white p-3 md:p-4" aria-describedby="skillSelectionError"></div>
+              <div class="skill-intro"><p>เลือกทักษะระดับที่ 4 ที่โดดเด่นที่สุดจำนวน 3–4 ทักษะ จาก <a href="https://www1.reskillingrevolution2030.org/skills-taxonomy/index.html" target="_blank" rel="noopener noreferrer">WEF Global Skills Taxonomy <i class="fas fa-arrow-up-right-from-square" aria-hidden="true"></i></a></p><span id="skillSelectionCount" role="status" aria-live="polite">เลือกแล้ว 0 / 4</span></div>
+              <section class="skill-selection-tray" aria-labelledby="selectedSkillsTitle"><div class="skill-selection-head"><div><h4 id="selectedSkillsTitle">ทักษะที่เลือก</h4><p id="skillSelectionGuidance">เลือกอย่างน้อย 3 และไม่เกิน 4 ทักษะ</p></div></div><div id="selectedSkillsPreview" aria-live="polite">ยังไม่ได้เลือกทักษะ</div></section>
+              <div class="skill-browser-grid">
+                <section class="skill-discovery" aria-labelledby="skillDiscoveryTitle">
+                  <div><h4 id="skillDiscoveryTitle">ค้นหาหรือเลือกหมวดทักษะ</h4><p>ค้นหาได้ทันที หรือเลือกหมวดเพื่อดูเฉพาะทักษะที่เกี่ยวข้อง</p></div>
+                  <label class="skill-search-label" for="skillSearch"><span>ค้นหาทักษะ</span><span class="skill-search-wrap"><i class="skill-search-icon fas fa-magnifying-glass" aria-hidden="true"></i><input id="skillSearch" type="search" class="form-control skill-search-control" autocomplete="off" placeholder="เช่น การคิดสร้างสรรค์ หรือ Creative thinking"></span></label>
+                  <div class="skill-choice-divider"><span>หรือ</span></div>
+                  <label class="form-label" for="skillGroupSelect">เลือกจากหมวดทักษะ</label>
+                  <select id="skillGroupSelect" class="form-control"><option value="">— เลือกหมวดทักษะ —</option></select>
+                  <p class="skill-discovery-note"><i class="fas fa-language" aria-hidden="true"></i>ชื่อภาษาไทยใช้สำหรับช่วยเลือก ระบบจะบันทึกชื่อภาษาอังกฤษมาตรฐาน WEF</p>
+                </section>
+                <section class="skill-results" aria-labelledby="skillResultsTitle">
+                  <div class="skill-results-head"><div><h4 id="skillResultsTitle" tabindex="-1">เลือกหมวดหรือค้นหาทักษะ</h4><p id="skillResultsSummary" role="status" aria-live="polite">ระบบจะแสดงเฉพาะตัวเลือกที่เกี่ยวข้อง</p></div></div>
+                  <div id="skillLimitNotice" class="skill-limit-notice" hidden><i class="fas fa-circle-check" aria-hidden="true"></i><span>เลือกครบ 4 ทักษะแล้ว หากต้องการเปลี่ยน ให้เอาทักษะเดิมออกก่อน</span></div>
+                  <div id="skillOptions" class="skill-options" role="group" aria-labelledby="skillResultsTitle" aria-describedby="skillSelectionError"></div>
+                </section>
+              </div>
               <input id="topSkills" name="TOP_SKILLS" type="hidden">
               <p id="skillSelectionError" class="mt-2 text-xs text-rose-600" hidden>กรุณาเลือกทักษะอย่างน้อย 3 และไม่เกิน 4 ทักษะ</p>
             </fieldset>
@@ -73,11 +86,14 @@
   </div>
   <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
   <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-auth.js"></script>
-  <script src="site.js?v=20260811-2"></script>
-  <script src="data-client.js?v=20260801-1"></script>
+  <script src="site.js?v=20260907-1"></script>
+  <script src="data-client.js?v=20260901-1"></script>
   <script src="wef-skills.js?v=20260801-1"></script>
-  <script src="student-profile-form.js?v=20260801-2"></script>
-  <style>.form-label{display:block;margin-bottom:.4rem;font-size:.875rem;font-weight:600;color:#475569}.required-mark{color:#dc2626;font-weight:700}.form-control{width:100%;border:1px solid #cbd5e1;border-radius:.55rem;background:#f8fafc;padding:.7rem .8rem;color:#0f172a}.form-control:focus{border-color:#14b8a6;outline:2px solid rgba(20,184,166,.16)}.skill-search-control{padding-left:2.6rem;padding-right:2.25rem}.skill-search-icon{position:absolute;left:.9rem;top:50%;z-index:1;transform:translateY(-50%);color:#94a3b8;pointer-events:none}</style>
-  <script src="footer.js?v=20260731-2"></script>
+  <script src="student-profile-form.js?v=20260908-1"></script>
+  <style>
+    .form-label{display:block;margin-bottom:.4rem;font-size:.875rem;font-weight:600;color:#475569}.required-mark{color:#dc2626;font-weight:700}.form-control{width:100%;border:1px solid #cbd5e1;border-radius:.55rem;background:#f8fafc;padding:.7rem .8rem;color:#0f172a}.form-control:focus{border-color:#14b8a6;outline:2px solid rgba(20,184,166,.16);outline-offset:1px}.skill-intro{display:flex;align-items:flex-start;justify-content:space-between;gap:1rem;margin-bottom:1rem}.skill-intro p{max-width:68ch;color:#64748b;font-size:.75rem;line-height:1.65}.skill-intro a{color:#0f766e;font-weight:600;text-decoration:underline;text-underline-offset:2px}.skill-intro a:focus-visible,.skill-remove:focus-visible{outline:3px solid rgba(13,148,136,.25);outline-offset:2px}.skill-intro #skillSelectionCount{flex:0 0 auto;border:1px solid #cbd5e1;border-radius:999px;background:#fff;padding:.35rem .7rem;color:#475569;font-size:.72rem;font-weight:700;font-variant-numeric:tabular-nums}.skill-selection-tray{margin-bottom:1rem;border:1px solid #99f6e4;border-radius:.65rem;background:#f0fdfa;padding:.85rem}.skill-selection-head h4,.skill-discovery h4,.skill-results-head h4{color:#334155;font-size:.82rem;font-weight:700}.skill-selection-head p,.skill-discovery>div>p,.skill-results-head p{margin-top:.2rem;color:#64748b;font-size:.72rem;line-height:1.5}#selectedSkillsPreview{display:flex;min-height:2.75rem;flex-wrap:wrap;align-items:center;gap:.45rem;margin-top:.65rem;color:#64748b;font-size:.75rem}.skill-selected-item{display:inline-flex;min-height:2.25rem;align-items:center;gap:.35rem;border:1px solid #99f6e4;border-radius:999px;background:#fff;padding:.3rem .35rem .3rem .65rem;color:#0f766e;font-weight:600}.skill-selected-item small{color:#64748b;font-size:.64rem;font-weight:500}.skill-remove{display:inline-flex;width:1.75rem;height:1.75rem;align-items:center;justify-content:center;border-radius:999px;color:#64748b}.skill-remove:hover{background:#ccfbf1;color:#0f766e}.skill-browser-grid{display:grid;grid-template-columns:minmax(15rem,.8fr) minmax(0,1.4fr);overflow:hidden;border:1px solid #cbd5e1;border-radius:.75rem;background:#fff}.skill-discovery{border-right:1px solid #e2e8f0;background:#f8fafc;padding:1rem}.skill-search-label{display:block;margin-top:1rem;color:#475569;font-size:.78rem;font-weight:600}.skill-search-wrap{position:relative;display:block;margin-top:.4rem}.skill-search-control{padding-left:2.55rem}.skill-search-icon{position:absolute;left:.9rem;top:50%;z-index:1;transform:translateY(-50%);color:#64748b;pointer-events:none}.skill-choice-divider{display:flex;align-items:center;gap:.6rem;margin:.85rem 0;color:#94a3b8;font-size:.68rem}.skill-choice-divider::before,.skill-choice-divider::after{height:1px;flex:1;background:#e2e8f0;content:""}.skill-discovery-note{display:flex;align-items:flex-start;gap:.45rem;margin-top:.75rem;color:#64748b;font-size:.68rem;line-height:1.55}.skill-discovery-note i{margin-top:.2rem;color:#0d9488}.skill-results{min-width:0;padding:1rem}.skill-results-head{min-height:2.65rem}.skill-limit-notice{display:flex;align-items:flex-start;gap:.5rem;margin-top:.75rem;border:1px solid #a7f3d0;border-radius:.55rem;background:#ecfdf5;padding:.65rem;color:#047857;font-size:.72rem;line-height:1.5}.skill-limit-notice[hidden]{display:none}.skill-limit-notice i{margin-top:.15rem}.skill-options{margin-top:.85rem}.skill-option-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:.55rem}.skill-option{display:flex;min-height:4.75rem;cursor:pointer;align-items:flex-start;gap:.65rem;border:1px solid #e2e8f0;border-radius:.55rem;background:#fff;padding:.75rem;transition:border-color .16s ease,background-color .16s ease}.skill-option:hover{border-color:#99f6e4;background:#f8fafc}.skill-option.is-selected{border-color:#2dd4bf;background:#f0fdfa}.skill-option.is-disabled{cursor:not-allowed;background:#f8fafc;color:#94a3b8}.skill-option input{width:1rem;height:1rem;flex:0 0 auto;margin-top:.2rem;accent-color:#0d9488}.skill-option-copy{min-width:0}.skill-option-copy strong{display:block;color:#334155;font-size:.78rem;line-height:1.45}.skill-option-copy small{display:block;margin-top:.2rem;color:#64748b;font-size:.68rem;line-height:1.4}.skill-empty{display:flex;min-height:12rem;align-items:center;justify-content:center;text-align:center}.skill-empty div{max-width:24rem}.skill-empty i{display:inline-flex;width:2.5rem;height:2.5rem;align-items:center;justify-content:center;border-radius:.55rem;background:#f1f5f9;color:#64748b}.skill-empty strong{display:block;margin-top:.65rem;color:#475569;font-size:.82rem}.skill-empty p{margin-top:.25rem;color:#64748b;font-size:.72rem;line-height:1.55}
+    @media(max-width:767px){.skill-intro{display:block}.skill-intro #skillSelectionCount{display:inline-flex;margin-top:.65rem}.skill-browser-grid{grid-template-columns:1fr}.skill-discovery{border-right:0;border-bottom:1px solid #e2e8f0}.skill-option-grid{grid-template-columns:1fr}.skill-option{min-height:4.25rem}.skill-selected-item{max-width:100%}.skill-selected-item>span{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}}
+  </style>
+  <script src="footer.js?v=20260903-1"></script>
 </body>
 </html>

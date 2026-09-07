@@ -1,21 +1,28 @@
 (() => {
+  function installGlobalInterfaceDetails() {
+    document.body.classList.add("edu15-system");
+    document.querySelectorAll("i.fas, i.fa-solid, i.fa-regular, i.fa-brands").forEach(icon => {
+      icon.setAttribute("aria-hidden", "true");
+    });
+  }
+
   function installFooter() {
     if (document.querySelector(".edu15-site-footer")) return;
 
     const style = document.createElement("style");
     style.textContent = `
-      .edu15-site-footer { margin-top: 1.25rem; border-top: 1px solid #e2e8f0; background: #f8fafc; color: #64748b; }
-      .edu15-site-footer-inner { width: min(100%, 80rem); margin: 0 auto; padding: .7rem 1.25rem; font-size: .7rem; line-height: 1.55; }
+      .edu15-site-footer { margin-top: 1.25rem; border-top: 1px solid var(--edu-border, #e2e8f0); background: var(--edu-canvas, #f8fafc); color: var(--edu-ink-subtle, #64748b); }
+      .edu15-site-footer-inner { width: min(100%, 80rem); margin: 0 auto; padding: .7rem 1.25rem; font-size: var(--edu-type-metadata, .8125rem); line-height: var(--edu-leading-metadata, 1.25rem); }
       .edu15-site-footer-summary { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: .25rem 1rem; }
-      .edu15-site-footer-office { color: #475569; font-weight: 600; }
-      .edu15-site-footer-maker { color: #94a3b8; }
+      .edu15-site-footer-office { color: var(--edu-ink-muted, #475569); font-weight: 600; }
+      .edu15-site-footer-maker { color: var(--edu-ink-subtle, #64748b); }
       .edu15-site-footer details { margin-top: .3rem; }
-      .edu15-site-footer summary { width: max-content; color: #0f766e; cursor: pointer; font-size: .68rem; }
-      .edu15-site-footer-contact { margin-top: .45rem; border-top: 1px dashed #cbd5e1; padding-top: .45rem; }
+      .edu15-site-footer summary { width: max-content; color: var(--edu-action, #0f766e); cursor: pointer; font-size: var(--edu-type-metadata, .8125rem); }
+      .edu15-site-footer-contact { margin-top: .45rem; border-top: 1px dashed var(--edu-border-control, #7c8da3); padding-top: .45rem; }
       .edu15-site-footer-contact p { margin: .15rem 0; }
       .edu15-site-footer-links { display: flex; flex-wrap: wrap; gap: .35rem .75rem; margin-top: .25rem; }
-      .edu15-site-footer-link { color: #0f766e; text-decoration: none; }
-      .edu15-site-footer-link:hover, .edu15-site-footer-link:focus-visible { color: #0f172a; text-decoration: underline; outline: none; }
+      .edu15-site-footer-link { color: var(--edu-action, #0f766e); text-decoration: none; }
+      .edu15-site-footer-link:hover, .edu15-site-footer-link:focus-visible { color: var(--edu-ink-strong, #0f172a); text-decoration: underline; outline: none; }
       body.edu15-login-with-footer { flex-direction: column; }
       body.edu15-login-with-footer .edu15-site-footer { width: 100%; max-width: 44rem; border-radius: .5rem; overflow: hidden; }
       @media (max-width: 767px) {
@@ -58,6 +65,7 @@
       document.body.classList.add("edu15-login-with-footer");
       document.body.appendChild(footer);
     }
+    installGlobalInterfaceDetails();
   }
 
   if (document.readyState === "loading") {

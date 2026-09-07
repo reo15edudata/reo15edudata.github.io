@@ -1,5 +1,6 @@
 // 1. ตั้งค่าพื้นฐาน
 const GAS_WEB_APP_URL = "https://script.google.com/macros/s/AKfycbxIaex-ZhKRkRFze1L8tyQF5UBQR4BQ2Is9L6nJMl9iGd9MTlg4ELJUqdzOZPO3w-OwDA/exec";
+window.EDU15_GAS_WEB_APP_URL = GAS_WEB_APP_URL;
 
 // 2. พจนานุกรม (Schema) ตรวจสอบหัวตาราง
 // โครงสร้างใหม่: จัดกลุ่มตาม dbKey ก่อน แล้วค่อยตาม sheetName ข้างใน
@@ -66,13 +67,14 @@ const SCHEMA_DICT = {
             "YEAR", "MONTH", "PROV_NAME", "DATA_TYPE", "EDU_LEVEL", "VACANCY_COUNT"
         ],
         "Vocational_Busi_MOU": [
-            "YEAR", "PROV_NAME", "BUSINESS_TYPE", "BUSINESS_NAME", "COORDI",
-            "BUSINESS_DETAILS", "BUSINESS_PAY", "BUSINESS_WANTS", "BUSINESS_CONTACT"
+            "YEAR", "PROV_NAME", "BUSINESS_TYPE", "BUSINESS_NAME", "BUSINESS_CODE",
+            "COORDI", "BUSINESS_DETAILS", "BUSINESS_PAY", "BUSINESS_WANTS",
+            "BUSINESS_CONTACT", "DATA_STATUS"
         ],
         "Business_Student_Profile": [
-            "SUBMITED_TIME", "STUDENT_NAME", "GENDER", "SCHOOL_NAME",
+            "SUBMITED_TIME", "STUDENT_CODE", "STUDENT_NAME", "GENDER", "SCHOOL_NAME",
             "EDU_LEVEL", "DESCRIPTION_STUDENT", "TOP_SKILLS", "LOOKING_WORK",
-            "AVAILABLE_TIME", "PORTFOLIO_LINK", "STUDENT_CONTRACT"
+            "AVAILABLE_TIME", "PORTFOLIO_LINK", "STUDENT_CONTRACT", "DATA_STATUS"
         ]
     },
 
@@ -141,7 +143,7 @@ document.getElementById('uploadBtn').addEventListener('click', async () => {
     const statusMsg = document.getElementById('statusMsg');
 
     statusMsg.className = "status-msg";
-    statusMsg.innerHTML = "";
+    statusMsg.textContent = "";
 
     // --- ตรวจสอบสิทธิ์ก่อนทำอะไรทั้งสิ้น (กันไม่ให้ user ที่ยังไม่ login มาอัปโหลดได้) ---
     const currentUser = firebase.auth().currentUser;
@@ -159,6 +161,8 @@ document.getElementById('uploadBtn').addEventListener('click', async () => {
 
     reader.onload = async function (e) {
         try {
+            showStatus("กำลังเตรียมเครื่องมืออ่านไฟล์ Excel...", "info");
+            await window.EDU15Libraries.loadXlsx();
             showStatus("กำลังอ่านไฟล์และตรวจสอบความถูกต้อง...", "info");
             const data = new Uint8Array(e.target.result);
             const workbook = XLSX.read(data, { type: 'array' });
@@ -229,14 +233,14 @@ document.getElementById('uploadBtn').addEventListener('click', async () => {
 
             if (result.success) {
                 window.EDU15DataClient?.clear();
-                showStatus(`✅ สำเร็จ! ${result.message}`, "success");
+                showStatus(`สำเร็จ: ${result.message}`, "success");
                 fileInput.value = "";
             } else {
                 throw new Error(result.message);
             }
 
         } catch (error) {
-            showStatus(`❌ ผิดพลาด: ${error.message}`, "error");
+            showStatus(`ผิดพลาด: ${error.message}`, "error");
             console.error(error);
         }
     };
@@ -245,8 +249,11 @@ document.getElementById('uploadBtn').addEventListener('click', async () => {
 
 function showStatus(text, type) {
     const statusMsg = document.getElementById('statusMsg');
-    statusMsg.innerHTML = text;
-    if (type === "error") statusMsg.style.color = "red";
-    else if (type === "success") statusMsg.style.color = "green";
-    else statusMsg.style.color = "blue";
+    statusMsg.textContent = String(text ?? "");
+    const styles = {
+        error: "border border-rose-200 bg-rose-50 px-4 py-3 text-rose-800",
+        success: "border border-emerald-200 bg-emerald-50 px-4 py-3 text-emerald-800",
+        info: "border border-blue-200 bg-blue-50 px-4 py-3 text-blue-800"
+    };
+    statusMsg.className = `status-msg rounded-lg text-sm ${styles[type] || styles.info}`;
 }

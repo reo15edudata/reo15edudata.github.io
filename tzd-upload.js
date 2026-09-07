@@ -26,10 +26,15 @@ const TZD_STATUS_FIELDS = [
 const TZD_PLAN_STATUSES = ["ยังไม่ได้ดำเนินการ", "รอ CMS ยืนยัน", "CMS ยืนยันแล้ว", "ยุติการดูแล"];
 const TZD_STAGE_FIELDS = [["DO_CARE_PLAN", "ทำแผนการดูแล"], ["FOLLOW_1ST", "ติดตามรอบที่ 1"], ["FOLLOW_2ND", "ติดตามรอบที่ 2"]];
 const TZD_PUBLIC_SHEETS = ["TZD_Finding_Update", "TZD_Finding_Status", "TZD_CM_CarePlanning", "TZD_CM_Follow"];
+const TZD_DRAFT_KEY = "edu15:draft:tzd-upload:v1";
+const TZD_DRAFT_TTL = 7 * 24 * 60 * 60 * 1000;
 const tzdExistingRows = Object.fromEntries(TZD_PUBLIC_SHEETS.map(sheet => [sheet, []]));
 let tzdOtpEmail = "";
 let tzdOtpTimer = null;
+let tzdDraftTimer = null;
 let tzdRounds = [];
+let tzdFormDirty = false;
+let tzdDraftRestoring = false;
 
 document.addEventListener("DOMContentLoaded", initTzdForm);
 
@@ -41,16 +46,117 @@ async function initTzdForm() {
   document.querySelectorAll('input[name="roundMode"]').forEach(input => input.addEventListener("change", toggleTzdRoundMode));
   document.getElementById("tzdExistingRound").addEventListener("change", fillTzdTableFromExisting);
   document.getElementById("copyPreviousRound").addEventListener("click", copyPreviousTzdRound);
+  document.getElementById("tzdClearDraft").addEventListener("click", () => clearTzdDraft("ลบร่างที่บันทึกแล้ว ข้อมูลที่กำลังกรอกยังอยู่ในหน้านี้"));
   document.getElementById("requestTzdOtp").addEventListener("click", requestTzdOtp);
   document.getElementById("tzdEmail").addEventListener("input", () => { if (normalizedTzdEmail() !== tzdOtpEmail) tzdOtpEmail = ""; });
-  document.getElementById("tzdUploadForm").addEventListener("submit", submitTzdForm);
+  const form = document.getElementById("tzdUploadForm");
+  form.addEventListener("submit", submitTzdForm);
+  form.addEventListener("input", () => { tzdFormDirty = true; updateTzdCompletion(); scheduleTzdDraftSave(); });
+  form.addEventListener("change", () => { tzdFormDirty = true; updateTzdCompletion(); scheduleTzdDraftSave(); });
+  window.addEventListener("beforeunload", event => {
+    if (!tzdFormDirty) return;
+    event.preventDefault();
+    event.returnValue = "";
+  });
   document.getElementById("tzdCurrentMonth").textContent = `รอบรายงาน ${formatTzdMonth(currentTzdMonth())}`;
+  updateTzdCompletion();
   try {
     await refreshTzdRounds();
   } catch (error) {
     console.warn(error);
     showTzdUploadStatus("ยังโหลดรายการเดือนเดิมไม่ได้ แต่ยังสามารถรายงานเดือนปัจจุบันได้", "info");
   }
+  restoreTzdDraft();
+}
+
+function scheduleTzdDraftSave() {
+  if (tzdDraftRestoring) return;
+  clearTimeout(tzdDraftTimer);
+  tzdDraftTimer = setTimeout(saveTzdDraft, 500);
+}
+
+function saveTzdDraft() {
+  const draft = {
+    savedAt: Date.now(),
+    province: document.getElementById("tzdProvince").value,
+    topic: document.getElementById("tzdTopic").value,
+    roundMode: selectedRoundMode(),
+    existingRound: document.getElementById("tzdExistingRound").value,
+    email: document.getElementById("tzdEmail").value,
+    values: [...document.querySelectorAll("#tzdTableBody .table-number")].map(input => ({
+      districtIndex: input.dataset.districtIndex,
+      field: input.dataset.field,
+      statusIndex: input.dataset.statusIndex || "",
+      value: input.value
+    }))
+  };
+  try {
+    localStorage.setItem(TZD_DRAFT_KEY, JSON.stringify(draft));
+    setTzdDraftStatus(`บันทึกร่างแล้วเมื่อ ${formatTzdDraftTime(draft.savedAt)}`, true);
+  } catch (error) {
+    console.warn("TZD draft save skipped", error);
+    setTzdDraftStatus("อุปกรณ์นี้ไม่อนุญาตให้บันทึกร่าง กรุณาส่งข้อมูลก่อนออกจากหน้า", false);
+  }
+}
+
+function restoreTzdDraft() {
+  let draft;
+  try {
+    draft = JSON.parse(localStorage.getItem(TZD_DRAFT_KEY) || "null");
+  } catch (error) {
+    console.warn("TZD draft restore skipped", error);
+    clearTzdDraft();
+    return;
+  }
+  if (!draft?.savedAt || Date.now() - Number(draft.savedAt) > TZD_DRAFT_TTL) {
+    clearTzdDraft();
+    return;
+  }
+
+  tzdDraftRestoring = true;
+  if (TZD_PROVINCES[draft.province]) document.getElementById("tzdProvince").value = draft.province;
+  if (["survey", "care"].includes(draft.topic)) document.getElementById("tzdTopic").value = draft.topic;
+  const roundMode = draft.roundMode === "edit" ? "edit" : "new";
+  document.querySelector(`input[name="roundMode"][value="${roundMode}"]`).checked = true;
+  const existingRound = document.getElementById("tzdExistingRound");
+  existingRound.hidden = roundMode !== "edit";
+  existingRound.disabled = roundMode !== "edit";
+  existingRound.required = roundMode === "edit";
+  document.getElementById("tzdCurrentMonth").hidden = roundMode === "edit";
+  if (roundMode === "edit" && [...existingRound.options].some(option => option.value === draft.existingRound)) existingRound.value = draft.existingRound;
+  document.getElementById("tzdEmail").value = String(draft.email || "");
+  renderTzdInputTable();
+  const savedValues = new Map((Array.isArray(draft.values) ? draft.values : []).map(item => [
+    [item.districtIndex, item.field, item.statusIndex || ""].join("|"),
+    item.value
+  ]));
+  document.querySelectorAll("#tzdTableBody .table-number").forEach(input => {
+    const key = [input.dataset.districtIndex, input.dataset.field, input.dataset.statusIndex || ""].join("|");
+    if (savedValues.has(key)) input.value = String(savedValues.get(key));
+  });
+  tzdFormDirty = true;
+  tzdDraftRestoring = false;
+  updateTzdCompletion();
+  setTzdDraftStatus(`กู้คืนร่างที่บันทึกเมื่อ ${formatTzdDraftTime(draft.savedAt)} แล้ว กรุณาขอรหัส OTP ใหม่ก่อนส่ง`, true);
+}
+
+function clearTzdDraft(message = "") {
+  clearTimeout(tzdDraftTimer);
+  try {
+    localStorage.removeItem(TZD_DRAFT_KEY);
+  } catch (error) {
+    console.warn("TZD draft clear skipped", error);
+  }
+  setTzdDraftStatus(message || "ร่างจะบันทึกเฉพาะในอุปกรณ์นี้ โดยไม่เก็บรหัส OTP", false);
+}
+
+function setTzdDraftStatus(message, hasDraft) {
+  document.getElementById("tzdDraftStatus").textContent = message;
+  document.getElementById("tzdClearDraft").hidden = !hasDraft;
+}
+
+function formatTzdDraftTime(value) {
+  return new Intl.DateTimeFormat("th-TH", { dateStyle: "medium", timeStyle: "short" }).format(new Date(Number(value)));
 }
 
 function renderTzdInputTable() {
@@ -66,6 +172,7 @@ function renderTzdInputTable() {
   if (topic === "survey") renderSurveyTable(districts);
   else renderCareTable(districts);
   fillTzdTableFromExisting();
+  updateTzdCompletion();
 }
 
 function renderSurveyTable(districts) {
@@ -80,7 +187,28 @@ function renderCareTable(districts) {
 }
 
 function tableNumberInput(districtIndex, field, label, statusIndex = "") {
-  return `<td><label class="sr-only">${escapeTzdForm(label)}</label><input type="number" min="0" step="1" value="0" required class="table-number" data-district-index="${districtIndex}" data-field="${field}"${statusIndex === "" ? "" : ` data-status-index="${statusIndex}"`}></td>`;
+  const inputId = `tzd-${districtIndex}-${field}-${statusIndex === "" ? "value" : statusIndex}`;
+  return `<td><label for="${inputId}" class="sr-only">${escapeTzdForm(label)}</label><input id="${inputId}" type="number" min="0" step="1" value="0" required class="table-number" data-district-index="${districtIndex}" data-field="${field}"${statusIndex === "" ? "" : ` data-status-index="${statusIndex}"`}></td>`;
+}
+
+function updateTzdCompletion() {
+  const summary = document.getElementById("tzdCompletionSummary");
+  if (!summary) return;
+  const province = document.getElementById("tzdProvince").value;
+  if (!province) {
+    summary.textContent = "ขั้นที่ 1 · เลือกจังหวัดและรอบข้อมูลเพื่อเริ่มตรวจสอบ";
+    return;
+  }
+  const inputs = [...document.querySelectorAll("#tzdTableBody .table-number")];
+  const complete = inputs.filter(input => input.value !== "" && Number(input.value) >= 0).length;
+  const emailReady = /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/.test(normalizedTzdEmail());
+  const otpReady = /^\d{6}$/.test(document.getElementById("tzdOtp").value.trim());
+  const confirmed = document.getElementById("tzdConfirm").checked;
+  if (!emailReady || !otpReady || !confirmed) {
+    summary.textContent = `ขั้นที่ 2 จาก 3 · ตาราง ${TZD_PROVINCES[province].length} อำเภอ กรอกแล้ว ${complete}/${inputs.length} ช่อง · ต่อไปยืนยันอีเมลและความถูกต้อง`;
+    return;
+  }
+  summary.textContent = `พร้อมตรวจสอบ · ${TZD_PROVINCES[province].length} อำเภอ ${complete}/${inputs.length} ช่อง · ยืนยันตัวตนและความถูกต้องแล้ว`;
 }
 
 function toggleTzdRoundMode() {
@@ -159,6 +287,8 @@ function copyPreviousTzdRound() {
   const sourceMonth = previousTzdMonthWithData(targetMonth, province, topic);
   if (!sourceMonth) return showTzdUploadStatus("ไม่พบข้อมูลรอบก่อนหน้าของจังหวัดและหัวข้อนี้", "error");
   fillTzdTableForMonth(sourceMonth, province, topic);
+  tzdFormDirty = true;
+  scheduleTzdDraftSave();
   showTzdUploadStatus(`ดึงข้อมูลรอบเดือน ${formatTzdMonth(sourceMonth)} มาใส่ในตารางแล้ว กรุณาตรวจสอบและแก้ไขก่อนบันทึก`, "info");
 }
 
@@ -276,8 +406,10 @@ async function submitTzdForm(event) {
     const result = await postTzdForm(payload);
     if (!result.success) throw new Error(result.message || "บันทึกข้อมูลไม่สำเร็จ");
     showTzdUploadStatus(`บันทึกสำเร็จ ${result.message}`, "success");
+    tzdFormDirty = false;
     tzdOtpEmail = "";
     document.getElementById("tzdOtp").value = "";
+    clearTzdDraft("บันทึกข้อมูลสำเร็จและลบร่างออกจากอุปกรณ์แล้ว");
     await refreshTzdRounds();
   } catch (error) { console.error(error); showTzdUploadStatus(error.message, "error"); }
   finally { button.disabled = false; }

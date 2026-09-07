@@ -6,13 +6,11 @@
   <title>สารสนเทศการศึกษา - ศธภ.15</title>
   <link rel="icon" type="image/png" href="reo15-icon.png">
   <link rel="apple-touch-icon" href="reo15-icon.png">
-    <link href="tailwind.css?v=20260731-1" rel="stylesheet">
+    <link href="tailwind.css?v=20260901-1" rel="stylesheet">
     <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
-    <link href="responsive.css" rel="stylesheet">
-    <link href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" rel="stylesheet">
-    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.7/dist/chart.umd.min.js"></script>
-    <script src="https://cdn.jsdelivr.net/npm/chartjs-plugin-datalabels@2.2.0"></script>
-    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+    <link href="responsive.css?v=20260903-3" rel="stylesheet">
+    <script defer src="https://cdn.jsdelivr.net/npm/chart.js@4.4.7/dist/chart.umd.min.js"></script>
+    <script defer src="https://cdn.jsdelivr.net/npm/chartjs-plugin-datalabels@2.2.0"></script>
 </head>
 <body data-dashboard="true" class="bg-slate-50 font-sans text-slate-800 h-screen flex overflow-hidden">
     <aside class="w-64 bg-[#1e293b] text-slate-300 flex flex-col h-full shrink-0">
@@ -82,7 +80,7 @@
                         <strong id="genderEqualityValue" class="mt-1 block text-3xl font-bold text-violet-800">—</strong>
                         <span class="mt-1 block text-xs text-violet-500">นักเรียนหญิง ÷ นักเรียนชาย</span>
                     </div>
-                    <div class="h-72"><canvas id="genderChart"></canvas></div>
+                    <div class="h-72"><canvas id="genderChart" role="img" aria-label="กราฟเปรียบเทียบจำนวนนักเรียนชายและหญิง" aria-busy="true"></canvas></div>
                 </article>
                 <article class="xl:col-span-3 bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden">
                     <div class="p-5 border-b border-slate-100 flex flex-wrap sm:flex-nowrap items-center justify-between gap-4">
@@ -124,9 +122,9 @@
 
     <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
     <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-auth.js"></script>
-    <script src="site.js?v=20260811-2"></script>
-    <script src="data-client.js?v=20260731-5"></script>
-    <script src="dashboard.js?v=20260731-3"></script>
-    <script src="footer.js?v=20260731-2"></script>
+    <script src="site.js?v=20260907-1"></script>
+    <script src="data-client.js?v=20260901-1"></script>
+    <script src="dashboard.js?v=20260902-2"></script>
+    <script src="footer.js?v=20260903-1"></script>
 </body>
 </html>

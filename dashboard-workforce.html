@@ -6,11 +6,11 @@
   <title>ความต้องการกำลังคน - ศธภ.15</title>
   <link rel="icon" type="image/png" href="reo15-icon.png">
   <link rel="apple-touch-icon" href="reo15-icon.png">
-  <link href="tailwind.css?v=20260731-1" rel="stylesheet">
+  <link href="tailwind.css?v=20260901-1" rel="stylesheet">
   <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
-  <link href="responsive.css?v=20260731-2" rel="stylesheet">
-  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.7/dist/chart.umd.min.js"></script>
-  <script src="https://cdn.jsdelivr.net/npm/chartjs-plugin-datalabels@2.2.0"></script>
+  <link href="responsive.css?v=20260903-3" rel="stylesheet">
+  <script defer src="https://cdn.jsdelivr.net/npm/chart.js@4.4.7/dist/chart.umd.min.js"></script>
+  <script defer src="https://cdn.jsdelivr.net/npm/chartjs-plugin-datalabels@2.2.0"></script>
 </head>
 <body data-dashboard="true" class="bg-slate-50 font-sans text-slate-800 h-screen flex overflow-hidden">
   <aside class="w-64 bg-[#1e293b] text-slate-300 flex flex-col h-full shrink-0">
@@ -42,7 +42,7 @@
           <div><label class="filter-label">ถึงเดือน</label><select id="trendEndMonth" class="filter-control"></select></div>
           <div><label class="filter-label">ปีสิ้นสุด</label><select id="trendEndYear" class="filter-control"></select></div>
         </form>
-        <div class="h-80"><canvas id="workforceTrendChart"></canvas></div>
+        <div class="h-80"><canvas id="workforceTrendChart" role="img" aria-label="กราฟแนวโน้มความต้องการกำลังคนรายเดือน" aria-busy="true"></canvas></div>
       </section>
       <section class="bg-white rounded-xl border border-slate-200 shadow-sm p-5 mb-6">
         <div class="flex items-center gap-2 mb-4"><i class="fas fa-filter text-teal-500"></i><h2 class="font-semibold text-slate-700">ตัวกรองตำแหน่งงานว่าง</h2></div>
@@ -62,10 +62,10 @@
   </div>
   <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
   <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-auth.js"></script>
-  <script src="site.js?v=20260811-2"></script>
-  <script src="data-client.js?v=20260731-5"></script>
-  <script src="dashboard-workforce.js?v=20260801-1"></script>
+  <script src="site.js?v=20260907-1"></script>
+  <script src="data-client.js?v=20260901-1"></script>
+  <script src="dashboard-workforce.js?v=20260902-1"></script>
   <style>.filter-label{display:block;font-size:.75rem;font-weight:600;color:#64748b;margin-bottom:.25rem}.filter-control{width:100%;border:1px solid #cbd5e1;background:#f8fafc;border-radius:.5rem;padding:.625rem}</style>
-  <script src="footer.js?v=20260731-2"></script>
+  <script src="footer.js?v=20260903-1"></script>
 </body>
 </html>

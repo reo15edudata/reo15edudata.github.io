@@ -1,0 +1,72 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>เพิ่มข้อมูลสถานประกอบการ - ศธภ.15</title>
+  <link rel="icon" type="image/png" href="reo15-icon.png">
+  <link rel="apple-touch-icon" href="reo15-icon.png">
+  <link href="tailwind.css?v=20260901-1" rel="stylesheet">
+  <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
+  <link href="responsive.css?v=20260903-3" rel="stylesheet">
+  <link href="submission-form.css?v=20260907-3" rel="stylesheet">
+</head>
+<body class="bg-slate-50 font-sans text-slate-800 h-screen flex overflow-hidden">
+  <aside class="w-64 bg-[#1e293b] text-slate-300 flex flex-col h-full shrink-0">
+    <div class="h-16 flex items-center px-4 border-b border-slate-700/50"><div class="bg-teal-500 text-white w-8 h-8 rounded flex items-center justify-center mr-3"><i class="fa-solid fa-graduation-cap"></i></div><span class="text-white font-semibold text-lg">ศธภ.15</span></div>
+    <div class="flex-1 overflow-y-auto py-4 px-3"><div class="text-xs font-semibold text-slate-500 mb-2 px-3 tracking-wider">DASHBOARDS</div><ul class="space-y-1 mb-6"><li><a href="dashboard.html" class="flex items-center px-3 py-2 rounded-md hover:bg-slate-800 hover:text-white"><i class="fas fa-chart-pie w-7"></i>สารสนเทศการศึกษา</a></li><li><a href="dashboard-index.html" class="flex items-center px-3 py-2 rounded-md hover:bg-slate-800 hover:text-white"><i class="fas fa-chart-line w-7"></i>ดัชนีการศึกษา</a></li><li><a href="dashboard-workforce.html" class="flex items-center px-3 py-2 rounded-md hover:bg-slate-800 hover:text-white"><i class="fas fa-users-gear w-7"></i>ความต้องการกำลังคน</a></li></ul><div class="text-xs font-semibold text-slate-500 mb-2 px-3 tracking-wider">MANAGEMENT</div><ul><li><a href="admin.html" class="flex items-center px-3 py-2 rounded-md hover:bg-slate-800 hover:text-white"><i class="fas fa-user-gear w-7"></i>Admin Console</a></li></ul></div>
+  </aside>
+  <div class="flex-1 flex flex-col h-full overflow-hidden">
+    <header class="h-16 bg-white border-b border-slate-200 flex items-center justify-between px-4 md:px-6 shrink-0"><div class="flex min-w-0 items-center"><button type="button" class="mr-4 text-slate-500" aria-label="ย่อหรือขยายเมนู"><i class="fas fa-bars"></i></button><div class="min-w-0"><h1 class="truncate font-semibold">เพิ่มข้อมูลสถานประกอบการ</h1><p class="hidden text-xs text-slate-400 sm:block">ลงทะเบียนโอกาสฝึกประสบการณ์สำหรับผู้เรียน</p></div></div><a href="dashboard-business.html" class="rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm text-slate-600 hover:bg-slate-50"><i class="fas fa-arrow-left mr-1"></i><span class="hidden sm:inline">กลับไป Dashboard</span></a></header>
+    <main class="flex-1 overflow-y-auto p-4 md:p-6">
+      <div class="submission-shell">
+        <section class="mb-5 rounded-xl border border-teal-200 bg-teal-50 px-5 py-4 text-sm leading-6 text-teal-900"><i class="fas fa-shield-halved mr-2"></i>ข้อมูลจะเข้าสู่การตรวจสอบโดยผู้ดูแลระบบก่อนเผยแพร่ กรุณากรอกข้อมูลจริงและช่องทางติดต่อที่สามารถตรวจสอบได้</section>
+        <form id="businessSubmissionForm" class="submission-card" novalidate>
+          <section class="submission-section" aria-labelledby="businessIdentityTitle">
+            <h2 id="businessIdentityTitle" class="submission-heading">ข้อมูลสถานประกอบการ</h2><p class="submission-copy">ระบุข้อมูลพื้นฐานที่ผู้เรียนจะใช้ประกอบการพิจารณาสถานที่ฝึกประสบการณ์</p>
+            <div class="submission-grid">
+              <div class="submission-field"><label class="submission-label" for="businessYear">ปีที่ส่งข้อมูล</label><input id="businessYear" name="YEAR" class="submission-control" readonly></div>
+              <div class="submission-field"><label class="submission-label" for="businessProvince">จังหวัด <span class="submission-required">*</span></label><select id="businessProvince" name="PROV_NAME" class="submission-control" required><option value="">— เลือกจังหวัด —</option><option>เชียงใหม่</option><option>แม่ฮ่องสอน</option><option>ลำพูน</option><option>ลำปาง</option></select></div>
+              <div class="submission-field"><label class="submission-label" for="businessType">ประเภทสถานประกอบการ <span class="submission-required">*</span></label><select id="businessType" name="BUSINESS_TYPE" class="submission-control" required><option value="">กำลังโหลดตัวเลือก…</option></select><input id="businessTypeOther" class="submission-control mt-2" maxlength="150" placeholder="ระบุประเภทอื่น ๆ" hidden></div>
+              <div class="submission-field"><label class="submission-label" for="businessName">ชื่อสถานประกอบการ <span class="submission-required">*</span></label><input id="businessName" name="BUSINESS_NAME" class="submission-control" required maxlength="250" autocomplete="organization"></div>
+              <div class="submission-field full"><label class="submission-label" for="businessDetails">รายละเอียดสถานประกอบการและงานที่เปิดรับ <span class="submission-required">*</span></label><textarea id="businessDetails" name="BUSINESS_DETAILS" class="submission-control" required maxlength="3000" rows="6" placeholder="เช่น ลักษณะงาน ชั่วโมงทำงาน หน้าที่ที่ผู้เรียนจะได้รับ และเงื่อนไขที่ควรทราบ"></textarea></div>
+              <div class="submission-field"><label class="submission-label" for="businessPay">ค่าตอบแทน</label><div class="submission-unit-control"><input id="businessPay" name="BUSINESS_PAY" class="submission-control" type="number" min="0" max="100000" step="0.01" inputmode="decimal" placeholder="ไม่ได้ระบุ"><span>บาท/ชั่วโมง</span></div></div>
+              <div class="submission-field"><label class="submission-label" for="businessContact">ช่องทางติดต่อ <span class="submission-required">*</span></label><input id="businessContact" name="BUSINESS_CONTACT" class="submission-control" required maxlength="500" placeholder="เบอร์โทร อีเมล LINE หรือ Social Network"></div>
+            </div>
+          </section>
+
+          <section class="submission-section" aria-labelledby="coordinateTitle">
+            <h2 id="coordinateTitle" class="submission-heading">ปักหมุดตำแหน่งสถานประกอบการ <span class="submission-required">*</span></h2><p class="submission-copy">ค้นหาด้วยชื่อหรือที่อยู่ แล้วเลือกผลลัพธ์ หรือคลิกตำแหน่งบนแผนที่เพื่อปรับหมุดให้ตรงกับสถานที่จริง</p>
+            <div class="submission-map-layout">
+              <div class="submission-map-search"><label class="submission-label" for="businessPlaceSearch">ค้นหาสถานที่</label><div class="submission-search-row"><input id="businessPlaceSearch" type="search" class="submission-control" placeholder="ชื่อสถานประกอบการหรือที่อยู่"><button id="searchBusinessPlace" type="button" class="submission-primary"><i class="fas fa-magnifying-glass mr-2"></i>ค้นหา</button></div><p class="submission-help">ผลการค้นหาอ้างอิง OpenStreetMap โปรดตรวจตำแหน่งหมุดก่อนส่ง</p><div id="businessPlaceStatus" class="submission-help" role="status" aria-live="polite"></div><div id="businessPlaceResults" class="submission-search-results"></div></div>
+              <div class="submission-map-wrap"><div id="businessLocationMap" class="submission-map" aria-label="แผนที่สำหรับปักหมุดสถานประกอบการ"></div><div class="submission-coordinate"><span>พิกัดที่เลือก</span><strong id="businessCoordinateDisplay">ยังไม่ได้ปักหมุด</strong></div></div>
+            </div>
+            <input id="businessCoordinate" name="COORDI" type="hidden" required>
+          </section>
+
+          <section class="submission-section" aria-labelledby="businessSkillsTitle">
+            <div class="flex flex-wrap items-start justify-between gap-3"><div><h2 id="businessSkillsTitle" class="submission-heading">ทักษะที่ต้องการจากผู้เรียน <span class="submission-required">*</span></h2><p class="submission-copy">เลือกจาก WEF Skills Taxonomy อย่างน้อย 1 และไม่เกิน 10 ทักษะ ระบบจะบันทึกชื่อภาษาอังกฤษมาตรฐาน</p></div><span id="businessSkillCount" class="rounded-full border border-teal-200 bg-teal-50 px-3 py-1 text-xs font-bold text-teal-700" role="status" aria-live="polite">เลือกแล้ว 0 / 10</span></div>
+            <div class="submission-skills"><div id="businessSelectedSkills" class="submission-selected">ยังไม่ได้เลือกทักษะ</div><div class="submission-skill-tools mt-3"><div><label class="submission-label" for="businessSkillSearch">ค้นหาทักษะ</label><input id="businessSkillSearch" type="search" class="submission-control" placeholder="ค้นหาภาษาไทยหรืออังกฤษ"></div><div><label class="submission-label" for="businessSkillGroup">เลือกหมวดทักษะ</label><select id="businessSkillGroup" class="submission-control"><option value="">— เลือกหมวด —</option></select></div></div><div id="businessSkillResults" class="submission-skill-results"><div class="submission-empty">เลือกหมวดหรือค้นหาทักษะเพื่อเริ่มต้น</div></div><p id="businessSkillError" class="mt-2 text-xs text-rose-600" hidden>กรุณาเลือกอย่างน้อย 1 และไม่เกิน 10 ทักษะ</p></div>
+            <input id="businessWants" name="BUSINESS_WANTS" type="hidden">
+          </section>
+
+          <section class="submission-section" aria-labelledby="businessEmailTitle">
+            <h2 id="businessEmailTitle" class="submission-heading">ยืนยันอีเมลก่อนส่งข้อมูล</h2><p class="submission-copy">อีเมลใช้ยืนยันตัวตนและสิทธิ์แก้ไขข้อมูลในภายหลัง โดยจะไม่แสดงบน Dashboard</p>
+            <div class="submission-grid"><div><label class="submission-label" for="businessEmail">E-mail <span class="submission-required">*</span></label><input id="businessEmail" type="email" class="submission-control" required maxlength="254" autocomplete="email"></div><div class="self-end"><button id="requestBusinessOtp" type="button" class="submission-primary w-full"><i class="fas fa-paper-plane mr-2"></i>ส่งรหัสยืนยัน</button></div><div><label class="submission-label" for="businessOtp">รหัสยืนยัน 6 หลัก <span class="submission-required">*</span></label><input id="businessOtp" class="submission-control tracking-[.3em]" required inputmode="numeric" autocomplete="one-time-code" minlength="6" maxlength="6" pattern="[0-9]{6}" placeholder="000000"></div></div>
+            <div id="businessOtpStatus" class="submission-status mt-3" hidden role="status" aria-live="polite"></div>
+          </section>
+
+          <section class="submission-section"><label class="flex items-start gap-3 rounded-lg border border-slate-200 bg-slate-50 p-4 text-sm leading-6 text-slate-700"><input id="businessConsent" type="checkbox" required class="mt-1 h-4 w-4 accent-teal-600"><span>ฉันยืนยันว่าข้อมูลนี้เป็นจริง และยินยอมให้เผยแพร่ข้อมูลสถานประกอบการและช่องทางติดต่อหลังผ่านการตรวจสอบ <span class="submission-required">*</span></span></label><label class="sr-only" for="businessWebsite">เว็บไซต์</label><input id="businessWebsite" name="website" tabindex="-1" autocomplete="off" class="absolute left-[-9999px]" aria-hidden="true"><div id="businessFormStatus" class="submission-status mt-4" hidden role="status" aria-live="polite"></div><div class="submission-actions mt-5"><a href="dashboard-business.html" class="submission-secondary text-center">ยกเลิก</a><button id="submitBusiness" type="submit" class="submission-primary"><i class="fas fa-paper-plane mr-2"></i>ส่งข้อมูลเพื่อตรวจสอบ</button></div></section>
+        </form>
+      </div>
+    </main>
+  </div>
+  <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-auth.js"></script>
+  <script src="site.js?v=20260907-1"></script>
+  <script src="data-client.js?v=20260902-2"></script>
+  <script src="wef-skills.js?v=20260801-1"></script>
+  <script src="business-submission-form.js?v=20260907-2"></script>
+  <script src="footer.js?v=20260903-1"></script>
+</body>
+</html>
