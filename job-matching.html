@@ -9,7 +9,7 @@
   <link href="tailwind.css?v=20260908-3" rel="stylesheet">
   <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
   <link href="responsive.css?v=20260903-3" rel="stylesheet">
-  <link href="job-matching.css?v=20260908-1" rel="stylesheet">
+  <link href="job-matching.css?v=20260908-2" rel="stylesheet">
 </head>
 <body data-dashboard="true" class="flex h-screen overflow-hidden bg-slate-50 font-sans text-slate-800">
   <!-- THESIS: A comparison desk that makes the reason behind every match visible, refusing an opaque recommendation feed. OWN-WORLD: the established navy workspace, white paper surfaces, teal actions, and four restrained grade colors. STORY: choose a role, identify one approved record, compare the five strongest counterparts, and inspect the evidence. FIRST VIEWPORT: role and record controls lead directly into a ranked list beside a persistent evidence panel. FORM: a precise extension of the workforce dashboard. FINISH: unreviewed and undocumented is unfinished; this build ends with the finish review, the verdict, DESIGN.md, and every shipping raster carrying its provenance. -->
@@ -34,7 +34,10 @@
             <label><input type="radio" name="matchingRole" value="student" checked><span><i class="fas fa-user-graduate"></i><b>ผู้สนใจฝึกประสบการณ์</b><small>ค้นหาสถานประกอบการ</small></span></label>
             <label><input type="radio" name="matchingRole" value="business"><span><i class="fas fa-building"></i><b>สถานประกอบการ</b><small>ค้นหาผู้เรียน</small></span></label>
           </div>
-          <div class="matching-source-row"><label for="matchingSource"><span id="sourceLabel">โปรไฟล์ของผู้เรียน</span><select id="matchingSource" disabled><option value="">กำลังโหลดข้อมูล…</option></select></label><button id="runMatching" type="button" disabled><i class="fas fa-arrows-to-circle mr-2"></i>ค้นหาคู่ที่เหมาะสม</button></div>
+          <div class="matching-source-tools">
+            <label class="matching-source-search" for="matchingSourceSearch"><span>ค้นหารายชื่อ</span><span class="matching-search-box"><i class="fas fa-magnifying-glass" aria-hidden="true"></i><input id="matchingSourceSearch" type="search" placeholder="พิมพ์ชื่อผู้เรียน" autocomplete="off" disabled></span><small id="sourceSearchSummary" aria-live="polite"></small></label>
+            <div class="matching-source-row"><label for="matchingSource"><span id="sourceLabel">โปรไฟล์ของผู้เรียน</span><select id="matchingSource" disabled><option value="">กำลังโหลดข้อมูล…</option></select></label><button id="runMatching" type="button" disabled><i class="fas fa-arrows-to-circle mr-2"></i>ค้นหาคู่ที่เหมาะสม</button></div>
+          </div>
           <div id="matchingMessage" class="matching-message" role="status" aria-live="polite">กำลังเตรียมข้อมูลที่ผ่านการอนุมัติ</div>
         </section>
 
@@ -64,7 +67,7 @@
   <script src="site.js?v=20260908-2"></script>
   <script src="data-client.js?v=20260908-2"></script>
   <script src="wef-skills.js?v=20260801-1"></script>
-  <script src="job-matching.js?v=20260908-1"></script>
+  <script src="job-matching.js?v=20260908-2"></script>
   <script src="footer.js?v=20260903-1"></script>
 </body>
 </html>

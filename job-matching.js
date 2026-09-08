@@ -16,6 +16,7 @@ window.addEventListener("DOMContentLoaded", initializeJobMatching);
 async function initializeJobMatching() {
   document.querySelectorAll('input[name="matchingRole"]').forEach(input => input.addEventListener("change", changeMatchingRole));
   document.getElementById("runMatching").addEventListener("click", runJobMatching);
+  document.getElementById("matchingSourceSearch").addEventListener("input", event => renderMatchingSourceOptions(event.target.value));
   document.getElementById("matchingSource").addEventListener("change", () => {
     document.getElementById("runMatching").disabled = !document.getElementById("matchingSource").value;
   });
@@ -47,21 +48,44 @@ function changeMatchingRole(event) {
   document.getElementById("sourceLabel").textContent = jobMatchingRole === "student" ? "โปรไฟล์ของผู้เรียน" : "สถานประกอบการของคุณ";
   document.getElementById("sourceGuidance").textContent = jobMatchingRole === "student" ? "เลือกโปรไฟล์ผู้เรียนที่ได้รับอนุมัติแล้ว" : "เลือกสถานประกอบการที่ได้รับอนุมัติแล้ว";
   document.getElementById("resultTitle").textContent = jobMatchingRole === "student" ? "5 สถานประกอบการที่สอดคล้องสูงสุด" : "5 ผู้เรียนที่สอดคล้องสูงสุด";
+  const search = document.getElementById("matchingSourceSearch");
+  search.value = "";
+  search.placeholder = jobMatchingRole === "student" ? "พิมพ์ชื่อผู้เรียน" : "พิมพ์ชื่อสถานประกอบการ";
   renderMatchingSourceOptions();
   resetMatchingResults();
 }
 
-function renderMatchingSourceOptions() {
+function renderMatchingSourceOptions(query = "") {
   const select = document.getElementById("matchingSource");
+  const search = document.getElementById("matchingSourceSearch");
+  const summary = document.getElementById("sourceSearchSummary");
   const rows = jobMatchingData[jobMatchingRole];
-  select.replaceChildren(new Option(jobMatchingRole === "student" ? "— เลือกชื่อผู้เรียน —" : "— เลือกสถานประกอบการ —", ""));
-  [...rows].sort((left, right) => sourceName(left).localeCompare(sourceName(right), "th")).forEach(row => {
+  const normalizedQuery = normalizeMatchText(query);
+  const filteredRows = [...rows]
+    .sort((left, right) => sourceName(left).localeCompare(sourceName(right), "th"))
+    .filter(row => !normalizedQuery || sourceSearchText(row).includes(normalizedQuery));
+  const placeholder = !rows.length
+    ? "— ยังไม่มีข้อมูลที่ได้รับอนุมัติ —"
+    : filteredRows.length
+      ? jobMatchingRole === "student" ? "— เลือกชื่อผู้เรียน —" : "— เลือกสถานประกอบการ —"
+      : "— ไม่พบรายชื่อที่ค้นหา —";
+  select.replaceChildren(new Option(placeholder, ""));
+  filteredRows.forEach(row => {
     const index = rows.indexOf(row);
     const context = jobMatchingRole === "student" ? [row.SCHOOL_NAME, row.PROV_NAME] : [row.BUSINESS_TYPE, row.PROV_NAME];
     select.add(new Option(`${sourceName(row)}${context.filter(Boolean).length ? ` · ${context.filter(Boolean).join(" · ")}` : ""}`, String(index)));
   });
-  select.disabled = !rows.length;
+  search.disabled = !rows.length;
+  select.disabled = !filteredRows.length;
+  summary.textContent = rows.length ? (normalizedQuery ? `พบ ${filteredRows.length.toLocaleString("th-TH")} จาก ${rows.length.toLocaleString("th-TH")} รายชื่อ` : `มี ${rows.length.toLocaleString("th-TH")} รายชื่อให้เลือก`) : "";
   document.getElementById("runMatching").disabled = true;
+}
+
+function sourceSearchText(row) {
+  const context = jobMatchingRole === "student"
+    ? [row.STUDENT_NAME, row.SCHOOL_NAME, row.PROV_NAME]
+    : [row.BUSINESS_NAME, row.BUSINESS_TYPE, row.PROV_NAME];
+  return normalizeMatchText(context.filter(Boolean).join(" "));
 }
 
 function sourceName(row) {
