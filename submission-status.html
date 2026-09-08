@@ -1,0 +1,77 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>ตรวจสอบสถานะข้อมูล - ศธภ.15</title>
+  <link rel="icon" type="image/png" href="reo15-icon.png">
+  <link rel="apple-touch-icon" href="reo15-icon.png">
+  <link href="tailwind.css?v=20260908-2" rel="stylesheet">
+  <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
+  <link href="responsive.css?v=20260903-3" rel="stylesheet">
+  <link href="submission-form.css?v=20260908-1" rel="stylesheet">
+  <link href="submission-status.css?v=20260908-1" rel="stylesheet">
+</head>
+<body class="flex h-screen overflow-hidden bg-slate-50 font-sans text-slate-800">
+  <!-- THESIS: A private service counter for one submitted record, not a public dashboard. OWN-WORLD: white working paper, navy structure, teal action, and restrained status color. STORY: identify, verify, understand, then revise only when invited. FIRST VIEWPORT: compact lookup at left and a privacy explanation at right; status replaces explanation after verification. FORM: established submission workflow extension. FINISH: unreviewed and undocumented is unfinished; this build ends with the finish review, the verdict, DESIGN.md, and every shipping raster carrying its provenance. -->
+  <aside class="flex h-full w-64 shrink-0 flex-col bg-[#1e293b] text-slate-300">
+    <div class="flex h-16 items-center border-b border-slate-700/50 px-4"><div class="mr-3 flex h-8 w-8 items-center justify-center rounded bg-teal-500 text-white"><i class="fa-solid fa-graduation-cap"></i></div><span class="text-lg font-semibold text-white">ศธภ.15</span></div>
+    <div class="flex-1 overflow-y-auto px-3 py-4"><div class="mb-2 px-3 text-xs font-semibold tracking-wider text-slate-500">DASHBOARDS</div><ul class="mb-6 space-y-1"><li><a href="dashboard.html" class="flex items-center rounded-md px-3 py-2 hover:bg-slate-800 hover:text-white"><i class="fas fa-chart-pie w-7"></i>สารสนเทศการศึกษา</a></li><li><a href="dashboard-index.html" class="flex items-center rounded-md px-3 py-2 hover:bg-slate-800 hover:text-white"><i class="fas fa-chart-line w-7"></i>ดัชนีการศึกษา</a></li><li><a href="dashboard-workforce.html" class="flex items-center rounded-md px-3 py-2 hover:bg-slate-800 hover:text-white"><i class="fas fa-users-gear w-7"></i>ความต้องการกำลังคน</a></li></ul><div class="mb-2 px-3 text-xs font-semibold tracking-wider text-slate-500">ข้อมูลของฉัน</div><ul><li><a href="submission-status.html" aria-current="page" class="flex items-center rounded-md bg-slate-800 px-3 py-2 text-white"><i class="fas fa-clipboard-check w-7 text-teal-400"></i>ตรวจสอบสถานะ</a></li></ul></div>
+  </aside>
+
+  <div class="flex h-full flex-1 flex-col overflow-hidden">
+    <header class="flex h-16 shrink-0 items-center justify-between border-b border-slate-200 bg-white px-4 md:px-6"><div class="flex min-w-0 items-center"><button type="button" class="mr-4 text-slate-500" aria-label="ย่อหรือขยายเมนู"><i class="fas fa-bars"></i></button><div class="min-w-0"><h1 class="truncate font-semibold">ตรวจสอบสถานะข้อมูล</h1><p class="hidden text-xs text-slate-400 sm:block">สำหรับผู้ส่งข้อมูลสถานประกอบการและโปรไฟล์ผู้เรียน</p></div></div><a href="dashboard-workforce.html" class="rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm text-slate-600 hover:bg-slate-50"><i class="fas fa-arrow-left mr-1"></i><span class="hidden sm:inline">กลับหน้ากำลังคน</span></a></header>
+
+    <main class="flex-1 overflow-y-auto p-4 md:p-6">
+      <div class="submission-shell status-shell">
+        <div class="status-intro-grid">
+          <form id="statusLookupForm" class="submission-card status-lookup" novalidate>
+            <h2 class="submission-heading">ค้นหารายการของคุณ</h2>
+            <p class="submission-copy">ใช้รหัสติดตามที่ได้รับหลังส่งข้อมูล และอีเมลเดียวกับที่ใช้ยืนยันครั้งแรก</p>
+            <div class="mt-5 space-y-4">
+              <div><label for="submissionCode" class="submission-label">รหัสติดตาม <span class="submission-required">*</span></label><input id="submissionCode" class="submission-control status-code-input" required inputmode="numeric" autocomplete="off" maxlength="11" pattern="[0-9]{11}" placeholder="เช่น 25690201001"></div>
+              <div><label for="submissionEmail" class="submission-label">อีเมลเดิม <span class="submission-required">*</span></label><input id="submissionEmail" type="email" class="submission-control" required maxlength="254" autocomplete="email" placeholder="name@example.com"></div>
+              <label class="sr-only" for="statusWebsite">เว็บไซต์</label><input id="statusWebsite" tabindex="-1" autocomplete="off" class="absolute left-[-9999px]" aria-hidden="true">
+              <button id="requestStatusOtp" type="button" class="submission-secondary w-full"><i class="fas fa-envelope mr-2"></i>ส่งรหัสยืนยันทางอีเมล</button>
+              <div id="statusOtpFields" hidden><label for="submissionOtp" class="submission-label">รหัสยืนยัน 6 หลัก <span class="submission-required">*</span></label><input id="submissionOtp" class="submission-control tracking-[.3em]" required disabled inputmode="numeric" autocomplete="one-time-code" minlength="6" maxlength="6" pattern="[0-9]{6}" placeholder="000000"></div>
+              <div id="statusLookupMessage" class="submission-status" hidden role="status" aria-live="polite"></div>
+              <button id="checkSubmissionStatus" type="submit" class="submission-primary w-full" disabled><i class="fas fa-shield-halved mr-2"></i>ยืนยันและตรวจสอบสถานะ</button>
+            </div>
+          </form>
+
+          <section id="statusPrivacyPanel" class="status-privacy" aria-labelledby="privacyTitle">
+            <div class="status-privacy-icon"><i class="fas fa-lock"></i></div>
+            <h2 id="privacyTitle">ข้อมูลของคุณไม่เปิดเผยจากรหัสเพียงอย่างเดียว</h2>
+            <p>ระบบจะแสดงรายละเอียดและเปิดสิทธิ์แก้ไขหลังยืนยันรหัส OTP ที่ส่งไปยังอีเมลเดิมเท่านั้น</p>
+            <ul><li><i class="fas fa-check"></i> ตรวจสอบสถานะการพิจารณา</li><li><i class="fas fa-check"></i> อ่านหมายเหตุจากผู้ดูแล</li><li><i class="fas fa-check"></i> แก้ไขและส่งกลับเมื่อต้องปรับข้อมูล</li></ul>
+          </section>
+
+          <section id="statusResult" class="submission-card status-result" hidden aria-live="polite">
+            <div class="status-result-head"><div><span id="submissionType" class="status-type"></span><h2 id="submissionResultCode"></h2></div><span id="submissionStatusBadge" class="status-badge"></span></div>
+            <div class="status-progress" aria-label="ลำดับการดำเนินงาน"><div class="status-step is-done"><span><i class="fas fa-check"></i></span><div><strong>ส่งข้อมูลแล้ว</strong><small id="submissionCreatedTime">—</small></div></div><div id="reviewStep" class="status-step"><span><i class="fas fa-magnifying-glass"></i></span><div><strong>ตรวจสอบข้อมูล</strong><small id="submissionUpdatedTime">—</small></div></div><div id="decisionStep" class="status-step"><span><i class="fas fa-flag"></i></span><div><strong id="decisionStepTitle">ผลการพิจารณา</strong><small id="submissionReviewedTime">—</small></div></div></div>
+            <div id="reviewNotePanel" class="status-note" hidden><strong><i class="fas fa-message mr-2"></i>หมายเหตุจากผู้ดูแล</strong><p id="submissionReviewNote"></p></div>
+            <p id="submissionStatusExplanation" class="status-explanation"></p>
+            <button id="openRevisionForm" type="button" class="submission-primary" hidden><i class="fas fa-pen-to-square mr-2"></i>แก้ไขข้อมูลตามข้อเสนอแนะ</button>
+          </section>
+        </div>
+
+        <form id="revisionForm" class="submission-card mt-5" hidden novalidate>
+          <div class="revision-heading"><div><h2 class="submission-heading">แก้ไขข้อมูล</h2><p class="submission-copy">แก้เฉพาะจุดที่ผู้ดูแลระบุ แล้วตรวจสอบข้อมูลทั้งหมดก่อนส่งกลับ</p></div><button id="closeRevisionForm" type="button" class="submission-secondary"><i class="fas fa-xmark mr-2"></i>ปิดแบบฟอร์ม</button></div>
+          <div id="revisionFields" class="submission-grid"></div>
+          <section id="revisionSkillsSection" class="revision-skills" hidden><div class="revision-skill-head"><div><h3 id="revisionSkillTitle">ทักษะ</h3><p id="revisionSkillGuidance"></p></div><span id="revisionSkillCount"></span></div><div id="revisionSelectedSkills" class="submission-selected"></div><div class="submission-skill-tools mt-3"><div><label class="submission-label" for="revisionSkillSearch">ค้นหาทักษะ</label><input id="revisionSkillSearch" type="search" class="submission-control" placeholder="ค้นหาภาษาไทยหรืออังกฤษ"></div><div><label class="submission-label" for="revisionSkillGroup">หมวดทักษะ</label><select id="revisionSkillGroup" class="submission-control"><option value="">— ทุกหมวด —</option></select></div></div><div id="revisionSkillResults" class="submission-skill-results"></div><p id="revisionSkillError" class="mt-2 text-xs text-rose-600" hidden></p></section>
+          <label class="mt-5 flex items-start gap-3 rounded-lg border border-amber-200 bg-amber-50 p-4 text-sm leading-6 text-amber-900"><input id="revisionConsent" type="checkbox" required class="mt-1 h-4 w-4 accent-teal-600"><span>ฉันตรวจสอบข้อมูลที่แก้ไขแล้ว และยืนยันให้ส่งกลับไปยังผู้ดูแลเพื่อตรวจสอบอีกครั้ง</span></label>
+          <label class="sr-only" for="revisionWebsite">เว็บไซต์</label><input id="revisionWebsite" tabindex="-1" autocomplete="off" class="absolute left-[-9999px]" aria-hidden="true">
+          <div id="revisionMessage" class="submission-status mt-4" hidden role="status" aria-live="polite"></div>
+          <div class="submission-actions mt-5"><button id="submitRevision" type="submit" class="submission-primary"><i class="fas fa-paper-plane mr-2"></i>ส่งข้อมูลที่แก้ไขแล้ว</button></div>
+        </form>
+      </div>
+    </main>
+  </div>
+  <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-auth.js"></script>
+  <script src="site.js?v=20260907-1"></script>
+  <script src="wef-skills.js?v=20260801-1"></script>
+  <script src="submission-status.js?v=20260908-1"></script>
+  <script src="footer.js?v=20260903-1"></script>
+</body>
+</html>

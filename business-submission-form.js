@@ -343,6 +343,11 @@ function showBusinessStatus(id, message, type, code = "") {
     codeElement.className = "submission-success-code mt-2 block";
     codeElement.textContent = code;
     element.appendChild(codeElement);
+    const statusLink = document.createElement("a");
+    statusLink.href = `submission-status.html?code=${encodeURIComponent(code)}`;
+    statusLink.className = "mt-3 inline-flex items-center font-semibold underline underline-offset-2";
+    statusLink.textContent = "ตรวจสอบสถานะรายการนี้";
+    element.appendChild(statusLink);
   }
 }
 

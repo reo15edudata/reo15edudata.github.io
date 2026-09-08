@@ -11,9 +11,11 @@ window.addEventListener("DOMContentLoaded", initProfileDashboard);
 
 async function initProfileDashboard() {
   try {
-    profileRows = await EDU15DataClient.fetchAllPages(GAS_WEB_APP_URL, "DB_3", PROFILE_SHEET, {
-      cacheScope: "submitted-time-v1"
+    const loadedRows = await EDU15DataClient.fetchAllPages(GAS_WEB_APP_URL, "DB_3", PROFILE_SHEET, {
+      cacheScope: "approved-only-v1",
+      networkFirst: true
     });
+    profileRows = loadedRows.filter(row => String(row.DATA_STATUS || "").trim().toUpperCase() === "APPROVED");
     populateProfileFilters();
     renderProfileStats();
     applyProfileFilters();

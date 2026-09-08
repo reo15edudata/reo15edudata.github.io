@@ -322,7 +322,7 @@ async function submitStudentProfile(event) {
     syncSelectedSkills();
     renderSkillOptions();
     setOtpStatus("", "info", true);
-    setFormStatus(`ส่งข้อมูลเรียบร้อยแล้ว รหัสติดตามของคุณคือ ${result.code} กรุณาบันทึกรหัสนี้ไว้ ข้อมูลจะเผยแพร่หลังผ่านการตรวจสอบ`, "success");
+    setFormStatus(`ส่งข้อมูลเรียบร้อยแล้ว รหัสติดตามของคุณคือ ${result.code} กรุณาบันทึกรหัสนี้ไว้ ข้อมูลจะเผยแพร่หลังผ่านการตรวจสอบ`, "success", result.code);
   } catch (error) {
     console.error(error);
     setFormStatus(`ส่งข้อมูลไม่สำเร็จ: ${error.message} กรุณาตรวจสอบข้อมูลแล้วลองอีกครั้ง`, "error");
@@ -345,10 +345,17 @@ function setOtpStatus(message, type, hide = false) {
   status.hidden = hide;
 }
 
-function setFormStatus(message, type) {
+function setFormStatus(message, type, code = "") {
   const status = document.getElementById("profileFormStatus");
   setStatusElement(status, message, type);
   status.hidden = false;
+  if (code) {
+    const link = document.createElement("a");
+    link.href = `submission-status.html?code=${encodeURIComponent(code)}`;
+    link.className = "mt-3 block font-semibold underline underline-offset-2";
+    link.textContent = "ตรวจสอบสถานะรายการนี้";
+    status.appendChild(link);
+  }
 }
 
 function setStatusElement(status, message, type) {

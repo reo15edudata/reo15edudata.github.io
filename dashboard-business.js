@@ -119,11 +119,12 @@ function renderFilteredBusinessData() {
   const selectedType = document.getElementById("businessTypeFilter").value.trim();
   const nameQuery = document.getElementById("businessNameSearch").value.trim().toLocaleLowerCase("th");
   const filteredRows = businessRows.filter(row => {
+    const statusMatches = String(row.DATA_STATUS || "").trim().toUpperCase() === "APPROVED";
     const typeMatches = !selectedType || String(row.BUSINESS_TYPE || "").trim() === selectedType;
     const nameMatches = !nameQuery || String(row.BUSINESS_NAME || "")
       .toLocaleLowerCase("th")
       .includes(nameQuery);
-    return typeMatches && nameMatches;
+    return statusMatches && typeMatches && nameMatches;
   });
   renderMou(filteredRows);
   queueBusinessMapRender(filteredRows);
