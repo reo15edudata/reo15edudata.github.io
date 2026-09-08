@@ -72,7 +72,7 @@ const SCHEMA_DICT = {
             "BUSINESS_CONTACT", "DATA_STATUS"
         ],
         "Business_Student_Profile": [
-            "SUBMITED_TIME", "STUDENT_CODE", "STUDENT_NAME", "GENDER", "SCHOOL_NAME",
+            "SUBMITED_TIME", "STUDENT_CODE", "PROV_NAME", "STUDENT_NAME", "GENDER", "SCHOOL_NAME",
             "EDU_LEVEL", "DESCRIPTION_STUDENT", "TOP_SKILLS", "LOOKING_WORK",
             "AVAILABLE_TIME", "PORTFOLIO_LINK", "STUDENT_CONTRACT", "DATA_STATUS"
         ]

@@ -34,6 +34,7 @@ function populateProfileFilters() {
   fillSelect("profileGender", uniqueValues("GENDER"));
   fillSelect("profileSchool", uniqueValues("SCHOOL_NAME"));
   fillSelect("profileLevel", uniqueValues("EDU_LEVEL"));
+  fillSelect("profileProvince", uniqueValues("PROV_NAME"));
 }
 function uniqueValues(field) {
   return [...new Set(profileRows.map(row => String(row[field] || "").trim()).filter(Boolean))]
@@ -107,13 +108,15 @@ function applyProfileFilters() {
   const gender = document.getElementById("profileGender").value;
   const school = document.getElementById("profileSchool").value;
   const level = document.getElementById("profileLevel").value;
+  const province = document.getElementById("profileProvince").value;
   filteredProfileRows = profileRows.filter(row => {
     const haystack = [row.STUDENT_NAME, row.SCHOOL_NAME, row.LOOKING_WORK, row.TOP_SKILLS]
       .map(value => String(value || "").toLowerCase()).join(" ");
     return (!search || haystack.includes(search)) &&
       (!gender || String(row.GENDER) === gender) &&
       (!school || String(row.SCHOOL_NAME) === school) &&
-      (!level || String(row.EDU_LEVEL) === level);
+      (!level || String(row.EDU_LEVEL) === level) &&
+      (!province || String(row.PROV_NAME) === province);
   });
   closeStudentDetail();
   renderProfileTable();
@@ -142,6 +145,7 @@ function showStudentDetail(row) {
   document.getElementById("detailGender").textContent = row.GENDER || "ไม่ได้ระบุ";
   document.getElementById("detailSchool").textContent = row.SCHOOL_NAME || "ไม่ได้ระบุ";
   document.getElementById("detailEduLevel").textContent = row.EDU_LEVEL || "ไม่ได้ระบุ";
+  document.getElementById("detailProvince").textContent = row.PROV_NAME || "ไม่ได้ระบุ";
   document.getElementById("detailDescription").textContent = row.DESCRIPTION_STUDENT || "ไม่ได้ระบุ";
   const rawSkills = String(row.TOP_SKILLS || "");
   const skillParts = rawSkills.includes("|") ? rawSkills.split("|") : rawSkills.split(",");

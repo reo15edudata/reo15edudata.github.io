@@ -378,6 +378,7 @@ function setupWorkforceNavigation(sidebar) {
   const currentPage = location.pathname.split("/").pop() || "index.html";
   const pages = [
     ["dashboard-workforce.html", "ภาพรวมความต้องการกำลังคน"],
+    ["job-matching.html", "Job Matching"],
     ["dashboard-business.html", "สถานประกอบการที่ร่วมจัดการอาชีวศึกษา"],
     ["dashboard-workforce-profile.html", "โปรไฟล์ผู้สนใจฝึกประสบการณ์"]
   ];
@@ -407,6 +408,7 @@ const EDU15_DATA_SURFACES = {
   "dashboard.html": { label: "สารสนเทศการศึกษา", href: "dashboard.html" },
   "dashboard-index.html": { label: "ดัชนีทางการศึกษา", href: "dashboard-index.html" },
   "dashboard-workforce.html": { label: "ความต้องการกำลังคน", href: "dashboard-workforce.html" },
+  "job-matching.html": { label: "Job Matching", href: "job-matching.html" },
   "dashboard-business.html": { label: "สถานประกอบการ", href: "dashboard-business.html" },
   "dashboard-workforce-profile.html": { label: "โปรไฟล์ผู้สนใจฝึกประสบการณ์", href: "dashboard-workforce-profile.html" },
   "dashboard-score.html": { label: "ผลการทดสอบทางการศึกษา", href: "dashboard-score.html" }

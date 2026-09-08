@@ -24,6 +24,7 @@ const EDIT_FIELDS = {
   STUDENT: [
     ["STUDENT_NAME", "ชื่อ–นามสกุล", "text"],
     ["GENDER", "เพศ", "select", ["ชาย", "หญิง", "เพศหลากหลาย", "ไม่ประสงค์ระบุ"]],
+    ["PROV_NAME", "จังหวัดที่ต้องการฝึกประสบการณ์", "select", ["เชียงใหม่", "แม่ฮ่องสอน", "ลำพูน", "ลำปาง"]],
     ["SCHOOL_NAME", "สถานศึกษาที่กำลังศึกษา", "text"],
     ["EDU_LEVEL", "ระดับการศึกษา", "text"],
     ["DESCRIPTION_STUDENT", "แนะนำตัวและความสนใจ", "textarea", null, true],

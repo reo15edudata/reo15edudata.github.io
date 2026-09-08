@@ -46,6 +46,7 @@
           <div class="grid grid-cols-1 gap-5 md:grid-cols-2">
             <div><label class="form-label" for="studentName">ชื่อ–นามสกุล <span class="required-mark">*</span></label><input id="studentName" name="STUDENT_NAME" required maxlength="120" autocomplete="name" class="form-control"></div>
             <div><label class="form-label" for="gender">เพศ <span class="required-mark">*</span></label><select id="gender" name="GENDER" required class="form-control"><option value="">-- เลือกข้อมูล --</option><option>ชาย</option><option>หญิง</option><option>เพศหลากหลาย</option><option>ไม่ประสงค์ระบุ</option></select></div>
+            <div><label class="form-label" for="studentProvince">จังหวัดที่ต้องการฝึกประสบการณ์ <span class="required-mark">*</span></label><select id="studentProvince" name="PROV_NAME" required class="form-control"><option value="">-- เลือกจังหวัด --</option><option>เชียงใหม่</option><option>แม่ฮ่องสอน</option><option>ลำพูน</option><option>ลำปาง</option></select></div>
             <div><label class="form-label" for="schoolName">สถานศึกษาที่กำลังศึกษา <span class="required-mark">*</span></label><input id="schoolName" name="SCHOOL_NAME" required maxlength="200" class="form-control"></div>
             <div><label class="form-label" for="eduLevel">ระดับการศึกษา <span class="required-mark">*</span></label><input id="eduLevel" name="EDU_LEVEL" required maxlength="150" placeholder="เช่น ปวช. ชั้นปีที่ 2" class="form-control"></div>
             <div class="md:col-span-2"><label class="form-label" for="descriptionStudent">แนะนำตัวและความสนใจ <span class="required-mark">*</span></label><textarea id="descriptionStudent" name="DESCRIPTION_STUDENT" required maxlength="2000" rows="5" class="form-control" placeholder="แนะนำตัว ประสบการณ์ และเป้าหมายที่สนใจ"></textarea></div>
@@ -86,8 +87,8 @@
   </div>
   <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
   <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-auth.js"></script>
-  <script src="site.js?v=20260907-1"></script>
-  <script src="data-client.js?v=20260901-1"></script>
+  <script src="site.js?v=20260908-2"></script>
+  <script src="data-client.js?v=20260908-2"></script>
   <script src="wef-skills.js?v=20260801-1"></script>
   <script src="student-profile-form.js?v=20260908-1"></script>
   <style>

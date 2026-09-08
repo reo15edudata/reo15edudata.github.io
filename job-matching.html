@@ -1,0 +1,70 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Job Matching - ศธภ.15</title>
+  <link rel="icon" type="image/png" href="reo15-icon.png">
+  <link rel="apple-touch-icon" href="reo15-icon.png">
+  <link href="tailwind.css?v=20260908-3" rel="stylesheet">
+  <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
+  <link href="responsive.css?v=20260903-3" rel="stylesheet">
+  <link href="job-matching.css?v=20260908-1" rel="stylesheet">
+</head>
+<body data-dashboard="true" class="flex h-screen overflow-hidden bg-slate-50 font-sans text-slate-800">
+  <!-- THESIS: A comparison desk that makes the reason behind every match visible, refusing an opaque recommendation feed. OWN-WORLD: the established navy workspace, white paper surfaces, teal actions, and four restrained grade colors. STORY: choose a role, identify one approved record, compare the five strongest counterparts, and inspect the evidence. FIRST VIEWPORT: role and record controls lead directly into a ranked list beside a persistent evidence panel. FORM: a precise extension of the workforce dashboard. FINISH: unreviewed and undocumented is unfinished; this build ends with the finish review, the verdict, DESIGN.md, and every shipping raster carrying its provenance. -->
+  <aside class="flex h-full w-64 shrink-0 flex-col bg-[#1e293b] text-slate-300">
+    <div class="flex h-16 items-center border-b border-slate-700/50 px-4"><div class="mr-3 flex h-8 w-8 items-center justify-center rounded bg-teal-500 text-white"><i class="fa-solid fa-graduation-cap"></i></div><span class="text-lg font-semibold text-white">ศธภ.15</span></div>
+    <div class="flex-1 overflow-y-auto px-3 py-4"><div class="mb-2 px-3 text-xs font-semibold tracking-wider text-slate-500">DASHBOARDS</div><ul class="mb-6 space-y-1"><li><a href="dashboard.html" class="flex items-center rounded-md px-3 py-2 hover:bg-slate-800 hover:text-white"><i class="fas fa-chart-pie w-7"></i>สารสนเทศการศึกษา</a></li><li><a href="dashboard-index.html" class="flex items-center rounded-md px-3 py-2 hover:bg-slate-800 hover:text-white"><i class="fas fa-chart-line w-7"></i>ดัชนีการศึกษา</a></li><li><a href="dashboard-workforce.html" class="flex items-center rounded-md bg-slate-800 px-3 py-2 text-teal-400"><i class="fas fa-users-gear w-7"></i>ความต้องการกำลังคน</a></li></ul></div>
+  </aside>
+
+  <div class="flex h-full flex-1 flex-col overflow-hidden">
+    <header class="flex h-16 shrink-0 items-center justify-between border-b border-slate-200 bg-white px-4 md:px-6"><div class="flex min-w-0 items-center"><button type="button" class="mr-4 text-slate-500" aria-label="ย่อหรือขยายเมนู"><i class="fas fa-bars"></i></button><div class="min-w-0"><h1 class="truncate font-semibold">Job Matching</h1><p class="hidden text-xs text-slate-400 sm:block">ค้นหาความสอดคล้องระหว่างผู้เรียนและสถานประกอบการ</p></div></div><a href="dashboard-workforce.html" class="rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm text-slate-600 hover:bg-slate-50"><i class="fas fa-arrow-left mr-1"></i><span class="hidden sm:inline">กลับหน้ากำลังคน</span></a></header>
+
+    <main class="flex-1 overflow-y-auto p-4 md:p-6">
+      <div class="matching-shell">
+        <section class="matching-intro" aria-labelledby="matchingTitle">
+          <div><h2 id="matchingTitle">ค้นหาคู่ที่สอดคล้องกับบริบทของคุณ</h2><p>ระบบจัดอันดับจากจังหวัด ทักษะตาม WEF Skills Taxonomy และความใกล้เคียงของงานที่สนใจ ผลลัพธ์ใช้เพื่อช่วยคัดกรองเบื้องต้นและควรพิจารณารายละเอียดร่วมด้วย</p></div>
+          <div class="grade-key" aria-label="เกณฑ์ระดับความสอดคล้อง"><span data-grade="A"><b>A</b> สอดคล้องมาก</span><span data-grade="B"><b>B</b> สอดคล้องดี</span><span data-grade="C"><b>C</b> สอดคล้องปานกลาง</span><span data-grade="D"><b>D</b> สอดคล้องน้อย</span></div>
+        </section>
+
+        <section class="matching-controls" aria-labelledby="roleTitle">
+          <div class="matching-control-copy"><h2 id="roleTitle">เลือกบทบาทและข้อมูลที่ต้องการนำมาจับคู่</h2><p id="sourceGuidance">เลือกโปรไฟล์ผู้เรียนที่ได้รับอนุมัติแล้ว</p></div>
+          <div class="matching-role" role="radiogroup" aria-label="บทบาทผู้ใช้งาน">
+            <label><input type="radio" name="matchingRole" value="student" checked><span><i class="fas fa-user-graduate"></i><b>ผู้สนใจฝึกประสบการณ์</b><small>ค้นหาสถานประกอบการ</small></span></label>
+            <label><input type="radio" name="matchingRole" value="business"><span><i class="fas fa-building"></i><b>สถานประกอบการ</b><small>ค้นหาผู้เรียน</small></span></label>
+          </div>
+          <div class="matching-source-row"><label for="matchingSource"><span id="sourceLabel">โปรไฟล์ของผู้เรียน</span><select id="matchingSource" disabled><option value="">กำลังโหลดข้อมูล…</option></select></label><button id="runMatching" type="button" disabled><i class="fas fa-arrows-to-circle mr-2"></i>ค้นหาคู่ที่เหมาะสม</button></div>
+          <div id="matchingMessage" class="matching-message" role="status" aria-live="polite">กำลังเตรียมข้อมูลที่ผ่านการอนุมัติ</div>
+        </section>
+
+        <div class="matching-workspace">
+          <section class="matching-results" aria-labelledby="resultTitle">
+            <div class="matching-section-head"><div><h2 id="resultTitle">5 อันดับที่สอดคล้องสูงสุด</h2><p id="resultSummary">เลือกข้อมูลด้านบนเพื่อเริ่มเปรียบเทียบ</p></div><span id="sourceProvince" hidden></span></div>
+            <div id="matchingList" class="matching-list"><div class="matching-empty"><i class="fas fa-arrow-pointer"></i><strong>ยังไม่ได้เริ่มจับคู่</strong><p>ระบบจะแสดงผลลัพธ์เรียงจากคะแนนสูงสุด พร้อมเหตุผลประกอบแต่ละรายการ</p></div></div>
+          </section>
+
+          <section id="matchingDetail" class="matching-detail" aria-labelledby="detailTitle">
+            <div id="detailEmpty" class="matching-detail-empty"><i class="fas fa-file-lines"></i><strong>รายละเอียดความสอดคล้อง</strong><p>คลิกรายการผลลัพธ์เพื่อดูคะแนนรายด้าน ทักษะที่ตรงกัน และข้อมูลสำหรับติดต่อ</p></div>
+            <div id="detailContent" hidden>
+              <div class="matching-detail-head"><div><span id="detailGrade" class="detail-grade"></span><h2 id="detailTitle"></h2><p id="detailMeta"></p></div><button id="closeMatchingDetail" type="button" aria-label="ปิดรายละเอียด"><i class="fas fa-xmark"></i></button></div>
+              <div id="detailScoreParts" class="score-parts"></div>
+              <div class="detail-block"><h3>ทักษะที่สอดคล้องกัน</h3><div id="detailSkills" class="detail-skills"></div></div>
+              <div class="detail-block"><h3>ข้อมูลเพิ่มเติม</h3><div id="detailInformation" class="detail-information"></div></div>
+            </div>
+          </section>
+        </div>
+
+        <p class="matching-method"><i class="fas fa-circle-info"></i> คะแนนเต็ม 100 คะแนน: ทักษะ 65 คะแนน จังหวัด 25 คะแนน และความใกล้เคียงของงานหรือบริบท 10 คะแนน หากข้อมูลบางด้านยังว่าง ระบบจะไม่ให้คะแนนในส่วนนั้น</p>
+      </div>
+    </main>
+  </div>
+  <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-auth.js"></script>
+  <script src="site.js?v=20260908-2"></script>
+  <script src="data-client.js?v=20260908-2"></script>
+  <script src="wef-skills.js?v=20260801-1"></script>
+  <script src="job-matching.js?v=20260908-1"></script>
+  <script src="footer.js?v=20260903-1"></script>
+</body>
+</html>
