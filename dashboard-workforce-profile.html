@@ -44,21 +44,21 @@
 
       <section class="mb-6 rounded-xl border border-slate-200 bg-white p-5 shadow-sm">
         <div class="mb-4 flex items-center gap-2"><i class="fas fa-filter text-teal-500"></i><h2 class="font-semibold text-slate-700">ค้นหาและกรองข้อมูล</h2></div>
-        <form id="profileFilterForm" class="grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-6">
+        <form id="profileFilterForm" class="grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-5">
           <div><label class="filter-label" for="profileSearch">ค้นหาชื่อหรืองานที่สนใจ</label><input id="profileSearch" type="search" class="filter-control" placeholder="พิมพ์คำค้นหา"></div>
-          <div><label class="filter-label" for="profileGender">เพศ</label><select id="profileGender" class="filter-control"><option value="">ทุกเพศ</option></select></div>
-          <div><label class="filter-label" for="profileSchool">สถานศึกษา</label><select id="profileSchool" class="filter-control"><option value="">ทุกสถานศึกษา</option></select></div>
-          <div><label class="filter-label" for="profileLevel">ระดับการศึกษา</label><select id="profileLevel" class="filter-control"><option value="">ทุกระดับ</option></select></div>
-          <div><label class="filter-label" for="profileProvince">จังหวัดที่สนใจ</label><select id="profileProvince" class="filter-control"><option value="">ทุกจังหวัด</option></select></div>
-          <div class="flex items-end gap-2"><button type="reset" class="w-full rounded-lg bg-slate-200 px-4 py-2.5 text-sm font-medium text-slate-700 hover:bg-slate-300">ล้างตัวกรอง</button><button type="submit" class="w-full rounded-lg bg-teal-600 px-4 py-2.5 text-sm font-medium text-white hover:bg-teal-700">ค้นหา</button></div>
+          <div><span id="profileGenderLabel" class="filter-label">เพศ</span><div id="profileGender" aria-labelledby="profileGenderLabel"></div></div>
+          <div><label class="filter-label" for="profileSchool">สถานศึกษา</label><input id="profileSchool" type="search" class="filter-control" placeholder="พิมพ์ชื่อสถานศึกษา" autocomplete="off"></div>
+          <div><span id="profileLevelLabel" class="filter-label">ระดับการศึกษา</span><div id="profileLevel" aria-labelledby="profileLevelLabel"></div></div>
+          <div><span id="profileProvinceLabel" class="filter-label">จังหวัดที่สนใจ</span><div id="profileProvince" aria-labelledby="profileProvinceLabel"></div></div>
+          <div class="profile-filter-actions"><button type="reset" class="w-full rounded-lg bg-slate-200 px-4 py-2.5 text-sm font-medium text-slate-700 hover:bg-slate-300">ล้างตัวกรอง</button><button type="submit" class="w-full rounded-lg bg-teal-600 px-4 py-2.5 text-sm font-medium text-white hover:bg-teal-700">ค้นหา</button></div>
         </form>
       </section>
 
       <section class="overflow-hidden rounded-xl border border-slate-200 bg-white shadow-sm">
         <div class="flex flex-col gap-3 border-b p-5 sm:flex-row sm:items-center sm:justify-between"><div><h2 class="font-semibold">รายชื่อนักเรียนและงานที่สนใจ</h2><p id="profileTableSummary" class="mt-1 text-xs text-slate-400">กำลังเตรียมข้อมูล</p></div><div class="rounded-lg bg-blue-50 px-3 py-2 text-xs text-blue-700"><i class="fas fa-circle-info mr-1"></i>คลิกชื่อนักเรียนเพื่อดูรายละเอียด</div></div>
         <div class="overflow-x-auto">
-          <table class="w-full min-w-[48rem] text-sm">
-            <thead class="bg-slate-50"><tr><th class="p-3 text-center">ลำดับ</th><th class="p-3 text-left">ชื่อ</th><th class="p-3 text-left">สถานศึกษา</th><th class="p-3 text-left">งานที่สนใจ</th></tr></thead>
+          <table class="profile-table w-full text-sm">
+            <thead class="bg-slate-50"><tr><th class="p-3 text-center">ลำดับ</th><th class="p-3 text-left">ชื่อ</th><th class="p-3 text-left">สถานศึกษา</th><th class="p-3 text-left">จังหวัด</th><th class="p-3 text-left">งานที่สนใจ</th></tr></thead>
             <tbody id="profileTableBody"></tbody>
           </table>
         </div>
@@ -111,8 +111,8 @@
   <script src="site.js?v=20260908-2"></script>
   <script src="data-client.js?v=20260908-2"></script>
   <script src="wef-skills.js?v=20260801-2"></script>
-  <script src="dashboard-workforce-profile.js?v=20260908-1"></script>
-  <style>#studentDetailModal[hidden]{display:none!important}.filter-label{display:block;font-size:.75rem;font-weight:600;color:#64748b;margin-bottom:.25rem}.filter-control{width:100%;border:1px solid #cbd5e1;background:#f8fafc;border-radius:.5rem;padding:.625rem}.profile-summary-item{border:1px solid #e2e8f0;border-radius:.75rem;background:#f8fafc;padding:.8rem}.profile-field-label{display:flex;align-items:center;gap:.4rem;font-size:.7rem;font-weight:700;color:#0f766e;text-transform:uppercase;letter-spacing:.04em}.profile-field-value{margin-top:.35rem;font-size:.9rem;font-weight:600;line-height:1.5;color:#334155}.profile-content-section{border:1px solid #e2e8f0;border-radius:.8rem;background:#fff;padding:1rem}.profile-section-title{display:flex;align-items:center;gap:.5rem;font-size:.8rem;font-weight:700;color:#0f766e}.profile-section-title i{width:1rem;text-align:center}.profile-section-body{margin-top:.6rem;color:#334155;line-height:1.75}</style>
+  <script src="dashboard-workforce-profile.js?v=20260909-1"></script>
+  <style>#studentDetailModal[hidden]{display:none!important}.filter-label{display:block;font-size:.75rem;font-weight:600;color:#64748b;margin-bottom:.25rem}.filter-control{width:100%;min-height:2.75rem;border:1px solid #7c8da3;background:#f8fafc;border-radius:.5rem;padding:.625rem .75rem;color:#1e293b}.filter-control:focus{border-color:#0f766e;outline:3px solid rgba(20,184,166,.17)}.profile-filter-actions{display:flex;grid-column:1/-1;align-items:flex-end;justify-content:flex-end;gap:.5rem}.profile-filter-actions button{min-height:2.75rem}.profile-table{min-width:58rem}.profile-summary-item{border:1px solid #e2e8f0;border-radius:.75rem;background:#f8fafc;padding:.8rem}.profile-field-label{display:flex;align-items:center;gap:.4rem;font-size:.7rem;font-weight:700;color:#0f766e;text-transform:uppercase;letter-spacing:.04em}.profile-field-value{margin-top:.35rem;font-size:.9rem;font-weight:600;line-height:1.5;color:#334155}.profile-content-section{border:1px solid #e2e8f0;border-radius:.8rem;background:#fff;padding:1rem}.profile-section-title{display:flex;align-items:center;gap:.5rem;font-size:.8rem;font-weight:700;color:#0f766e}.profile-section-title i{width:1rem;text-align:center}.profile-section-body{margin-top:.6rem;color:#334155;line-height:1.75}@media(min-width:1280px){.profile-filter-actions button{width:auto;min-width:9rem}}</style>
   <script src="footer.js?v=20260903-1"></script>
 </body>
 </html>

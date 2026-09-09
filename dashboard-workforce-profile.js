@@ -6,6 +6,9 @@ let filteredProfileRows = [];
 let profilePage = 1;
 let visibleProfileRows = [];
 let lastProfileTrigger = null;
+let profileGenderFilter;
+let profileLevelFilter;
+let profileProvinceFilter;
 
 window.addEventListener("DOMContentLoaded", initProfileDashboard);
 
@@ -23,7 +26,7 @@ async function initProfileDashboard() {
   } catch (error) {
     console.error(error);
     document.getElementById("profileTableBody").innerHTML =
-      `<tr><td colspan="4" class="p-10 text-center text-rose-600">โหลดข้อมูลไม่สำเร็จ: ${escapeHtml(error.message)}</td></tr>`;
+      `<tr><td colspan="5" class="p-10 text-center text-rose-600">โหลดข้อมูลไม่สำเร็จ: ${escapeHtml(error.message)}</td></tr>`;
     document.getElementById("profileTableSummary").textContent = "ไม่สามารถโหลดข้อมูลได้";
   } finally {
     await window.hidePageLoader?.();
@@ -31,20 +34,20 @@ async function initProfileDashboard() {
 }
 
 function populateProfileFilters() {
-  fillSelect("profileGender", uniqueValues("GENDER"));
-  fillSelect("profileSchool", uniqueValues("SCHOOL_NAME"));
-  fillSelect("profileLevel", uniqueValues("EDU_LEVEL"));
-  fillSelect("profileProvince", uniqueValues("PROV_NAME"));
+  profileGenderFilter = EDU15MultiSelect.create(
+    document.getElementById("profileGender"), uniqueValues("GENDER"), "ทุกเพศ"
+  );
+  profileLevelFilter = EDU15MultiSelect.create(
+    document.getElementById("profileLevel"), uniqueValues("EDU_LEVEL"), "ทุกระดับ"
+  );
+  profileProvinceFilter = EDU15MultiSelect.create(
+    document.getElementById("profileProvince"), uniqueValues("PROV_NAME"), "ทุกจังหวัด"
+  );
 }
 function uniqueValues(field) {
   return [...new Set(profileRows.map(row => String(row[field] || "").trim()).filter(Boolean))]
     .sort((a, b) => a.localeCompare(b, "th"));
 }
-function fillSelect(id, values) {
-  const select = document.getElementById(id);
-  values.forEach(value => select.add(new Option(value, value)));
-}
-
 function renderProfileStats() {
   document.getElementById("profileTotal").textContent = profileRows.length.toLocaleString("th-TH");
   const totals = new Map();
@@ -73,6 +76,9 @@ function setupProfileEvents() {
     applyProfileFilters();
   });
   document.getElementById("profileFilterForm").addEventListener("reset", () => setTimeout(() => {
+    profileGenderFilter.clear();
+    profileLevelFilter.clear();
+    profileProvinceFilter.clear();
     profilePage = 1;
     applyProfileFilters();
   }, 0));
@@ -105,18 +111,18 @@ function setupProfileEvents() {
 
 function applyProfileFilters() {
   const search = document.getElementById("profileSearch").value.trim().toLowerCase();
-  const gender = document.getElementById("profileGender").value;
-  const school = document.getElementById("profileSchool").value;
-  const level = document.getElementById("profileLevel").value;
-  const province = document.getElementById("profileProvince").value;
+  const genders = profileGenderFilter.getValues();
+  const school = document.getElementById("profileSchool").value.trim().toLocaleLowerCase("th");
+  const levels = profileLevelFilter.getValues();
+  const provinces = profileProvinceFilter.getValues();
   filteredProfileRows = profileRows.filter(row => {
     const haystack = [row.STUDENT_NAME, row.SCHOOL_NAME, row.LOOKING_WORK, row.TOP_SKILLS]
       .map(value => String(value || "").toLowerCase()).join(" ");
     return (!search || haystack.includes(search)) &&
-      (!gender || String(row.GENDER) === gender) &&
-      (!school || String(row.SCHOOL_NAME) === school) &&
-      (!level || String(row.EDU_LEVEL) === level) &&
-      (!province || String(row.PROV_NAME) === province);
+      (!genders.length || genders.includes(String(row.GENDER || "").trim())) &&
+      (!school || String(row.SCHOOL_NAME || "").toLocaleLowerCase("th").includes(school)) &&
+      (!levels.length || levels.includes(String(row.EDU_LEVEL || "").trim())) &&
+      (!provinces.length || provinces.includes(String(row.PROV_NAME || "").trim()));
   });
   closeStudentDetail();
   renderProfileTable();
@@ -128,8 +134,8 @@ function renderProfileTable() {
   const start = (profilePage - 1) * PROFILE_PAGE_SIZE;
   visibleProfileRows = filteredProfileRows.slice(start, start + PROFILE_PAGE_SIZE);
   document.getElementById("profileTableBody").innerHTML = visibleProfileRows.length
-    ? visibleProfileRows.map((row, index) => `<tr class="border-t border-slate-100 hover:bg-slate-50"><td class="p-3 text-center text-slate-400">${(start + index + 1).toLocaleString("th-TH")}</td><td class="p-3"><button type="button" data-profile-index="${index}" class="text-left font-semibold text-teal-700 hover:underline">${escapeHtml(row.STUDENT_NAME || "ไม่ระบุชื่อ")}</button><span class="mt-1 block text-xs text-slate-400">${escapeHtml(row.GENDER || "ไม่ระบุเพศ")} · ${escapeHtml(row.EDU_LEVEL || "ไม่ระบุระดับ")}</span></td><td class="p-3 text-slate-600">${escapeHtml(row.SCHOOL_NAME || "-")}</td><td class="p-3 text-slate-600">${escapeHtml(row.LOOKING_WORK || "-")}</td></tr>`).join("")
-    : '<tr><td colspan="4" class="p-10 text-center text-slate-400">ไม่พบข้อมูลตามเงื่อนไข</td></tr>';
+    ? visibleProfileRows.map((row, index) => `<tr class="border-t border-slate-100 hover:bg-slate-50"><td class="p-3 text-center text-slate-400">${(start + index + 1).toLocaleString("th-TH")}</td><td class="p-3"><button type="button" data-profile-index="${index}" class="text-left font-semibold text-teal-700 hover:underline">${escapeHtml(row.STUDENT_NAME || "ไม่ระบุชื่อ")}</button><span class="mt-1 block text-xs text-slate-400">${escapeHtml(row.GENDER || "ไม่ระบุเพศ")} · ${escapeHtml(row.EDU_LEVEL || "ไม่ระบุระดับ")}</span></td><td class="p-3 text-slate-600">${escapeHtml(row.SCHOOL_NAME || "-")}</td><td class="p-3 text-slate-600">${escapeHtml(row.PROV_NAME || "-")}</td><td class="p-3 text-slate-600">${escapeHtml(row.LOOKING_WORK || "-")}</td></tr>`).join("")
+    : '<tr><td colspan="5" class="p-10 text-center text-slate-400">ไม่พบข้อมูลตามเงื่อนไข</td></tr>';
   document.getElementById("profileTableSummary").textContent =
     `พบ ${filteredProfileRows.length.toLocaleString("th-TH")} คน จากทั้งหมด ${profileRows.length.toLocaleString("th-TH")} คน`;
   document.getElementById("profilePageSummary").textContent = visibleProfileRows.length

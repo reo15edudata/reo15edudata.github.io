@@ -9,7 +9,7 @@
   <link href="tailwind.css?v=20260908-2" rel="stylesheet">
   <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
   <link href="responsive.css?v=20260903-3" rel="stylesheet">
-  <link href="dashboard-business.css?v=20260907-1" rel="stylesheet">
+  <link href="dashboard-business.css?v=20260909-1" rel="stylesheet">
 </head>
 <body data-dashboard="true" class="bg-slate-50 font-sans text-slate-800 h-screen flex overflow-hidden">
   <aside class="w-64 bg-[#1e293b] text-slate-300 flex flex-col h-full shrink-0">
@@ -40,7 +40,7 @@
         <form id="businessFilterForm" class="business-filter-grid">
           <div><label for="businessYear" class="filter-label">ปีข้อมูล</label><select id="businessYear" class="filter-control"></select></div>
           <div><span class="filter-label">จังหวัด</span><div id="businessProvince"></div></div>
-          <div><label for="businessTypeFilter" class="filter-label">ประเภทสถานประกอบการ</label><select id="businessTypeFilter" class="filter-control"><option value="">ทุกประเภท</option></select></div>
+          <div><span id="businessTypeFilterLabel" class="filter-label">ประเภทสถานประกอบการ</span><div id="businessTypeFilter" aria-labelledby="businessTypeFilterLabel"></div></div>
           <div><label for="businessNameSearch" class="filter-label">ค้นหาชื่อสถานประกอบการ</label><div class="business-name-search"><i class="fas fa-magnifying-glass" aria-hidden="true"></i><input id="businessNameSearch" type="search" class="filter-control" placeholder="พิมพ์ชื่อสถานประกอบการ"></div></div>
           <div class="business-filter-actions"><button type="reset">ล้างตัวกรอง</button><button type="submit">แสดงผล</button></div>
         </form>
@@ -75,7 +75,7 @@
   <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-auth.js"></script>
   <script src="site.js?v=20260908-2"></script>
   <script src="data-client.js?v=20260908-2"></script>
-  <script src="dashboard-business.js?v=20260908-2"></script>
+  <script src="dashboard-business.js?v=20260909-1"></script>
   <script src="footer.js?v=20260903-1"></script>
 </body>
 </html>

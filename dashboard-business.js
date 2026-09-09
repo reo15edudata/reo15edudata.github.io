@@ -2,6 +2,7 @@ const GAS_WEB_APP_URL = "https://script.google.com/macros/s/AKfycbxIaex-ZhKRkRFz
 const BUSINESS_SHEET = "Vocational_Busi_MOU";
 let businessRows = [];
 let businessProvinceFilter;
+let businessTypeFilter;
 let defaultBusinessYear = "";
 let businessMap;
 let businessLayer;
@@ -53,8 +54,8 @@ async function initBusinessDashboard() {
     });
     document.getElementById("businessFilterForm").addEventListener("reset", () => setTimeout(async () => {
       businessProvinceFilter.clear();
+      businessTypeFilter.clear();
       document.getElementById("businessYear").value = defaultBusinessYear;
-      document.getElementById("businessTypeFilter").value = "";
       document.getElementById("businessNameSearch").value = "";
       await loadBusinessData();
     }, 0));
@@ -90,9 +91,9 @@ function populateBusinessFilters(metadata) {
   businessProvinceFilter = EDU15MultiSelect.create(
     document.getElementById("businessProvince"), provinces, "ทุกจังหวัด"
   );
-  const typeSelect = document.getElementById("businessTypeFilter");
-  typeSelect.replaceChildren(new Option("ทุกประเภท", ""));
-  businessTypes.forEach(type => typeSelect.add(new Option(type, type)));
+  businessTypeFilter = EDU15MultiSelect.create(
+    document.getElementById("businessTypeFilter"), businessTypes, "ทุกประเภท"
+  );
 }
 
 async function loadBusinessData() {
@@ -116,11 +117,11 @@ async function loadBusinessData() {
 }
 
 function renderFilteredBusinessData() {
-  const selectedType = document.getElementById("businessTypeFilter").value.trim();
+  const selectedTypes = businessTypeFilter.getValues();
   const nameQuery = document.getElementById("businessNameSearch").value.trim().toLocaleLowerCase("th");
   const filteredRows = businessRows.filter(row => {
     const statusMatches = String(row.DATA_STATUS || "").trim().toUpperCase() === "APPROVED";
-    const typeMatches = !selectedType || String(row.BUSINESS_TYPE || "").trim() === selectedType;
+    const typeMatches = !selectedTypes.length || selectedTypes.includes(String(row.BUSINESS_TYPE || "").trim());
     const nameMatches = !nameQuery || String(row.BUSINESS_NAME || "")
       .toLocaleLowerCase("th")
       .includes(nameQuery);
